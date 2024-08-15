@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
 app = QApplication(sys.argv)
 
 main_window = MainWindow(app.primaryScreen())
-main_window.showFullScreen()
+main_window.show()
 
 # Run the main Qt loop
 app.exec()
