@@ -5,7 +5,9 @@ from PySide6.QtGui import QPixmap, QScreen
 from stims import generate_sin
 from typing import List, Iterable
 from itertools import cycle
+from serial import Serial
 
+EVENT_PORT_NAME = "/dev/tty2"
 
 class ImageDecider:
     pixmaps: Iterable[QPixmap]
@@ -18,7 +20,6 @@ class ImageDecider:
 
         self.next()
 
-    @Slot()
     def next(self):
         self.image.setPixmap(next(self.pixmaps))
 
@@ -28,9 +29,18 @@ class MainWindow(QMainWindow):
     screen: QScreen
     timer: QTimer
     display: QLabel
+    event_trigger: Serial
 
-    def __init__(self, screen: QScreen):
+    @Slot()
+    def frame_change(self):
+        self.decider.next()
+        # Inform biosemi ASAP
+        
+
+    def __init__(self, screen: QScreen, event_trigger: Serial):
         super().__init__()
+
+        self.event_trigger = event_trigger
 
         self.screen = screen
         screen_height = screen.size().height()
@@ -53,14 +63,14 @@ class MainWindow(QMainWindow):
         timer = QTimer(self)
         timer.setTimerType(Qt.TimerType.PreciseTimer)
         timer.setInterval(1000/6)
-        timer.timeout.connect(self.decider.next)
+        timer.timeout.connect(self.frame_change)
         timer.start()
 
 
 # Create the Qt Application
 app = QApplication(sys.argv)
 
-main_window = MainWindow(app.primaryScreen())
+main_window = MainWindow(app.primaryScreen(), Serial(EVENT_PORT_NAME, baudrate=115200))
 main_window.show()
 
 # Run the main Qt loop

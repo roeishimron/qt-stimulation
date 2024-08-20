@@ -2,3 +2,4 @@ numpy
 Pillow
 matplotlib
 pyside6
+pyserial
