@@ -7,7 +7,7 @@ from typing import List, Iterable
 from itertools import cycle
 from serial import Serial
 
-EVENT_PORT_NAME = "/dev/tty2"
+EVENT_PORT_NAME = None # "/dev/ttyUSB0"
 
 class ImageDecider:
     pixmaps: Iterable[QPixmap]
@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def frame_change(self):
         self.decider.next()
-        # Inform biosemi ASAP
+        self.event_trigger.write(int(1).to_bytes())
         
 
     def __init__(self, screen: QScreen, event_trigger: Serial):
