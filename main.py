@@ -1,6 +1,6 @@
 import sys
-from PySide6.QtWidgets import QApplication, QPushButton, QWidget, QPushButton, QLabel, QVBoxLayout, QMainWindow
-from PySide6.QtCore import Slot, QSize, QTimer, Qt
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
+from PySide6.QtCore import Slot, QTimer, Qt
 from PySide6.QtGui import QPixmap, QScreen
 from stims import generate_sin
 from typing import List, Iterable
