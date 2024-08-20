@@ -5,9 +5,21 @@ from PySide6.QtGui import QPixmap, QScreen
 from stims import generate_sin
 from typing import List, Iterable
 from itertools import cycle
-from serial import Serial
+from serial import Serial, PortNotOpenError
 
-EVENT_PORT_NAME = None # "/dev/ttyUSB0"
+
+
+class SoftSerial(Serial):
+    EVENT_PORT_NAME = None # "/dev/ttyUSB0"
+    BAUDRATE = 115200
+    def __init__(self):
+        super().__init__(self.EVENT_PORT_NAME, self.BAUDRATE)
+    def write_int(self, value: int):
+        try:
+            super().write(value.to_bytes())
+        except PortNotOpenError:
+            pass
+
 
 class ImageDecider:
     pixmaps: Iterable[QPixmap]
@@ -29,12 +41,12 @@ class MainWindow(QMainWindow):
     screen: QScreen
     timer: QTimer
     display: QLabel
-    event_trigger: Serial
+    event_trigger: SoftSerial
 
     @Slot()
     def frame_change(self):
         self.decider.next()
-        self.event_trigger.write(int(1).to_bytes())
+        self.event_trigger.write_int(1)
         
 
     def __init__(self, screen: QScreen, event_trigger: Serial):
@@ -70,7 +82,7 @@ class MainWindow(QMainWindow):
 # Create the Qt Application
 app = QApplication(sys.argv)
 
-main_window = MainWindow(app.primaryScreen(), Serial(EVENT_PORT_NAME, baudrate=115200))
+main_window = MainWindow(app.primaryScreen(), SoftSerial())
 main_window.show()
 
 # Run the main Qt loop
