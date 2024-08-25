@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
 from PySide6.QtCore import Slot, QTimer, Qt
 from PySide6.QtGui import QPixmap, QScreen
 from stims import generate_sin
-from typing import List, Iterable
+from typing import List, Iterable, Callable
 from itertools import cycle
 from serial import Serial, PortNotOpenError
 from serial.serialutil import SerialException
@@ -41,10 +41,40 @@ class ImageDecider:
         self.image.setPixmap(next(self.pixmaps))
 
 
+class Timers:
+    frames: QTimer
+    trial: QTimer
+
+    def _initialize_timer(self, handler: Callable, timeout: int, singleShot: bool) -> QTimer:
+        timer = QTimer()
+        timer.setTimerType(Qt.TimerType.PreciseTimer)
+        timer.setInterval(timeout)
+        timer.setSingleShot(singleShot)
+        timer.timeout.connect(handler)
+        return timer
+
+    def __init__(self, frames_handler: Callable, trials_handler: Callable) -> None:
+        self.frames = self._initialize_timer(frames_handler, 1000/6, False)
+        self.trial = self._initialize_timer(trials_handler, 1000 * 30, True)
+
+    def _stop_all(self):
+        # Apperantly there's no "apply" in python
+        self.frames.stop()
+        self.trial.stop()
+
+    def start_trial(self):
+        self._stop_all()
+        self.trial.start()
+        self.frames.start()
+    
+    def start_break(self):
+        self._stop_all()
+
+
 class MainWindow(QMainWindow):
     decider: ImageDecider
     screen: QScreen
-    timer: QTimer
+    timers: Timers
     display: QLabel
     event_trigger: SoftSerial
 
@@ -52,6 +82,15 @@ class MainWindow(QMainWindow):
     def frame_change(self):
         self.decider.next()
         self.event_trigger.write_int(1)
+
+    @Slot()
+    def trial_end(self):
+        self.timers.start_break()
+        self.event_trigger.write_int(2)
+        input()
+
+        self.timers.start_trial()
+        self.event_trigger.write_int(3)
 
     def __init__(self, screen: QScreen, event_trigger: Serial):
         super().__init__()
@@ -76,11 +115,9 @@ class MainWindow(QMainWindow):
 
         self.decider = ImageDecider([generate_sin(int(screen_height*3/4), 5),
                                      generate_sin(int(screen_height*3/4), 50)], self.display)
-        timer = QTimer(self)
-        timer.setTimerType(Qt.TimerType.PreciseTimer)
-        timer.setInterval(1000/6)
-        timer.timeout.connect(self.frame_change)
-        timer.start()
+        
+        self.timers = Timers(self.frame_change, self.trial_end)
+        self.timers.start_trial()
 
 
 # Create the Qt Application
