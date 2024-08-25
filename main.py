@@ -6,14 +6,19 @@ from stims import generate_sin
 from typing import List, Iterable
 from itertools import cycle
 from serial import Serial, PortNotOpenError
-
+from serial.serialutil import SerialException
 
 
 class SoftSerial(Serial):
-    EVENT_PORT_NAME = None # "/dev/ttyUSB0"
+    EVENT_PORT_NAME = "/dev/ttyUSB0"
     BAUDRATE = 115200
+
     def __init__(self):
-        super().__init__(self.EVENT_PORT_NAME, self.BAUDRATE)
+        try:
+            super().__init__(self.EVENT_PORT_NAME, self.BAUDRATE)
+        except SerialException as e:
+            print(f"WARNING: can't send events: {e}")
+
     def write_int(self, value: int):
         try:
             super().write(value.to_bytes())
@@ -47,7 +52,6 @@ class MainWindow(QMainWindow):
     def frame_change(self):
         self.decider.next()
         self.event_trigger.write_int(1)
-        
 
     def __init__(self, screen: QScreen, event_trigger: Serial):
         super().__init__()
