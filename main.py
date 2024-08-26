@@ -1,6 +1,6 @@
 import sys
 from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from stims import generate_sin
 from soft_serial import SoftSerial
@@ -47,8 +47,17 @@ class MainWindow(QMainWindow):
         self.timers = Timers(self.frame_change, self.trial_end)
         self.break_end()
 
-    def key_released_at_break(self, _event: QKeyEvent):
-        self.break_end()
+    def quit(self):
+        self.event_trigger.write_int(4)
+        print("Quitting")
+        QCoreApplication.quit()
+
+    def key_released_at_break(self, event: QKeyEvent):
+        if event.key() == Qt.Key.Key_Q:
+            self.quit()    
+        else: 
+            # seems like `close()` returns
+            self.break_end()
 
     def key_released_default(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_B:

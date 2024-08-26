@@ -31,4 +31,4 @@ class StimuliDecider:
         self.display.setPixmap(next(self.pixmaps))
 
     def display_break(self):
-        self.display.setText("This is a break.\nPress any key to continue")
+        self.display.setText("This is a break.\nPress any key to continue (or Q to quit)")
