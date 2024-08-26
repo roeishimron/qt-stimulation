@@ -1,6 +1,8 @@
 from PySide6.QtCore import QTimer, Qt
 from typing import Callable
 
+FRAME_DURATION = 1000/6
+TRIAL_DURATION = 1000 * 30
 
 class Timers:
     frames: QTimer
@@ -15,8 +17,8 @@ class Timers:
         return timer
 
     def __init__(self, frames_handler: Callable, trials_handler: Callable) -> None:
-        self.frames = self._initialize_timer(frames_handler, 1000/6, False)
-        self.trial = self._initialize_timer(trials_handler, 1000 * 30, True)
+        self.frames = self._initialize_timer(frames_handler, FRAME_DURATION, False)
+        self.trial = self._initialize_timer(trials_handler, TRIAL_DURATION, True)
 
     def _stop_all(self):
         self.frames.stop()

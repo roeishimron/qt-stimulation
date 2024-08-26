@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
 from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from stims import generate_sin
-from soft_serial import SoftSerial
+from soft_serial import SoftSerial, Codes
 from stimuli_decider import StimuliDecider
 from timers import Timers
 
@@ -17,19 +17,19 @@ class MainWindow(QMainWindow):
     @Slot()
     def frame_change(self):
         self.decider.next_stim()
-        self.event_trigger.write_int(1)
+        self.event_trigger.write_int(Codes.FrameChange)
 
     @Slot()
     def trial_end(self):
         self.timers.start_break()
-        self.event_trigger.write_int(2)
+        self.event_trigger.write_int(Codes.TrialEnd)
         self.decider.display_break()
         self.keyReleaseEvent = self.key_released_at_break
 
     def break_end(self):
         self.keyReleaseEvent = self.key_released_default
         self.timers.start_trial()
-        self.event_trigger.write_int(3)
+        self.event_trigger.write_int(Codes.BreakEnd)
 
     def __init__(self, screen: QScreen, event_trigger: SoftSerial):
         super().__init__()
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.break_end()
 
     def quit(self):
-        self.event_trigger.write_int(4)
+        self.event_trigger.write_int(Codes.Quit)
         print("Quitting")
         QCoreApplication.quit()
 

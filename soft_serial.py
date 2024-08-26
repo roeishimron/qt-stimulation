@@ -1,6 +1,12 @@
 from serial import Serial, PortNotOpenError
 from serial.serialutil import SerialException
+from enum import IntEnum
 
+class Codes(IntEnum):
+    FrameChange = 1
+    TrialEnd = 2
+    BreakEnd = 3
+    Quit = 4
 
 class SoftSerial(Serial):
     EVENT_PORT_NAME = "/dev/ttyUSB0"
