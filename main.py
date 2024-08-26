@@ -86,12 +86,16 @@ class MainWindow(QMainWindow):
     def trial_end(self):
         self.timers.start_break()
         self.event_trigger.write_int(2)
+        self.display_break()
         self.keyReleaseEvent = self.key_released_at_break
 
     def break_end(self):
         self.keyReleaseEvent = self.key_released_default
         self.timers.start_trial()
         self.event_trigger.write_int(3)
+
+    def display_break(self):
+        self.display.setText("This is a break.\nPress any key to continue")
 
     def __init__(self, screen: QScreen, event_trigger: Serial):
         super().__init__()
