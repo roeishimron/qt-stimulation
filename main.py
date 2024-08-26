@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         self.decider.display_break()
         self.keyReleaseEvent = self.key_released_at_break
 
-    def break_end(self):
+    def trial_start(self):
         self.keyReleaseEvent = self.key_released_default
         self.timers.start_trial()
         self.event_trigger.write_int(Codes.BreakEnd)
@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.decider.display)
 
         self.timers = Timers(self.frame_change, self.trial_end)
-        self.break_end()
+        self.trial_start()
 
     def quit(self):
         self.event_trigger.write_int(Codes.Quit)
@@ -56,8 +56,8 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key.Key_Q:
             self.quit()    
         else: 
-            # seems like `close()` returns
-            self.break_end()
+            # seems like `quit()` returns
+            self.trial_start()
 
     def key_released_default(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_B:
