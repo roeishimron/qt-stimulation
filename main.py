@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
 from PySide6.QtCore import Slot, QTimer, Qt
-from PySide6.QtGui import QPixmap, QScreen
+from PySide6.QtGui import QPixmap, QScreen, QKeyEvent
 from stims import generate_sin
 from typing import List, Iterable, Callable
 from itertools import cycle
@@ -58,7 +58,6 @@ class Timers:
         self.trial = self._initialize_timer(trials_handler, 1000 * 30, True)
 
     def _stop_all(self):
-        # Apperantly there's no "apply" in python
         self.frames.stop()
         self.trial.stop()
 
@@ -66,7 +65,7 @@ class Timers:
         self._stop_all()
         self.trial.start()
         self.frames.start()
-    
+
     def start_break(self):
         self._stop_all()
 
@@ -87,8 +86,10 @@ class MainWindow(QMainWindow):
     def trial_end(self):
         self.timers.start_break()
         self.event_trigger.write_int(2)
-        input()
+        self.keyReleaseEvent = self.key_released_at_break
 
+    def break_end(self):
+        self.keyReleaseEvent = self.key_released_default
         self.timers.start_trial()
         self.event_trigger.write_int(3)
 
@@ -115,9 +116,15 @@ class MainWindow(QMainWindow):
 
         self.decider = ImageDecider([generate_sin(int(screen_height*3/4), 5),
                                      generate_sin(int(screen_height*3/4), 50)], self.display)
-        
+
         self.timers = Timers(self.frame_change, self.trial_end)
-        self.timers.start_trial()
+        self.break_end()
+
+    def key_released_at_break(self, _event: QKeyEvent):
+        self.break_end()
+
+    def key_released_default(self, _event: QKeyEvent):
+        print("Key pressed, doing nothing")
 
 
 # Create the Qt Application
