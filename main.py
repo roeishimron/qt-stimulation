@@ -123,8 +123,11 @@ class MainWindow(QMainWindow):
     def key_released_at_break(self, _event: QKeyEvent):
         self.break_end()
 
-    def key_released_default(self, _event: QKeyEvent):
-        print("Key pressed, doing nothing")
+    def key_released_default(self, event: QKeyEvent):
+        if event.key() == Qt.Key.Key_B:
+            self.trial_end()
+        else:
+            print("Key pressed, doing nothing")
 
 
 # Create the Qt Application
