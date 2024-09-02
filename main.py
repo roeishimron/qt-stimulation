@@ -7,6 +7,10 @@ from soft_serial import SoftSerial, Codes
 from stimuli_decider import Animator
 
 
+FREQUENCY_MS = 1000/6
+REPETITIONS_PER_TRIAL = 30 * 1000 / FREQUENCY_MS  # 30s
+
+
 class MainWindow(QMainWindow):
     animator: Animator
     screen: QScreen
@@ -51,8 +55,8 @@ class MainWindow(QMainWindow):
         self.background.setPixmap(generate_grey(int(screen_height*3/4)))
 
         self.animator = Animator([generate_sin(int(screen_height*3/4), 5),
-                                       generate_sin(int(screen_height*3/4), 50)], QLabel(self.background),
-                                      1000*2, 30, self.trial_end, self.frame_change)
+                                  generate_sin(int(screen_height*3/4), 50)], QLabel(self.background),
+                                 FREQUENCY_MS, REPETITIONS_PER_TRIAL, self.trial_end, self.frame_change)
 
         self.setCentralWidget(self.background)
 
