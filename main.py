@@ -2,33 +2,31 @@ import sys
 from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
 from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
-from stims import generate_sin
+from stims import generate_sin, generate_grey
 from soft_serial import SoftSerial, Codes
 from stimuli_decider import StimuliDecider
-from timers import Timers
 
 
 class MainWindow(QMainWindow):
     decider: StimuliDecider
     screen: QScreen
-    timers: Timers
     event_trigger: SoftSerial
+    background: QLabel
 
     @Slot()
     def frame_change(self):
-        self.decider.next_stim()
         self.event_trigger.write_int(Codes.FrameChange)
 
     @Slot()
     def trial_end(self):
-        self.timers.start_break()
+        self.decider.stop()
         self.event_trigger.write_int(Codes.TrialEnd)
         self.decider.display_break()
         self.keyReleaseEvent = self.key_released_at_break
 
     def trial_start(self):
         self.keyReleaseEvent = self.key_released_default
-        self.timers.start_trial()
+        self.decider.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
     def __init__(self, screen: QScreen, event_trigger: SoftSerial):
@@ -39,12 +37,25 @@ class MainWindow(QMainWindow):
         self.screen = screen
         screen_height = screen.size().height()
 
+        self.background = QLabel(self)
+        self.background.setAlignment(Qt.AlignCenter)
+        self.background.setWordWrap(True)
+        self.background.setMargin(100)
+        self.background.setStyleSheet(
+            '''
+                            background: rgb(127, 127, 127);
+                            color: #bbb;
+                            font-size: 28pt;
+                    '''
+        )
+        self.background.setPixmap(generate_grey(int(screen_height*3/4)))
+
         self.decider = StimuliDecider([generate_sin(int(screen_height*3/4), 5),
-                                       generate_sin(int(screen_height*3/4), 50)], QLabel(self))
+                                       generate_sin(int(screen_height*3/4), 50)], QLabel(self.background),
+                                      1000*2, 30, self.trial_end, self.frame_change)
 
-        self.setCentralWidget(self.decider.display)
+        self.setCentralWidget(self.background)
 
-        self.timers = Timers(self.frame_change, self.trial_end)
         self.trial_start()
 
     def quit(self):
@@ -54,8 +65,8 @@ class MainWindow(QMainWindow):
 
     def key_released_at_break(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Q:
-            self.quit()    
-        else: 
+            self.quit()
+        else:
             # seems like `quit()` returns
             self.trial_start()
 
