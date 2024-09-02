@@ -10,7 +10,8 @@ class Animator:
     display: QLabel
     effect: QGraphicsOpacityEffect
     animation: QSequentialAnimationGroup
-    on_stim_change: Callable  # Called right AFTER the stim has changed (and the frame is still gray)
+    # Called right AFTER the stim has changed (and the frame is still gray)
+    on_stim_change: Callable
 
     @Slot()
     def _next_stim(self):
@@ -25,9 +26,7 @@ class Animator:
         animation.setEasingCurve(QEasingCurve.Type.InSine)
         return animation
 
-    def __init__(self, pixmaps: List[QPixmap], display: QLabel, frequency_ms: float, cycles: int, on_finish: Slot, on_stim_change: Callable):
-
-        self.display = display
+    def _stylish_display(self):
         self.display.setAlignment(Qt.AlignCenter)
         self.display.setWordWrap(True)
         self.display.setMargin(100)
@@ -39,24 +38,12 @@ class Animator:
                     '''
         )
 
-        self.effect = QGraphicsOpacityEffect()
-        self.display.setGraphicsEffect(self.effect)
-
-        self.pixmaps = cycle(pixmaps)
-
-        into_stim = self._create_animation(0, 1, frequency_ms/2)
-
-        into_gray = self._create_animation(1, 0, frequency_ms/2)
-        into_gray.finished.connect(self._next_stim)
-
+    def _setup_animation(self, into_stim: QPropertyAnimation, into_gray: QPropertyAnimation, cycles: int, on_finish: Slot):
         self.animation = QSequentialAnimationGroup()
         self.animation.addAnimation(into_stim)
         self.animation.addAnimation(into_gray)
-
         self.animation.setLoopCount(cycles)
         self.animation.finished.connect(on_finish)
-
-        self.on_stim_change = on_stim_change
 
     def start(self):
         self.effect.setOpacity(0)
@@ -70,3 +57,21 @@ class Animator:
         self.effect.setOpacity(1)
         self.display.setText(
             "This is a break.\nPress any key to continue (or Q to quit)")
+
+    def __init__(self, pixmaps: List[QPixmap], display: QLabel, frequency_ms: float, cycles: int, on_finish: Slot, on_stim_change: Callable):
+
+        self.display = display
+        self._stylish_display()
+
+        self.effect = QGraphicsOpacityEffect()
+        self.display.setGraphicsEffect(self.effect)
+
+        self.pixmaps = cycle(pixmaps)
+
+        into_stim = self._create_animation(0, 1, frequency_ms/2)
+        into_gray = self._create_animation(1, 0, frequency_ms/2)
+        into_gray.finished.connect(self._next_stim)
+
+        self._setup_animation(into_stim, into_gray, cycles, on_finish)
+
+        self.on_stim_change = on_stim_change

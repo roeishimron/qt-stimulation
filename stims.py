@@ -19,6 +19,6 @@ def generate_sin(figure_size, frequency=1, offset=0, contrast=1) -> QPixmap:
 
     return QPixmap.fromImage(QImage(raw_array, figure_size, figure_size, figure_size, QImage.Format_Grayscale8))
 
-def generate_grey(figure_size) -> QPixmap:
 
+def generate_grey(figure_size) -> QPixmap:
     return generate_sin(figure_size, 0, 0, 0)
