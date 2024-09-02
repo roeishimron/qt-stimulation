@@ -4,11 +4,11 @@ from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from stims import generate_sin, generate_grey
 from soft_serial import SoftSerial, Codes
-from stimuli_decider import StimuliDecider
+from stimuli_decider import Animator
 
 
 class MainWindow(QMainWindow):
-    decider: StimuliDecider
+    animator: Animator
     screen: QScreen
     event_trigger: SoftSerial
     background: QLabel
@@ -19,14 +19,14 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def trial_end(self):
-        self.decider.stop()
+        self.animator.stop()
         self.event_trigger.write_int(Codes.TrialEnd)
-        self.decider.display_break()
+        self.animator.display_break()
         self.keyReleaseEvent = self.key_released_at_break
 
     def trial_start(self):
         self.keyReleaseEvent = self.key_released_default
-        self.decider.start()
+        self.animator.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
     def __init__(self, screen: QScreen, event_trigger: SoftSerial):
@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         )
         self.background.setPixmap(generate_grey(int(screen_height*3/4)))
 
-        self.decider = StimuliDecider([generate_sin(int(screen_height*3/4), 5),
+        self.animator = Animator([generate_sin(int(screen_height*3/4), 5),
                                        generate_sin(int(screen_height*3/4), 50)], QLabel(self.background),
                                       1000*2, 30, self.trial_end, self.frame_change)
 

@@ -5,7 +5,7 @@ from itertools import cycle
 from PySide6.QtCore import Qt, QPropertyAnimation, QSequentialAnimationGroup, QEasingCurve, Slot, QByteArray
 
 
-class StimuliDecider:
+class Animator:
     pixmaps: Iterable[QPixmap]
     display: QLabel
     effect: QGraphicsOpacityEffect
