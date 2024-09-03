@@ -17,7 +17,7 @@ def run():
                generate_sin(int(screen_height*3/4), 50)]
 
     main_window = ViewExperiment(
-        screen_height, OddballStimuli(cycle(stimuli)), SoftSerial())
+        OddballStimuli(cycle(stimuli)), SoftSerial())
     main_window.showFullScreen()
 
     # Run the main Qt loop

@@ -52,12 +52,10 @@ class Animator:
         return animation
 
     def _stylish_display(self):
-        self.display.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.display.setWordWrap(True)
-        self.display.setMargin(100)
         self.display.setStyleSheet(
             '''
-                            background: rgb(127, 127, 127);
                             color: #bbb;
                             font-size: 28pt;
                     '''
@@ -86,12 +84,12 @@ class Animator:
     def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float, cycles: int, on_finish: Slot, on_stim_change: Callable):
 
         self.display = display
+        self.stimuli = stimuli
+
         self._stylish_display()
 
         self.effect = QGraphicsOpacityEffect()
         self.display.setGraphicsEffect(self.effect)
-
-        self.stimuli = stimuli
 
         into_stim = self._create_animation(0, 1, frequency_ms/2)
         into_gray = self._create_animation(1, 0, frequency_ms/2)

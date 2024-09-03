@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import QLabel, QMainWindow
+from PySide6.QtWidgets import QFrame, QMainWindow, QLabel, QStackedLayout
 from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
-from stims import  generate_grey
+from stims import generate_grey
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
 
@@ -13,7 +13,6 @@ class ViewExperiment(QMainWindow):
     animator: Animator
     screen: QScreen
     event_trigger: SoftSerial
-    background: QLabel
 
     @Slot()
     def frame_change(self):
@@ -31,26 +30,25 @@ class ViewExperiment(QMainWindow):
         self.animator.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
-    def __init__(self, screen_height:int, stimuli: OddballStimuli, event_trigger: SoftSerial):
+    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial):
         super().__init__()
 
         self.event_trigger = event_trigger
 
-        self.background = QLabel(self)
-        self.background.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.background.setStyleSheet(
+        self.setStyleSheet(
             '''
                             background: rgb(127, 127, 127);
                             color: #bbb;
                             font-size: 28pt;
-                    '''
+            '''
         )
-        self.background.setPixmap(generate_grey(int(screen_height*3/4)))
 
-        self.animator = Animator(stimuli, QLabel(self.background),
+        
+        stimuli_display = QLabel(self)
+        self.animator = Animator(stimuli, stimuli_display,
                                  FREQUENCY_MS, REPETITIONS_PER_TRIAL, self.trial_end, self.frame_change)
 
-        self.setCentralWidget(self.background)
+        self.setCentralWidget(stimuli_display)
 
         self.trial_start()
 
