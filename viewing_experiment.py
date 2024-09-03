@@ -37,9 +37,7 @@ class ViewExperiment(QMainWindow):
         self.event_trigger = event_trigger
 
         self.background = QLabel(self)
-        self.background.setAlignment(Qt.AlignCenter)
-        self.background.setWordWrap(True)
-        self.background.setMargin(100)
+        self.background.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.background.setStyleSheet(
             '''
                             background: rgb(127, 127, 127);

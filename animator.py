@@ -52,7 +52,7 @@ class Animator:
         return animation
 
     def _stylish_display(self):
-        self.display.setAlignment(Qt.AlignCenter)
+        self.display.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.display.setWordWrap(True)
         self.display.setMargin(100)
         self.display.setStyleSheet(
