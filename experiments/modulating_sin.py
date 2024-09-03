@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from stims import generate_sin
 from soft_serial import SoftSerial
-from stimuli_decider import OddballStimuli
+from animator import OddballStimuli
 from itertools import cycle
 from viewing_experiment import ViewExperiment
 

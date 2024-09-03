@@ -3,7 +3,7 @@ from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from stims import  generate_grey
 from soft_serial import SoftSerial, Codes
-from stimuli_decider import Animator, OddballStimuli
+from animator import Animator, OddballStimuli
 
 FREQUENCY_MS = 1000/6
 REPETITIONS_PER_TRIAL = 30 * 1000 / FREQUENCY_MS  # 30s
