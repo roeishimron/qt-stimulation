@@ -1,8 +1,8 @@
 import sys
-from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
+from PySide6.QtWidgets import QLabel, QMainWindow
 from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
-from stims import generate_sin, generate_grey
+from stims import  generate_grey
 from soft_serial import SoftSerial, Codes
 from stimuli_decider import Animator
 from typing import List
