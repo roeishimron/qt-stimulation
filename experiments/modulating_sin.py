@@ -18,7 +18,7 @@ def run():
 
     main_window = ViewExperiment(
         screen_height, OddballStimuli(cycle(stimuli)), SoftSerial())
-    main_window.show()
+    main_window.showFullScreen()
 
     # Run the main Qt loop
     app.exec()
