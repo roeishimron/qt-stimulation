@@ -2,8 +2,10 @@ import sys
 from PySide6.QtWidgets import QApplication
 from stims import generate_sin
 from soft_serial import SoftSerial
-
+from stimuli_decider import OddballStimuli
+from itertools import cycle
 from viewing_experiment import ViewExperiment
+
 
 def run():
     # Create the Qt Application
@@ -11,9 +13,11 @@ def run():
 
     screen_height = app.primaryScreen().geometry().height()
 
-    main_window = ViewExperiment(screen_height, [generate_sin(int(screen_height*3/4), 5),
-                                                generate_sin(int(screen_height*3/4), 50)],
-                                SoftSerial())
+    stimuli = [generate_sin(int(screen_height*3/4), 5),
+               generate_sin(int(screen_height*3/4), 50)]
+
+    main_window = ViewExperiment(
+        screen_height, OddballStimuli(cycle(stimuli)), SoftSerial())
     main_window.show()
 
     # Run the main Qt loop

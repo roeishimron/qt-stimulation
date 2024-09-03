@@ -4,7 +4,7 @@ from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from stims import  generate_grey
 from soft_serial import SoftSerial, Codes
-from stimuli_decider import Animator
+from stimuli_decider import Animator, OddballStimuli
 from typing import List
 
 FREQUENCY_MS = 1000/6
@@ -33,7 +33,7 @@ class ViewExperiment(QMainWindow):
         self.animator.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
-    def __init__(self, screen_height:int, stimulations: List, event_trigger: SoftSerial):
+    def __init__(self, screen_height:int, stimuli: OddballStimuli, event_trigger: SoftSerial):
         super().__init__()
 
         self.event_trigger = event_trigger
@@ -51,7 +51,7 @@ class ViewExperiment(QMainWindow):
         )
         self.background.setPixmap(generate_grey(int(screen_height*3/4)))
 
-        self.animator = Animator(stimulations, QLabel(self.background),
+        self.animator = Animator(stimuli, QLabel(self.background),
                                  FREQUENCY_MS, REPETITIONS_PER_TRIAL, self.trial_end, self.frame_change)
 
         self.setCentralWidget(self.background)
