@@ -1,4 +1,4 @@
-from numpy import array, sin, pi, linspace, uint8, tile
+from numpy import sin, pi, linspace, uint8, tile
 from PySide6.QtGui import QPixmap, QImage
 
 

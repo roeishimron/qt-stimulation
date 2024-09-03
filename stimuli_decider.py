@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
 from PySide6.QtGui import QPixmap
 from typing import List, Iterable, Callable
-from PySide6.QtCore import Qt, QPropertyAnimation, QSequentialAnimationGroup, QEasingCurve, Slot, QByteArray
-from numpy import lcm
+from PySide6.QtCore import (Qt, QPropertyAnimation,
+                            QSequentialAnimationGroup, QEasingCurve,
+                            Slot, QByteArray)
 
 
 class OddballStimuli:
