@@ -3,10 +3,13 @@ from serial.serialutil import SerialException
 from enum import IntEnum
 
 class Codes(IntEnum):
-    FrameChange = 1
-    TrialEnd = 2
-    BreakEnd = 3
-    Quit = 4
+    FrameChangeToOddball = 0x1
+    FrameChangeToBase = 0x2
+
+    TrialEnd = 0x10
+    BreakEnd = 0x11
+
+    Quit = 0xFF
 
 class SoftSerial(Serial):
     EVENT_PORT_NAME = "/dev/ttyUSB0"

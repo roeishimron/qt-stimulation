@@ -5,7 +5,7 @@ from stims import generate_grey
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
 
-FREQUENCY_MS = 1000/6
+FREQUENCY_MS = 1000/5.88
 REPETITIONS_PER_TRIAL = 30 * 1000 / FREQUENCY_MS  # 30s
 
 
@@ -15,8 +15,8 @@ class ViewExperiment(QMainWindow):
     event_trigger: SoftSerial
 
     @Slot()
-    def frame_change(self):
-        self.event_trigger.write_int(Codes.FrameChange)
+    def frame_change_to_oddball(self):
+        self.event_trigger.write_int(Codes.FrameChangeToOddball)
 
     @Slot()
     def trial_end(self):
@@ -46,7 +46,7 @@ class ViewExperiment(QMainWindow):
         
         stimuli_display = QLabel(self)
         self.animator = Animator(stimuli, stimuli_display,
-                                 FREQUENCY_MS, REPETITIONS_PER_TRIAL, self.trial_end, self.frame_change)
+                                 FREQUENCY_MS, REPETITIONS_PER_TRIAL, self.trial_end, self.frame_change_to_oddball)
 
         self.setCentralWidget(stimuli_display)
 
