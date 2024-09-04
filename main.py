@@ -1,2 +1,2 @@
-from experiments.faces_vs_objects import run
+from experiments.modulating_color import run
 run()

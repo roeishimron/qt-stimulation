@@ -35,7 +35,7 @@ class ViewExperiment(QMainWindow):
         self.animator.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
-    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial):
+    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial, use_step:bool=False):
         super().__init__()
 
         self.event_trigger = event_trigger
@@ -53,7 +53,7 @@ class ViewExperiment(QMainWindow):
         self.animator = Animator(stimuli, stimuli_display,
                                  FREQUENCY_MS, REPETITIONS_PER_TRIAL, 
                                  self.trial_end, self.frame_change_to_oddball,
-                                 self.frame_change_to_base)
+                                 self.frame_change_to_base, use_step)
 
         self.setCentralWidget(stimuli_display)
 

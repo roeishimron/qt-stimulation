@@ -89,7 +89,7 @@ class Animator:
 
     def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float, 
                  cycles: int, on_finish: Slot, on_stim_change_to_oddball: Callable,
-                 on_stim_change_to_base: Callable):
+                 on_stim_change_to_base: Callable, use_step: bool=False):
 
         self.display = display
         self.stimuli = stimuli
@@ -102,8 +102,8 @@ class Animator:
         self.effect = QGraphicsOpacityEffect()
         self.display.setGraphicsEffect(self.effect)
 
-        into_stim = self._create_animation(0, 1, frequency_ms/2, QEasingCurve.Type.OutSine)
-        into_gray = self._create_animation(1, 0, frequency_ms/2, QEasingCurve.Type.InSine)
+        into_stim = self._create_animation(int(use_step), 1, frequency_ms/2, QEasingCurve.Type.OutSine)
+        into_gray = self._create_animation(1, int(use_step), frequency_ms/2, QEasingCurve.Type.InSine)
         into_gray.finished.connect(self._next_stim)
 
         self._setup_animation(into_stim, into_gray, cycles, on_finish)
