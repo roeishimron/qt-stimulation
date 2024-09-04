@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
 from PySide6.QtGui import QPixmap
-from typing import List, Iterable, Callable
+from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
                             Slot, QByteArray)
@@ -23,11 +23,11 @@ class OddballStimuli:
         self.oddball_modulation = oddball_modulation
         self._current_stim = 0
 
-    def next_stimulation(self) -> QPixmap:
+    def next_stimulation(self) -> Tuple[bool,QPixmap]:
         self._current_stim += 1
         if self._current_stim % self.oddball_modulation == 0:
-            return next(self.oddball)
-        return next(self.base)
+            return (True, next(self.oddball))
+        return (False, next(self.base))
 
 
 class Animator:
@@ -36,12 +36,18 @@ class Animator:
     effect: QGraphicsOpacityEffect
     animation: QSequentialAnimationGroup
     # Called right AFTER the stim has changed (and the frame is still gray)
-    on_stim_change: Callable
+    on_stim_change_to_oddball: Callable
+    on_stim_change_to_base: Callable
+
 
     @Slot()
     def _next_stim(self):
-        self.display.setPixmap(self.stimuli.next_stimulation())
-        self.on_stim_change()
+        next_stimulation = self.stimuli.next_stimulation()
+        self.display.setPixmap(next_stimulation[1])
+        if next_stimulation[0]:
+            self.on_stim_change_to_oddball()
+        else:
+            self.on_stim_change_to_base()
 
     def _create_animation(self, start: float, end: float, duration: int, kind: QEasingCurve.Type) -> QPropertyAnimation:
         animation = QPropertyAnimation(self.effect, QByteArray("opacity"))
@@ -81,10 +87,15 @@ class Animator:
         self.display.setText(
             "This is a break.\nPress any key to continue (or Q to quit)")
 
-    def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float, cycles: int, on_finish: Slot, on_stim_change: Callable):
+    def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float, 
+                 cycles: int, on_finish: Slot, on_stim_change_to_oddball: Callable,
+                 on_stim_change_to_base: Callable):
 
         self.display = display
         self.stimuli = stimuli
+
+        self.on_stim_change_to_oddball = on_stim_change_to_oddball
+        self.on_stim_change_to_base = on_stim_change_to_base
 
         self._stylish_display()
 
@@ -97,4 +108,3 @@ class Animator:
 
         self._setup_animation(into_stim, into_gray, cycles, on_finish)
 
-        self.on_stim_change = on_stim_change

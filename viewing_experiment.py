@@ -19,6 +19,11 @@ class ViewExperiment(QMainWindow):
         self.event_trigger.write_int(Codes.FrameChangeToOddball)
 
     @Slot()
+    def frame_change_to_base(self):
+        self.event_trigger.write_int(Codes.FrameChangeToBase)
+
+
+    @Slot()
     def trial_end(self):
         self.animator.stop()
         self.event_trigger.write_int(Codes.TrialEnd)
@@ -46,7 +51,9 @@ class ViewExperiment(QMainWindow):
         
         stimuli_display = QLabel(self)
         self.animator = Animator(stimuli, stimuli_display,
-                                 FREQUENCY_MS, REPETITIONS_PER_TRIAL, self.trial_end, self.frame_change_to_oddball)
+                                 FREQUENCY_MS, REPETITIONS_PER_TRIAL, 
+                                 self.trial_end, self.frame_change_to_oddball,
+                                 self.frame_change_to_base)
 
         self.setCentralWidget(stimuli_display)
 
