@@ -43,12 +43,12 @@ class Animator:
         self.display.setPixmap(self.stimuli.next_stimulation())
         self.on_stim_change()
 
-    def _create_animation(self, start: float, end: float, duration: int) -> QPropertyAnimation:
+    def _create_animation(self, start: float, end: float, duration: int, kind: QEasingCurve.Type) -> QPropertyAnimation:
         animation = QPropertyAnimation(self.effect, QByteArray("opacity"))
         animation.setDuration(duration)
         animation.setStartValue(start)
         animation.setEndValue(end)
-        animation.setEasingCurve(QEasingCurve.Type.InSine)
+        animation.setEasingCurve(kind)
         return animation
 
     def _stylish_display(self):
@@ -91,8 +91,8 @@ class Animator:
         self.effect = QGraphicsOpacityEffect()
         self.display.setGraphicsEffect(self.effect)
 
-        into_stim = self._create_animation(0, 1, frequency_ms/2)
-        into_gray = self._create_animation(1, 0, frequency_ms/2)
+        into_stim = self._create_animation(0, 1, frequency_ms/2, QEasingCurve.Type.OutSine)
+        into_gray = self._create_animation(1, 0, frequency_ms/2, QEasingCurve.Type.InSine)
         into_gray.finished.connect(self._next_stim)
 
         self._setup_animation(into_stim, into_gray, cycles, on_finish)
