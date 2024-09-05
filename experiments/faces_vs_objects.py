@@ -11,14 +11,14 @@ from random import shuffle
 import os
 
 
-def read_images_into_pixmaps(path: str, screen_height: int) -> Generator[QPixmap, None, None]:
+def read_images_into_pixmaps(path: str, size: int) -> Generator[QPixmap, None, None]:
     filenames = [os.path.abspath(f"{path}/{p}") for p in os.listdir(path)]
 
     for name in filenames:
         pix = QImage()
         assert pix.load(name)
         scaled = pix.scaledToHeight(
-            (screen_height*3/4)).convertedTo(QImage.Format.Format_Grayscale8)
+            (size)).convertedTo(QImage.Format.Format_Grayscale8)
         yield QPixmap.fromImage(scaled)
 
 
@@ -38,16 +38,18 @@ def run():
 
     screen_height = app.primaryScreen().geometry().height()
 
+    size = screen_height * 3 / 4
     faces = list(read_images_into_pixmaps(
-        "experiments/faces-data/faces", screen_height))
+        "experiments/faces-data/faces", size))
     objects = list(read_images_into_pixmaps(
-        "experiments/faces-data/objects", screen_height))
+        "experiments/faces-data/objects", size))
 
-    stimuli = OddballStimuli(cycle(list(inflate_randomley(faces, 100))),
+    stimuli = OddballStimuli(size,
+                             cycle(list(inflate_randomley(faces, 100))),
                              cycle(list(inflate_randomley(objects, 100))), 3)
 
     main_window = ViewExperiment(stimuli, SoftSerial())
-    main_window.showFullScreen()
+    main_window.show()
 
     # Run the main Qt loop
     app.exec()

@@ -10,10 +10,12 @@ class OddballStimuli:
     base: Iterable[QPixmap]
     oddball: Iterable[QPixmap]
     oddball_modulation: int
+    size: int
 
     _current_stim: int
 
     def __init__(self,
+                 size:int,
                  oddball: Iterable[QPixmap],
                  base: Iterable[QPixmap] = None,
                  oddball_modulation: int = 1) -> None:
@@ -21,6 +23,7 @@ class OddballStimuli:
         self.base = base
         self.oddball = oddball
         self.oddball_modulation = oddball_modulation
+        self.size = size
         self._current_stim = 0
 
     def next_stimulation(self) -> Tuple[bool,QPixmap]:

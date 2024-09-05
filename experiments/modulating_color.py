@@ -13,12 +13,13 @@ def run():
 
     screen_height = app.primaryScreen().geometry().height()
 
-    stimuli = [generate_solid_color(int(screen_height*3/4), 00+0),
-               generate_solid_color(int(screen_height*3/4), 00+4)]
+    size = screen_height*3/4
+    stimuli = [generate_solid_color(int(size), 00+0),
+               generate_solid_color(int(size), 00+4)]
 
     main_window = ViewExperiment(
-        OddballStimuli(cycle(stimuli)), SoftSerial(), True)
-    main_window.showFullScreen()
+        OddballStimuli(size, cycle(stimuli)), SoftSerial(), True)
+    main_window.show()
 
     # Run the main Qt loop
     app.exec()
