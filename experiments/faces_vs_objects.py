@@ -1,7 +1,6 @@
 import sys
 from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtWidgets import QApplication
-from stims import generate_sin
 from soft_serial import SoftSerial
 from animator import OddballStimuli
 from itertools import cycle, chain

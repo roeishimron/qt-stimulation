@@ -1,5 +1,5 @@
 from numpy import sin, pi, linspace, uint8, tile
-from PySide6.QtGui import QPixmap, QImage, QColorTransform, QColor
+from PySide6.QtGui import QPixmap, QImage, QColor
 
 
 def generate_sin(figure_size, frequency=1, offset=0, contrast=1) -> QPixmap:

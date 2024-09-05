@@ -1,7 +1,6 @@
-from PySide6.QtWidgets import QFrame, QMainWindow, QLabel, QStackedLayout
+from PySide6.QtWidgets import QMainWindow, QLabel
 from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
-from stims import generate_grey
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
 
