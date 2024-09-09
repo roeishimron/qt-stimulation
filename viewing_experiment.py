@@ -13,6 +13,7 @@ class ViewExperiment():
     animator: Animator
     screen: QScreen
     event_trigger: SoftSerial
+    fixation: QLabel
 
     @Slot()
     def frame_change_to_oddball(self):
@@ -25,6 +26,7 @@ class ViewExperiment():
     @Slot()
     def trial_end(self):
         self.animator.stop()
+        self.fixation.hide()
         self.event_trigger.write_int(Codes.TrialEnd)
         self.animator.display_break()
         self.main_window.keyReleaseEvent = self.key_released_at_break
@@ -34,16 +36,17 @@ class ViewExperiment():
 
     def trial_start(self):
         self.main_window.keyReleaseEvent = self.key_released_default
+        self.fixation.show()
         self.animator.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
     def _setup_layout(self, stimuli_display: QLabel):
         main_widget = QFrame()
         layout = QGridLayout()
-        fixation = QLabel("+")
-        fixation.setStyleSheet("background: rgba(0, 0, 0, 0);")
+        self.fixation = QLabel("+")
+        self.fixation.setStyleSheet("background: rgba(0, 0, 0, 0);")
         layout.addWidget(stimuli_display, 0, 0)
-        layout.addWidget(fixation, 0, 0,
+        layout.addWidget(self.fixation, 0, 0,
                               Qt.AlignmentFlag.AlignCenter)
         main_widget.setLayout(layout)
 
