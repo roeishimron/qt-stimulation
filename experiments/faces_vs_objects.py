@@ -48,7 +48,7 @@ def run():
                              cycle(list(inflate_randomley(faces, 100))),
                              cycle(list(inflate_randomley(objects, 100))), 3)
 
-    main_window = ViewExperiment(stimuli, SoftSerial())
+    main_window = ViewExperiment(stimuli, SoftSerial(), 5.88)
     main_window.show()
 
     # Run the main Qt loop

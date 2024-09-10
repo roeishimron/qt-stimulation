@@ -4,9 +4,6 @@ from PySide6.QtGui import QScreen, QKeyEvent
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
 
-FREQUENCY_MS = 1000/5.88
-REPETITIONS_PER_TRIAL = 30 * 1000 / FREQUENCY_MS  # 30s
-
 
 class ViewExperiment():
     main_window: QMainWindow
@@ -47,13 +44,13 @@ class ViewExperiment():
         self.fixation.setStyleSheet("background: rgba(0, 0, 0, 0);")
         layout.addWidget(stimuli_display, 0, 0)
         layout.addWidget(self.fixation, 0, 0,
-                              Qt.AlignmentFlag.AlignCenter)
+                         Qt.AlignmentFlag.AlignCenter)
         main_widget.setLayout(layout)
 
         self.main_window.setCentralWidget(main_widget)
 
-
-    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial, use_step: bool = False):
+    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial, 
+                 frequency: float, use_step: bool = False, trial_duration: int = 30):
         self.main_window = QMainWindow()
 
         self.event_trigger = event_trigger
@@ -66,12 +63,11 @@ class ViewExperiment():
             '''
         )
 
-
         stimuli_display = QLabel()
         stimuli_display.setMinimumSize(stimuli.size, stimuli.size)
 
         self.animator = Animator(stimuli, stimuli_display,
-                                 FREQUENCY_MS, REPETITIONS_PER_TRIAL,
+                                 1000/frequency, frequency*trial_duration,
                                  self.trial_end, self.frame_change_to_oddball,
                                  self.frame_change_to_base, use_step)
 

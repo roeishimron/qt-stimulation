@@ -18,7 +18,7 @@ def run():
     stimuli = [generate_sin(size, 5), generate_sin(size, 50)]
 
     main_window = ViewExperiment(OddballStimuli(
-        size, cycle(stimuli)), SoftSerial())
+        size, cycle(stimuli)), SoftSerial(), 5.88)
     main_window.show()
 
     # Run the main Qt loop

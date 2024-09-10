@@ -18,7 +18,7 @@ def run():
                generate_solid_color(int(size), 00+4)]
 
     main_window = ViewExperiment(
-        OddballStimuli(size, cycle(stimuli)), SoftSerial(), True)
+        OddballStimuli(size, cycle(stimuli)), SoftSerial(), 15, True)
     main_window.show()
 
     # Run the main Qt loop
