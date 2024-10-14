@@ -15,10 +15,10 @@ def run():
 
     size = int(screen_height*3/4)
 
-    stimuli = [generate_sin(size, 5), generate_sin(size, 50)]
+    stimuli = [generate_sin(size, 5), generate_sin(size, 5, 180)]
 
     main_window = ViewExperiment(OddballStimuli(
-        size, cycle(stimuli)), SoftSerial(), 5.88)
+        size, cycle(stimuli)), SoftSerial(), 5.88, trial_duration=180)
     main_window.show()
 
     # Run the main Qt loop

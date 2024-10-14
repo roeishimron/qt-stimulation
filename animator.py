@@ -6,18 +6,43 @@ from PySide6.QtCore import (Qt, QPropertyAnimation,
                             Slot, QByteArray)
 
 
+class Appliable:
+    def apply_to_label(label: QLabel):
+        pass
+
+
+class AppliablePixmap(Appliable):
+    pixmap: QPixmap
+
+    def __init__(self, pixmap: QPixmap):
+        self.pixmap = pixmap
+
+    def apply_to_label(self, label: QLabel):
+        label.setPixmap(self.pixmap)
+
+
+class AppliableText(Appliable):
+    text: str
+
+    def __init__(self, text: str):
+        self.text = text
+
+    def apply_to_label(self, label: QLabel):
+        label.setText(self.text)
+
+
 class OddballStimuli:
-    base: Iterable[QPixmap]
-    oddball: Iterable[QPixmap]
+    base: Iterable[Appliable]
+    oddball: Iterable[Appliable]
     oddball_modulation: int
     size: int
 
     _current_stim: int
 
     def __init__(self,
-                 size:int,
-                 oddball: Iterable[QPixmap],
-                 base: Iterable[QPixmap] = None,
+                 size: int,
+                 oddball: Iterable[Appliable],
+                 base: Iterable[Appliable] = None,
                  oddball_modulation: int = 1) -> None:
 
         self.base = base
@@ -26,7 +51,7 @@ class OddballStimuli:
         self.size = size
         self._current_stim = 0
 
-    def next_stimulation(self) -> Tuple[bool,QPixmap]:
+    def next_stimulation(self) -> Tuple[bool, Appliable]:
         self._current_stim += 1
         if self._current_stim % self.oddball_modulation == 0:
             return (True, next(self.oddball))
@@ -42,11 +67,11 @@ class Animator:
     on_stim_change_to_oddball: Callable
     on_stim_change_to_base: Callable
 
-
     @Slot()
     def _next_stim(self):
         next_stimulation = self.stimuli.next_stimulation()
-        self.display.setPixmap(next_stimulation[1])
+        next_stimulation[1].apply_to_label(self.display)
+
         if next_stimulation[0]:
             self.on_stim_change_to_oddball()
         else:
@@ -90,9 +115,9 @@ class Animator:
         self.display.setText(
             "This is a break.\nPress any key to continue (or Q to quit)")
 
-    def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float, 
+    def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float,
                  cycles: int, on_finish: Slot, on_stim_change_to_oddball: Callable,
-                 on_stim_change_to_base: Callable, use_step: bool=False):
+                 on_stim_change_to_base: Callable, use_step: bool = False):
 
         self.display = display
         self.stimuli = stimuli
@@ -105,9 +130,10 @@ class Animator:
         self.effect = QGraphicsOpacityEffect()
         self.display.setGraphicsEffect(self.effect)
 
-        into_stim = self._create_animation(int(use_step), 1, frequency_ms/2, QEasingCurve.Type.OutSine)
-        into_gray = self._create_animation(1, int(use_step), frequency_ms/2, QEasingCurve.Type.InSine)
+        into_stim = self._create_animation(
+            int(use_step), 1, frequency_ms/2, QEasingCurve.Type.OutSine)
+        into_gray = self._create_animation(
+            1, int(use_step), frequency_ms/2, QEasingCurve.Type.InSine)
         into_gray.finished.connect(self._next_stim)
 
         self._setup_animation(into_stim, into_gray, cycles, on_finish)
-

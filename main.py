@@ -1,2 +1,2 @@
-from experiments.modulating_sin import run
+from experiments.faces_vs_objects import run
 run()
