@@ -15,7 +15,7 @@ def run():
 
     size = screen_height*3/4
     stimuli = [generate_solid_color(int(size), 00+0),
-               generate_solid_color(int(size), 00+4)]
+               generate_solid_color(int(size), 00+10)]
 
     main_window = ViewExperiment(
         OddballStimuli(size, cycle(stimuli)), SoftSerial(), 15, True)

@@ -7,6 +7,7 @@ from itertools import cycle, chain
 from viewing_experiment import ViewExperiment
 from typing import List, Generator, Any, Iterable
 from random import shuffle
+from stims import inflate_randomley
 
 import os
 
@@ -20,16 +21,6 @@ def read_images_into_appliable_pixmaps(path: str, size: int) -> Generator[Applia
         scaled = pix.scaledToHeight(
             (size)).convertedTo(QImage.Format.Format_Grayscale8)
         yield AppliablePixmap(QPixmap.fromImage(scaled))
-
-
-def inflate_randomley(source: List[Any], factor: int) -> Iterable[Any]:
-    def inflate() -> Generator[List[Any], None, None]:
-        for _ in range(factor):
-            current = list(source)
-            shuffle(current)
-            yield current
-
-    return chain.from_iterable(inflate())
 
 
 def run():

@@ -37,11 +37,12 @@ class ViewExperiment():
         self.animator.start()
         self.event_trigger.write_int(Codes.BreakEnd)
 
-    def _setup_layout(self, stimuli_display: QLabel):
+    def _setup_layout(self, stimuli_display: QLabel, fixation: str, font_size: int):
         main_widget = QFrame()
         layout = QGridLayout()
-        self.fixation = QLabel("+")
+        self.fixation = QLabel(fixation)
         self.fixation.setStyleSheet("background: rgba(0, 0, 0, 0);")
+        stimuli_display.setStyleSheet(f"font-size: {font_size}pt;")
         layout.addWidget(stimuli_display, 0, 0)
         layout.addWidget(self.fixation, 0, 0,
                          Qt.AlignmentFlag.AlignCenter)
@@ -50,16 +51,17 @@ class ViewExperiment():
         self.main_window.setCentralWidget(main_widget)
 
     def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial, 
-                 frequency: float, use_step: bool = False, trial_duration: int = 30):
+                 frequency: float, use_step: bool = False,
+                 trial_duration: int = 30, fixation: str= "",
+                 font_size: int=28):
         self.main_window = QMainWindow()
 
         self.event_trigger = event_trigger
 
         self.main_window.setStyleSheet(
-            '''
+            f'''
                             background: rgb(127, 127, 127);
                             color: #bbb;
-                            font-size: 28pt;
             '''
         )
 
@@ -71,7 +73,7 @@ class ViewExperiment():
                                  self.trial_end, self.frame_change_to_oddball,
                                  self.frame_change_to_base, use_step)
 
-        self._setup_layout(stimuli_display)
+        self._setup_layout(stimuli_display, fixation, font_size)
 
         self.trial_start()
 

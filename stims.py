@@ -2,6 +2,13 @@ from numpy import sin, pi, linspace, uint8, tile
 from PySide6.QtGui import QPixmap, QImage, QColor
 from animator import AppliablePixmap
 
+import sys
+from PySide6.QtGui import QPixmap, QImage
+from animator import AppliablePixmap
+from itertools import chain
+from typing import List, Generator, Any, Iterable
+from random import shuffle
+
 
 def generate_sin(figure_size, frequency=1, offset=0, contrast=1) -> AppliablePixmap:
 
@@ -31,3 +38,11 @@ def generate_solid_color(figure_size: int, h: int, s: int=255, v: int=255):
     image.fill(color)
     return AppliablePixmap(QPixmap.fromImage(image))
     
+def inflate_randomley(source: List[Any], factor: int) -> Iterable[Any]:
+    def inflate() -> Generator[List[Any], None, None]:
+        for _ in range(factor):
+            current = list(source)
+            shuffle(current)
+            yield current
+
+    return chain.from_iterable(inflate())
