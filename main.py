@@ -1,2 +1,2 @@
-from experiments.faces_vs_objects import run
+from experiments.words_vs_nones import run
 run()

@@ -23,11 +23,16 @@ class AppliablePixmap(Appliable):
 
 class AppliableText(Appliable):
     text: str
+    font_size: int
 
-    def __init__(self, text: str):
+    def __init__(self, text: str, font_size:int=28):
         self.text = text
+        self.font_size = font_size
 
     def apply_to_label(self, label: QLabel):
+        current_font = label.font()
+        current_font.setPointSize(self.font_size)
+        label.setFont(current_font)
         label.setText(self.text)
 
 
@@ -90,8 +95,7 @@ class Animator:
         self.display.setWordWrap(True)
         self.display.setStyleSheet(
             '''
-                            color: #bbb;
-                            font-size: 28pt;
+                            color: #fff;
                     '''
         )
 
@@ -114,6 +118,9 @@ class Animator:
         self.effect.setOpacity(1)
         self.display.setText(
             "This is a break.\nPress any key to continue (or Q to quit)")
+        current_font = self.display.font()
+        current_font.setPointSize(28)
+        self.display.setFont(current_font)
 
     def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float,
                  cycles: int, on_finish: Slot, on_stim_change_to_oddball: Callable,
