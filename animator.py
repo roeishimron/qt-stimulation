@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QPalette
 from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
@@ -24,15 +24,18 @@ class AppliablePixmap(Appliable):
 class AppliableText(Appliable):
     text: str
     font_size: int
+    color: str
 
-    def __init__(self, text: str, font_size:int=28):
+    def __init__(self, text: str, font_size:int=28, color:str="white"):
         self.text = text
         self.font_size = font_size
+        self.color=color
 
     def apply_to_label(self, label: QLabel):
         current_font = label.font()
         current_font.setPointSize(self.font_size)
         label.setFont(current_font)
+        label.setStyleSheet(f'color: {self.color};')
         label.setText(self.text)
 
 
@@ -93,11 +96,7 @@ class Animator:
     def _stylish_display(self):
         self.display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.display.setWordWrap(True)
-        self.display.setStyleSheet(
-            '''
-                            color: #fff;
-                    '''
-        )
+        self.display.setStyleSheet('color: #fff;')
 
     def _setup_animation(self, into_stim: QPropertyAnimation, into_gray: QPropertyAnimation, cycles: int, on_finish: Slot):
         self.animation = QSequentialAnimationGroup()
@@ -121,6 +120,7 @@ class Animator:
         current_font = self.display.font()
         current_font.setPointSize(28)
         self.display.setFont(current_font)
+        self.display.setStyleSheet('color: #bbb;')
 
     def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float,
                  cycles: int, on_finish: Slot, on_stim_change_to_oddball: Callable,
