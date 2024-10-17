@@ -52,16 +52,11 @@ class ViewExperiment():
     def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial, 
                  frequency: float, use_step: bool = False,
                  trial_duration: int = 30, fixation: str= ""):
+        
         self.main_window = QMainWindow()
-
         self.event_trigger = event_trigger
 
-        self.main_window.setStyleSheet(
-            f'''
-                            background: rgb(127, 127, 127);
-                            color: #bbb;
-            '''
-        )
+        self.main_window.setStyleSheet('background: rgb(127, 127, 127);')
 
         stimuli_display = QLabel()
         stimuli_display.setMinimumSize(stimuli.size, stimuli.size)

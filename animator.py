@@ -96,7 +96,6 @@ class Animator:
     def _stylish_display(self):
         self.display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.display.setWordWrap(True)
-        self.display.setStyleSheet('color: #fff;')
 
     def _setup_animation(self, into_stim: QPropertyAnimation, into_gray: QPropertyAnimation, cycles: int, on_finish: Slot):
         self.animation = QSequentialAnimationGroup()
