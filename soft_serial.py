@@ -17,12 +17,21 @@ class SoftSerial(Serial):
 
     def __init__(self):
         try:
-            super().__init__(self.EVENT_PORT_NAME, self.BAUDRATE)
+            super().__init__(baudrate=self.BAUDRATE, timeout=1)
+            self.port = self.EVENT_PORT_NAME
+            
         except SerialException as e:
             print(f"WARNING: can't send events: {e}")
 
     def write_int(self, value: int):
+        # only at trial end until we'll have a proper event:
         try:
-            super().write(value.to_bytes())
-        except PortNotOpenError:
+            if value == Codes.BreakEnd:
+                for _ in range(10):
+                    self.open()
+                    print(self.write(bytes((0xff))))
+                    self.flush()
+                    self.close()
+                # super().write(value.to_bytes())
+        except (PortNotOpenError, SerialException):
             pass
