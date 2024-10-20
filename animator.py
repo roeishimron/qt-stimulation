@@ -1,10 +1,12 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
-from PySide6.QtGui import QPixmap, QPalette
+from PySide6.QtGui import QPixmap, QFontDatabase, QFont
 from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
                             Slot, QByteArray)
 
+
+DEFAULT_FONT = "DejaVu Sans"
 
 class Appliable:
     def apply_to_label(label: QLabel):
@@ -25,15 +27,23 @@ class AppliableText(Appliable):
     text: str
     font_size: int
     color: str
+    font_family: str
+    font_style: QFont.Style
 
-    def __init__(self, text: str, font_size:int=28, color:str="white"):
+    def __init__(self, text: str, font_size:int=28, color:str="white", 
+                 font_family: str = DEFAULT_FONT, font_style: QFont.Style=QFont.Style.StyleNormal):
         self.text = text
         self.font_size = font_size
         self.color=color
+        self.font_family = font_family
+        self.font_style = font_style
 
     def apply_to_label(self, label: QLabel):
         current_font = label.font()
         current_font.setPointSize(self.font_size)
+        current_font.setFamily(self.font_family)
+        current_font.setStyle(self.font_style)
+        
         label.setFont(current_font)
         label.setStyleSheet(f'color: {self.color};')
         label.setText(self.text)
