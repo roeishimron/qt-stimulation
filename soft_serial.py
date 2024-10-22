@@ -27,7 +27,7 @@ class SoftSerial(Serial):
         # only at trial end until we'll have a proper event:
         try:
             if value == Codes.BreakEnd:
-                for _ in range(10):
+                for _ in range(30):
                     self.open()
                     print(self.write(bytes((0xff))))
                     self.flush()
