@@ -33,9 +33,9 @@ SCRAMBELED = [scramble_str(w) for w in COMMON_HEBREW_WORDS]
 
 
 def create_appliable_text(t: str) -> AppliableText:
-    # is_different_font = choices([True, False], [0.1, 0.9])[0]
-    # if is_different_font:
-    #     return AppliableText(t, font_family="Yehuda CLM", font_size=50)
+    is_different_font = choices([True, False], [0.1, 0.9])[0]
+    if is_different_font:
+        return AppliableText(t, font_family="Yehuda CLM", font_size=50)
     return AppliableText(t, font_size=50)
 
 
