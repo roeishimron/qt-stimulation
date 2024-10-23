@@ -2,3 +2,6 @@ COMMON_HEBREW_WORDS = "היה,אבל,אני,הוא,לנו,היו,אמר,כמו,�
 
 ARABIC_LETTERS = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي"
 HEBREW_LETTERS = "אבגדהוזחטיכלמנסעפצקרשתףךץםן"
+
+def into_arabic(s: str) -> str:
+    return "".join((ARABIC_LETTERS[((ord(c)-ord("א"))%(len(ARABIC_LETTERS)))] for c in s))
