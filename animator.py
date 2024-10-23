@@ -7,6 +7,7 @@ from PySide6.QtCore import (Qt, QPropertyAnimation,
 
 
 DEFAULT_FONT = "DejaVu Sans"
+DEFAULT_COLOR = "white"
 
 class Appliable:
     def apply_to_label(label: QLabel):
@@ -30,7 +31,7 @@ class AppliableText(Appliable):
     font_family: str
     font_style: QFont.Style
 
-    def __init__(self, text: str, font_size:int=28, color:str="white", 
+    def __init__(self, text: str, font_size:int=28, color:str=DEFAULT_COLOR, 
                  font_family: str = DEFAULT_FONT, font_style: QFont.Style=QFont.Style.StyleNormal):
         self.text = text
         self.font_size = font_size
