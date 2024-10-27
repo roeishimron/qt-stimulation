@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List
+from time import time_ns
 
 @dataclass
 class Stimuli:
@@ -27,3 +28,7 @@ class ResponseRecorder:
         self.resopnse_delays.append(diff)
         print(f"got response after {diff} ns (or {diff/10**6} ms)")
 
+    def success_rate(self):
+        if len(self.stimuli_times) == 1:
+            return 1
+        return len([w for w in self.resopnse_delays if w < 2 * 10**9]) / (len(self.stimuli_times) - 1)

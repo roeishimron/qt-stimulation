@@ -10,7 +10,6 @@ from itertools import cycle
 from viewing_experiment import ViewExperiment
 from random import choices
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
-from time import time_ns
 from copy import deepcopy
 
 ARABIC = [into_arabic(w) for w in COMMON_HEBREW_WORDS]
@@ -50,3 +49,4 @@ def run():
 
     # Run the main Qt loop
     app.exec()
+    print(f"answered with success rate of {recorder.success_rate()}" )
