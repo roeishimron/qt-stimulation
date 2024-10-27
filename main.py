@@ -1,2 +1,2 @@
-from experiments.font_oddball.hebrew import run
+from experiments.hebrew_vs_arabic import run
 run()
