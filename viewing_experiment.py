@@ -3,6 +3,7 @@ from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
+from typing import Callable
 
 
 class ViewExperiment():
@@ -11,6 +12,7 @@ class ViewExperiment():
     screen: QScreen
     event_trigger: SoftSerial
     fixation: QLabel
+    on_runtime_keypress: Callable[[QKeyEvent], None]
 
     @Slot()
     def frame_change_to_oddball(self):
@@ -41,7 +43,8 @@ class ViewExperiment():
         main_widget = QFrame()
         layout = QGridLayout()
         self.fixation = QLabel(fixation)
-        self.fixation.setStyleSheet("background: rgba(0, 0, 0, 0); font-size: 28pt; color: #bbb")
+        self.fixation.setStyleSheet(
+            "background: rgba(0, 0, 0, 0); font-size: 28pt; color: #bbb")
         layout.addWidget(stimuli_display, 0, 0)
         layout.addWidget(self.fixation, 0, 0,
                          Qt.AlignmentFlag.AlignCenter)
@@ -49,11 +52,14 @@ class ViewExperiment():
 
         self.main_window.setCentralWidget(main_widget)
 
-    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial, 
+    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
                  frequency: float, use_step: bool = False,
-                 trial_duration: int = 30, fixation: str= ""):
-        
+                 trial_duration: int = 30, fixation: str = "",
+                 on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+
         self.main_window = QMainWindow()
+
+        self.on_runtime_keypress = on_runtime_keypress
         self.event_trigger = event_trigger
 
         self.main_window.setStyleSheet('background: rgb(127, 127, 127);')
@@ -86,4 +92,4 @@ class ViewExperiment():
         if event.key() == Qt.Key.Key_B:
             self.trial_end()
         else:
-            print("Key pressed, doing nothing")
+            self.on_runtime_keypress(QKeyEvent)
