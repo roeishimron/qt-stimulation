@@ -10,7 +10,7 @@ DEFAULT_FONT = "DejaVu Sans"
 DEFAULT_COLOR = "white"
 
 class Appliable:
-    def apply_to_label(label: QLabel):
+    def apply_to_label(self, _label: QLabel):
         pass
 
 
@@ -49,6 +49,19 @@ class AppliableText(Appliable):
         label.setStyleSheet(f'color: {self.color};')
         label.setText(self.text)
 
+
+class OnShowCaller(Appliable):
+    appliable: Appliable
+    on_show: Callable[[], None]
+
+    def __init__(self, appliable: Appliable, on_show:Callable[[], None]):
+        self.appliable = appliable
+        self.on_show = on_show
+    
+    def apply_to_label(self, label: QLabel):
+        self.appliable.apply_to_label(label)
+        self.on_show()
+        
 
 class OddballStimuli:
     base: Iterable[Appliable]
