@@ -14,12 +14,9 @@ from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 ARABIC = list(map(into_arabic, COMMON_HEBREW_WORDS))
 
 
-def create_appliable_text(t: str, family: str = DEFAULT_FONT, style: QFont.Style = QFont.Style.StyleNormal) -> AppliableText:
-    color = DEFAULT_COLOR
-    is_different_color = choices([True, False], [0.01, 0.99])[0]
-    if is_different_color:
-        color = choice(["red", "green", "blue"])
-    return AppliableText(t, 50, color, family, style)
+def create_appliable_text(word: str, family: str = DEFAULT_FONT, style: QFont.Style = QFont.Style.StyleNormal) -> AppliableText:
+    word_to_use = choices(["כלב", word], [0.01, 0.99])[0]
+    return AppliableText(word_to_use, 50, DEFAULT_COLOR, family, style)
 
 
 def run(oddball_font: str, words: List[str]):
