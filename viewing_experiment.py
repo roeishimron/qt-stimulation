@@ -92,4 +92,4 @@ class ViewExperiment():
         if event.key() == Qt.Key.Key_B:
             self.trial_end()
         else:
-            self.on_runtime_keypress(QKeyEvent)
+            self.on_runtime_keypress(event)
