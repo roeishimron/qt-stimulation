@@ -1,5 +1,6 @@
 import sys
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
 from typing import List
 
 from stims import inflate_randomley
@@ -21,7 +22,7 @@ def create_on_show_caller(t: str) -> OnShowCaller:
 
 def create_random_duplications(words: List[OnShowCaller], recorder: ResponseRecorder) -> List[OnShowCaller]:
     n = len(words)
-    indices = choices(range(1, n), k=int((n-1)/10))
+    indices = choices(range(1, n), k=int((n-1)/20))
     for i in indices:
         words[i] = deepcopy(words[i-1])
         words[i].on_show = recorder.record_stimuli_show
@@ -44,7 +45,7 @@ def run():
 
     main_window = ViewExperiment(OddballStimuli(
         size, cycle(oddballs), cycle(base), 5), SoftSerial(), 5.88, trial_duration=60,
-        on_runtime_keypress=lambda e: recorder.record_response())
+        on_runtime_keypress=lambda e: recorder.record_response() if e.key == Qt.Key.Key_Space else print("pass"))
     main_window.show()
 
     # Run the main Qt loop

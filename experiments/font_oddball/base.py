@@ -1,6 +1,7 @@
 import sys
 from typing import List
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
 from stims import inflate_randomley
@@ -46,12 +47,12 @@ def run(oddball_font: str, words: List[str]):
         w, recorder), inflate_randomley(words, 10))
 
     main_window = ViewExperiment(OddballStimuli(
-        size, cycle(oddballs), cycle(stimuli), 5), 
-        SoftSerial(), 5.88, trial_duration=60, 
-        on_runtime_keypress=lambda e: recorder.record_response())
-    
+        size, cycle(oddballs), cycle(stimuli), 5),
+        SoftSerial(), 5.88, trial_duration=60,
+        on_runtime_keypress=lambda e: recorder.record_response() if e.key == Qt.Key.Key_Space else print("pass"))
+
     main_window.show()
 
     # Run the main Qt loop
     app.exec()
-    print(f"answered with success rate of {recorder.success_rate()}" )
+    print(f"answered with success rate of {recorder.success_rate()}")
