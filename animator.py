@@ -142,6 +142,7 @@ class Animator:
             "This is a break.\nPress any key to continue (or Q to quit)")
         current_font = self.display.font()
         current_font.setPointSize(28)
+        current_font.setFamily(DEFAULT_FONT)
         self.display.setFont(current_font)
         self.display.setStyleSheet('color: #bbb;')
 
