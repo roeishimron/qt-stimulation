@@ -40,7 +40,7 @@ def run():
     size = int(screen_height*3/4)
 
     oddballs = create_random_duplications(
-        list(map(create_on_show_caller, list(inflate_randomley(COMMON_HEBREW_WORDS, 10)))), recorder)
+        list(map(create_on_show_caller, inflate_randomley(COMMON_HEBREW_WORDS, 10))), recorder)
     base = map(create_on_show_caller, inflate_randomley(ARABIC, 10))
 
     main_window = ViewExperiment(OddballStimuli(
