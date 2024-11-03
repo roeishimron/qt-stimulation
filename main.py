@@ -1,2 +1,2 @@
-from experiments.letters_vs_nons import run
+from experiments.duplicate_word.hebrew_vs_arabic import run
 run()
