@@ -5,3 +5,7 @@ HEBREW_LETTERS = "אבגדהוזחטיכלמנסעפצקרשתףךץםן"
 
 def into_arabic(s: str) -> str:
     return "".join((ARABIC_LETTERS[((ord(c)-ord("א"))%(len(ARABIC_LETTERS)))] for c in s))
+
+def into_digits(s: str) -> str:
+    AMOUNT_OF_LETTERS = 27
+    return "".join((str(int((ord(c)-ord("א"))/AMOUNT_OF_LETTERS*10)) for c in s))
