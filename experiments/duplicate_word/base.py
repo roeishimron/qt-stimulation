@@ -40,7 +40,7 @@ def run(oddballs: List[Appliable], base: Iterable[Appliable]):
     base = map(create_on_show_caller, base)
 
     main_window = ViewExperiment(OddballStimuli(
-        size, cycle(oddballs), cycle(base), 5), SoftSerial(), 5.88, trial_duration=60,
+        size, cycle(oddballs), cycle(base), 5), SoftSerial(), 6, trial_duration=40, use_step=True,
         on_runtime_keypress=lambda e: recorder.record_response() if e.key() == Qt.Key.Key_Space else print("pass"))
     main_window.show()
 
