@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from numpy import sin, pi, linspace, uint8, tile, full, sqrt, square, mgrid, array
+from numpy import sin, pi, linspace, uint8, tile, full, sqrt, square, mgrid, array, argwhere, logical_not
+from numpy.random import choice
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
 from animator import AppliablePixmap
@@ -42,14 +43,14 @@ def generate_solid_color(figure_size: int, h: int, s: int = 255, v: int = 255):
     return AppliablePixmap(QPixmap.fromImage(image))
 
 
-def inflate_randomley(source: List[Any], factor: int) -> Iterable[Any]:
+def inflate_randomley(source: List[Any], factor: int) -> List[Any]:
     def inflate() -> Generator[List[Any], None, None]:
         for _ in range(factor):
             current = list(source)
             shuffle(current)
             yield current
 
-    return chain.from_iterable(inflate())
+    return list(chain.from_iterable(inflate()))
 
 
 @dataclass
@@ -58,35 +59,31 @@ class Dot:
     y: int
     r: int
 
-
-def is_dot_valid(r: int, x_center: int, y_center: int, existing_dots: List[Dot]) -> bool:
-    for d in existing_dots:
-        if sqrt(square(x_center - d.x) + square(y_center - d.y)) < r + d.r:
-            return False
-    return True
-
-def dots_into_image(dots: List[Dot], figure_size: int) -> NDArray:
-    positions = full((figure_size, figure_size), False)
-    xs, ys = mgrid[:figure_size, :figure_size]
-    for d in dots:
-        circle = square(xs - d.x) + square(ys - d.y)
-        mask = circle <= d.r
-        positions = positions | mask
-    image = array(positions, dtype=uint8) * 127 + 127
-    return image
-
-
+# Note: Should have been split into several functions. It's avoided to save preformance.
 def fill_with_dots(figure_size: int, amount_of_dots: int, dot_size: int) -> AppliablePixmap:
     # there must be enough room for all the dots
-    assert figure_size**2 >= amount_of_dots * ((dot_size*2)**2)
+    assert figure_size**2 >= amount_of_dots * ((dot_size)**2)
 
-    dots = []
-    while amount_of_dots > 0:
-        (x, y) = (randint(dot_size, figure_size - dot_size), randint(dot_size, figure_size - dot_size))
-        if is_dot_valid(dot_size, x, y, dots):
-            dots.append(Dot(x, y, dot_size))
-            amount_of_dots -= 1
+    available_positions = full((figure_size, figure_size), True)
+    canvas = full((figure_size, figure_size), False)
 
-    image = dots_into_image(dots, figure_size)
+    available_positions[:, :dot_size] = False
+    available_positions[:, -dot_size:] = False
+    available_positions[:dot_size, :] = False
+    available_positions[-dot_size:, :] = False
+
+    xs, ys = mgrid[:figure_size, :figure_size]
+
+    for _ in range(amount_of_dots):
+        remaining_position_indices = argwhere(available_positions)
+        next_center = remaining_position_indices[choice(
+            len(remaining_position_indices))]
+        
+        dot = Dot(next_center[0], next_center[1], dot_size)
+        circle = square(xs - dot.x) + square(ys - dot.y)
+
+        canvas |= (circle <= square(dot.r))
+        available_positions &= logical_not(circle <= square(dot.r*2))
+
+    image = array(canvas, dtype=uint8) * 127 + 127
     return AppliablePixmap(QPixmap.fromImage(QImage(image, figure_size, figure_size, figure_size, QImage.Format.Format_Grayscale8)))
-
