@@ -17,7 +17,7 @@ def run():
 
     stimuli = [generate_sin(size, 5), generate_sin(size, 5, 180)]
 
-    main_window = ViewExperiment(OddballStimuli(
+    main_window = ViewExperiment.new_with_constant_frequency(OddballStimuli(
         size, cycle(stimuli)), SoftSerial(), 5.88, trial_duration=180, fixation="+")
     main_window.show()
 

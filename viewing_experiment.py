@@ -3,7 +3,7 @@ from PySide6.QtCore import Slot, Qt, QCoreApplication
 from PySide6.QtGui import QScreen, QKeyEvent
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
-from typing import Callable
+from typing import Callable, List
 
 
 class ViewExperiment():
@@ -52,29 +52,35 @@ class ViewExperiment():
 
         self.main_window.setCentralWidget(main_widget)
 
-    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
-                 frequency: float, use_step: bool = False,
-                 trial_duration: int = 30, fixation: str = "",
-                 on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+    def new_with_constant_frequency(stimuli: OddballStimuli, event_trigger: SoftSerial,
+                                    frequency: float, use_step: bool = False,
+                                    trial_duration: int = 30, fixation: str = "",
+                                    on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+        durations = [1000/frequency] * frequency*trial_duration
+        return ViewExperiment.new(stimuli, event_trigger, durations, use_step, fixation, on_runtime_keypress)
 
-        self.main_window = QMainWindow()
+    def new(stimuli: OddballStimuli, event_trigger: SoftSerial,
+            durations: List[int], use_step: bool = False, fixation: str = "",
+            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+        obj = ViewExperiment()
+        obj.main_window = QMainWindow()
 
-        self.on_runtime_keypress = on_runtime_keypress
-        self.event_trigger = event_trigger
+        obj.on_runtime_keypress = on_runtime_keypress
+        obj.event_trigger = event_trigger
 
-        self.main_window.setStyleSheet('background: rgb(127, 127, 127);')
+        obj.main_window.setStyleSheet('background: rgb(127, 127, 127);')
 
         stimuli_display = QLabel()
         stimuli_display.setMinimumSize(stimuli.size, stimuli.size)
 
-        self.animator = Animator(stimuli, stimuli_display,
-                                 1000/frequency, frequency*trial_duration,
-                                 self.trial_end, self.frame_change_to_oddball,
-                                 self.frame_change_to_base, use_step)
+        obj.animator = Animator(stimuli, stimuli_display, durations,
+                                obj.trial_end, obj.frame_change_to_oddball,
+                                obj.frame_change_to_base, use_step)
 
-        self._setup_layout(stimuli_display, fixation)
+        obj._setup_layout(stimuli_display, fixation)
 
-        self.trial_start()
+        obj.trial_start()
+        return obj
 
     def quit(self):
         self.event_trigger.write_int(Codes.Quit)

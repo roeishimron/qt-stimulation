@@ -2,6 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from typing import List, Iterable
+from numpy import linspace, log, diff
 
 from stims import inflate_randomley
 from response_recorder import ResponseRecorder
@@ -25,6 +26,24 @@ def create_random_duplications(words: List[OnShowCaller], recorder: ResponseReco
         words[i].on_show = recorder.record_stimuli_show
     return words
 
+def generate_increasing_durations(alleged_frequency: int) -> List[int]:
+    TRIAL_DURATION = 40
+    amount_of_stimuli = TRIAL_DURATION * alleged_frequency
+    xs = linspace(0,TRIAL_DURATION, amount_of_stimuli)
+    offset = 1
+    transformed = log(xs+offset)
+    
+    #should be the same at the trial end
+    scale = xs[-1]/transformed[-1]
+    print(f"scaling with {scale}")
+
+    transformed *= scale
+
+    duration_in_s = diff(transformed)
+    print(f"from {1/duration_in_s[0]} up to {1/duration_in_s[-1]}")
+
+    return list(duration_in_s * 1000)
+
 
 def run(oddballs: List[Appliable], base: Iterable[Appliable]):
     # Create the Qt Application
@@ -39,8 +58,8 @@ def run(oddballs: List[Appliable], base: Iterable[Appliable]):
     oddballs = create_random_duplications(list(map(create_on_show_caller, oddballs)), recorder)
     base = map(create_on_show_caller, base)
 
-    main_window = ViewExperiment(OddballStimuli(
-        size, cycle(oddballs), cycle(base), 5), SoftSerial(), 6, trial_duration=40, use_step=True,
+    main_window = ViewExperiment.new(OddballStimuli(
+        size, cycle(oddballs), cycle(base), 5), SoftSerial(), generate_increasing_durations(6), use_step=False,
         on_runtime_keypress=lambda e: recorder.record_response() if e.key() == Qt.Key.Key_Space else print("pass"))
     main_window.show()
 

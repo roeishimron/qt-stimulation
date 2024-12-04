@@ -46,7 +46,7 @@ def run(oddball_font: str, words: List[str]):
     stimuli = map(lambda w: create_appliable_text(
         w, recorder), inflate_randomley(words, 10))
 
-    main_window = ViewExperiment(OddballStimuli(
+    main_window = ViewExperiment.new_with_constant_frequency(OddballStimuli(
         size, cycle(oddballs), cycle(stimuli), 5),
         SoftSerial(), 5.88, trial_duration=60,
         on_runtime_keypress=lambda e: recorder.record_response() if e.key() == Qt.Key.Key_Space else print("pass"))

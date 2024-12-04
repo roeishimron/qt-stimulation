@@ -98,6 +98,8 @@ class Animator:
     # Called right AFTER the stim has changed (and the frame is still gray)
     on_stim_change_to_oddball: Callable
     on_stim_change_to_base: Callable
+    # add duration iterable (defaulting like `cycle((freq_ms/2))`)
+    _durations: List[int]
 
     @Slot()
     def _next_stim(self):
@@ -109,10 +111,10 @@ class Animator:
         else:
             self.on_stim_change_to_base()
 
-    def _create_animation(self, start: float, end: float, duration: int, kind: QEasingCurve.Type) -> QPropertyAnimation:
+    def _create_animation(self, start: float, end: float, kind: QEasingCurve.Type, duration: int) -> QPropertyAnimation:
         animation = QPropertyAnimation(self.effect, QByteArray("opacity"))
-        animation.setDuration(duration)
         animation.setStartValue(start)
+        animation.setDuration(duration)
         animation.setEndValue(end)
         animation.setEasingCurve(kind)
         return animation
@@ -121,11 +123,23 @@ class Animator:
         self.display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.display.setWordWrap(True)
 
-    def _setup_animation(self, into_stim: QPropertyAnimation, into_gray: QPropertyAnimation, cycles: int, on_finish: Slot):
+    def _create_transition(self, use_step: bool, duration: int) -> QSequentialAnimationGroup:
+        animation = QSequentialAnimationGroup()
+        into_stim = self._create_animation(
+            int(use_step), 1, QEasingCurve.Type.OutSine, int(duration/2))
+        into_gray = self._create_animation(
+            1, int(use_step), QEasingCurve.Type.InSine, int(duration/2))
+        animation.addAnimation(into_stim)
+        animation.addAnimation(into_gray)
+        animation.finished.connect(self._next_stim)
+        return animation
+
+    def _setup_animation(self, on_finish: Slot, use_step: bool):
         self.animation = QSequentialAnimationGroup()
-        self.animation.addAnimation(into_stim)
-        self.animation.addAnimation(into_gray)
-        self.animation.setLoopCount(cycles)
+
+        for d in self._durations:
+            self.animation.addAnimation(self._create_transition(use_step, d))
+
         self.animation.finished.connect(on_finish)
 
     def start(self):
@@ -146,12 +160,14 @@ class Animator:
         self.display.setFont(current_font)
         self.display.setStyleSheet('color: #bbb;')
 
-    def __init__(self, stimuli: OddballStimuli, display: QLabel, frequency_ms: float,
-                 cycles: int, on_finish: Slot, on_stim_change_to_oddball: Callable,
-                 on_stim_change_to_base: Callable, use_step: bool = False):
 
+    def __init__(self, stimuli: OddballStimuli, display: QLabel,
+                    durations: List[int], on_finish: Slot, on_stim_change_to_oddball: Callable,
+                    on_stim_change_to_base: Callable, use_step: bool = False):
         self.display = display
         self.stimuli = stimuli
+        
+        self._durations = durations
 
         self.on_stim_change_to_oddball = on_stim_change_to_oddball
         self.on_stim_change_to_base = on_stim_change_to_base
@@ -161,10 +177,4 @@ class Animator:
         self.effect = QGraphicsOpacityEffect()
         self.display.setGraphicsEffect(self.effect)
 
-        into_stim = self._create_animation(
-            int(use_step), 1, frequency_ms/2, QEasingCurve.Type.OutSine)
-        into_gray = self._create_animation(
-            1, int(use_step), frequency_ms/2, QEasingCurve.Type.InSine)
-        into_gray.finished.connect(self._next_stim)
-
-        self._setup_animation(into_stim, into_gray, cycles, on_finish)
+        self._setup_animation(on_finish, use_step)

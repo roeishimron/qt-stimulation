@@ -41,7 +41,7 @@ def run():
                   inflate_randomley(COMMON_HEBREW_WORDS, 10))
     stimuli = map(create_appliable_text, inflate_randomley(SCRAMBELED, 10))
 
-    main_window = ViewExperiment(OddballStimuli(
+    main_window = ViewExperiment.new_with_constant_frequency(OddballStimuli(
         size, cycle(oddballs), cycle(stimuli), 3), SoftSerial(), 3, trial_duration=45)
     main_window.show()
 
