@@ -34,10 +34,10 @@ class ViewExperiment():
         self.main_window.showFullScreen()
 
     def trial_start(self):
+        self.event_trigger.write_int(Codes.BreakEnd) # in order to take the last event as reference
         self.main_window.keyReleaseEvent = self.key_released_default
         self.fixation.show()
         self.animator.start()
-        self.event_trigger.write_int(Codes.BreakEnd)
 
     def _setup_layout(self, stimuli_display: QLabel, fixation: str):
         main_widget = QFrame()
