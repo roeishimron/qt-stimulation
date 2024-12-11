@@ -13,7 +13,19 @@ from typing import List, Generator, Any, Iterable
 from random import shuffle, randint
 
 
-def generate_sin(figure_size, frequency=1, offset=0, contrast=1) -> AppliablePixmap:
+
+def gaussian(size: int, sigma):
+    
+    RANGE = 23
+
+    x, y = meshgrid(linspace(-RANGE, RANGE, size),
+                    linspace(-RANGE, RANGE, size))
+
+    # Calculating Gaussian filter
+    return exp(-(x**2 + y**2)/sigma)
+
+
+def generate_sin(figure_size, frequency=1, offset=0, contrast=1, horizontal=False, step=False, raidal_easing=inf) -> AppliablePixmap:
 
     assert figure_size >= 2*frequency
 
@@ -22,13 +34,19 @@ def generate_sin(figure_size, frequency=1, offset=0, contrast=1) -> AppliablePix
 
     x_range = linspace(offset, virtual_size + offset, figure_size)
     sinsusoid = sin(x_range)
+    if step:
+        sinsusoid = (sinsusoid > 0)*2-1
+    frame = tile(sinsusoid, (figure_size, 1))
 
-    mormalized_to_pixels = (((sinsusoid * 255) * contrast + 255)/2)
+    if horizontal:
+        frame = frame.transpose()   
 
-    image_line = mormalized_to_pixels.astype(uint8)
-    raw_array = tile(image_line, (figure_size, 1))
+    shaded = frame * gaussian(figure_size, raidal_easing)
 
-    return AppliablePixmap(QPixmap.fromImage(QImage(raw_array, figure_size, figure_size, figure_size, QImage.Format.Format_Grayscale8)))
+    mormalized_to_pixels = (((shaded * 255) * contrast + 255)/2)
+    mormalized_to_pixels = array(mormalized_to_pixels, dtype=uint8)
+
+    return AppliablePixmap(QPixmap.fromImage(QImage(mormalized_to_pixels, figure_size, figure_size, figure_size, QImage.Format.Format_Grayscale8)))
 
 
 def generate_grey(figure_size: int) -> AppliablePixmap:
