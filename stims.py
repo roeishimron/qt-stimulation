@@ -70,6 +70,23 @@ def inflate_randomley(source: List[Any], factor: int) -> List[Any]:
 
     return list(chain.from_iterable(inflate()))
 
+# taking to f(r(x)) when r(x) is the exponent and f(x) = sin(pi*F*x) for frequency F
+def generate_increasing_durations(alleged_frequency: int) -> List[int]:
+    TRIAL_DURATION = 50
+    amount_of_stimuli = TRIAL_DURATION * alleged_frequency
+    ks = arange(amount_of_stimuli)
+    peaks = 2*ks/alleged_frequency
+    
+    SCALE = 20
+    A = 9
+    modified_peaks = SCALE*log(peaks/A+1)
+    #should be the same at the trial end
+    duration_in_s = diff(modified_peaks)
+    print(f"from {1/duration_in_s[0]} up to {1/duration_in_s[-1]}")
+
+    return list(duration_in_s * 1000)
+
+
 
 @dataclass
 class Dot:
