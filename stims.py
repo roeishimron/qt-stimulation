@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import sin, pi, linspace, uint8, tile, full, sqrt, square, mgrid, array, argwhere, logical_not
+from numpy import sin, pi, linspace, uint8, tile, full, sqrt, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange
 from numpy.random import choice
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
