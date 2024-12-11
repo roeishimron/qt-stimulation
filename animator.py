@@ -4,6 +4,7 @@ from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
                             Slot, QByteArray)
+from random import randint
 
 
 DEFAULT_FONT = "DejaVu Sans"
@@ -69,23 +70,33 @@ class OddballStimuli:
     oddball_modulation: int
     size: int
 
-    _current_stim: int
+    remaining_to_oddball: int
+
+    def next_oddball(self):
+        if self.oddball_modulation_range[0] < self.oddball_modulation_range[1]:
+            self.remaining_to_oddball = randint(*self.oddball_modulation_range)
+        else:
+            self.remaining_to_oddball = self.oddball_modulation_range[0]
+            
 
     def __init__(self,
                  size: int,
                  oddball: Iterable[Appliable],
                  base: Iterable[Appliable] = None,
-                 oddball_modulation: int = 1) -> None:
+                 oddball_modulation_start: int=1,
+                 oddball_modulation_end: int=0) -> None:
 
         self.base = base
         self.oddball = oddball
-        self.oddball_modulation = oddball_modulation
+        self.oddball_modulation_range = (oddball_modulation_start, oddball_modulation_end)
         self.size = size
-        self._current_stim = 0
+        self.next_oddball()
 
     def next_stimulation(self) -> Tuple[bool, Appliable]:
-        self._current_stim += 1
-        if self._current_stim % self.oddball_modulation == 0:
+        
+        self.remaining_to_oddball -= 1
+        if self.remaining_to_oddball == 0:
+            self.next_oddball()
             return (True, next(self.oddball))
         return (False, next(self.base))
 
