@@ -38,7 +38,7 @@ def run():
     size = int(screen_height*3/4)
 
     base = [generate_sin(size, 10, random()*pi,
-                         horizontal=choice([True, False]), step=True) for _ in range(100)]
+                         step=True) for _ in range(100)]
     oddballs = [generate_grey(size)]
 
     main_window = ViewExperiment.new(OddballStimuli(
@@ -47,7 +47,7 @@ def run():
         generate_increasing_durations(10),
         use_step=True, fixation="+",
         on_runtime_keypress=lambda e: recorder.record_response() if e.key() == Qt.Key.Key_Space else print("pass"))
-    main_window.show()
+    main_window.experiment.show()
 
     # Run the main Qt loop
     app.exec()

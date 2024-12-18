@@ -121,6 +121,9 @@ class Animator:
             self.on_stim_change_to_oddball()
         else:
             self.on_stim_change_to_base()
+        
+    def get_size(self) -> int:
+        return self.stimuli.size
 
     def _create_animation(self, start: float, end: float, kind: QEasingCurve.Type, duration: int) -> QPropertyAnimation:
         animation = QPropertyAnimation(self.effect, QByteArray("opacity"))

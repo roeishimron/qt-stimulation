@@ -6,7 +6,7 @@ from animator import Animator, OddballStimuli
 from typing import Callable, List
 
 
-class ViewExperiment():
+class Experiment():
     main_window: QMainWindow
     animator: Animator
     screen: QScreen
@@ -34,7 +34,8 @@ class ViewExperiment():
         self.main_window.showFullScreen()
 
     def trial_start(self):
-        self.event_trigger.write_int(Codes.BreakEnd) # in order to take the last event as reference
+        # in order to take the last event as reference
+        self.event_trigger.write_int(Codes.BreakEnd)
         self.main_window.keyReleaseEvent = self.key_released_default
         self.fixation.show()
         self.animator.start()
@@ -52,35 +53,23 @@ class ViewExperiment():
 
         self.main_window.setCentralWidget(main_widget)
 
-    def new_with_constant_frequency(stimuli: OddballStimuli, event_trigger: SoftSerial,
-                                    frequency: float, use_step: bool = False,
-                                    trial_duration: int = 30, fixation: str = "",
-                                    on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
-        durations = [1000/frequency] * frequency*trial_duration
-        return ViewExperiment.new(stimuli, event_trigger, durations, use_step, fixation, on_runtime_keypress)
-
-    def new(stimuli: OddballStimuli, event_trigger: SoftSerial,
-            durations: List[int], use_step: bool = False, fixation: str = "",
+    def setup(self, event_trigger: SoftSerial, animator: Animator, stimuli_display:QLabel, fixation: str = "", 
             on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
-        obj = ViewExperiment()
-        obj.main_window = QMainWindow()
 
-        obj.on_runtime_keypress = on_runtime_keypress
-        obj.event_trigger = event_trigger
+        self.main_window = QMainWindow()
 
-        obj.main_window.setStyleSheet('background: rgb(127, 127, 127);')
+        self.on_runtime_keypress = on_runtime_keypress
+        self.event_trigger = event_trigger
 
-        stimuli_display = QLabel()
-        stimuli_display.setMinimumSize(stimuli.size, stimuli.size)
+        self.main_window.setStyleSheet('background: rgb(127, 127, 127);')
 
-        obj.animator = Animator(stimuli, stimuli_display, durations,
-                                obj.trial_end, obj.frame_change_to_oddball,
-                                obj.frame_change_to_base, use_step)
+        stimuli_display.setMinimumSize(animator.get_size(), animator.get_size())
 
-        obj._setup_layout(stimuli_display, fixation)
+        self.animator = animator
 
-        obj.trial_start()
-        return obj
+        self._setup_layout(stimuli_display, fixation)
+
+        self.trial_start()
 
     def quit(self):
         self.event_trigger.write_int(Codes.Quit)
@@ -99,3 +88,30 @@ class ViewExperiment():
             self.trial_end()
         else:
             self.on_runtime_keypress(event)
+
+
+class ViewExperiment():
+    experiment: Experiment
+
+    def new_with_constant_frequency(stimuli: OddballStimuli, event_trigger: SoftSerial,
+                                    frequency: float, use_step: bool = False,
+                                    trial_duration: int = 30, fixation: str = "",
+                                    on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+        durations = [1000/frequency] * frequency*trial_duration
+        return ViewExperiment.new(stimuli, event_trigger, durations, use_step, fixation, on_runtime_keypress)
+
+    def new(stimuli: OddballStimuli, event_trigger: SoftSerial,
+            durations: List[int], use_step: bool = False, fixation: str = "",
+            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+        obj = ViewExperiment
+        obj.experiment = Experiment()
+        
+        stimuli_display = QLabel()
+
+        animator = Animator(stimuli, stimuli_display, durations,
+                                obj.experiment.trial_end, obj.experiment.frame_change_to_oddball,
+                                obj.experiment.frame_change_to_base, use_step)
+        
+        obj.experiment.setup(event_trigger, animator, stimuli_display, fixation, on_runtime_keypress)
+        
+        return obj
