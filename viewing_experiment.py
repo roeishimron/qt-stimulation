@@ -32,6 +32,7 @@ class Experiment():
 
     def show(self):
         self.main_window.showFullScreen()
+        self.trial_start()
 
     def trial_start(self):
         # in order to take the last event as reference
@@ -63,13 +64,12 @@ class Experiment():
 
         self.main_window.setStyleSheet('background: rgb(127, 127, 127);')
 
-        stimuli_display.setMinimumSize(animator.get_size(), animator.get_size())
-
         self.animator = animator
 
         self._setup_layout(stimuli_display, fixation)
 
-        self.trial_start()
+    def set_animator(self, animator: Animator):
+        self.animator = animator
 
     def quit(self):
         self.event_trigger.write_int(Codes.Quit)
