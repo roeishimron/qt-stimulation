@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import sin, pi, linspace, uint8, float64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
+from numpy import sin, pi, linspace, uint8, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
 from numpy.random import choice
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
@@ -8,7 +8,7 @@ import sys
 from PySide6.QtGui import QPixmap, QImage
 from animator import AppliablePixmap
 from itertools import chain
-from typing import List, Generator, Any, Iterable
+from typing import List, Generator, Any, Iterable, Tuple
 from random import shuffle, randint
 
 
@@ -104,9 +104,9 @@ def generate_increasing_durations(alleged_frequency: int) -> List[int]:
 
 @dataclass
 class Dot:
-    x: int
-    y: int
     r: int
+    position: NDArray
+    fill: NDArray
 
 # Note: Should have been split into several functions. It's avoided to save preformance.
 
@@ -115,40 +115,50 @@ def fill_with_white_dots(figure_size: int, amount_of_dots: int, dot_size: int) -
     fillers = ones(shape=(amount_of_dots, dot_size, dot_size))
     return fill_with_dots(figure_size, fillers)
 
+# returns is_horizontal and (x,y)
+def rec_at(position: int, width: int, height: int) -> Tuple[bool, NDArray]:
+    vecs = [height, width] * 2
+    horizontal = False
+    for v in vecs:
+        if position - v < 0:
+            return horizontal
+        horizontal = not horizontal
+        position -= v
 
-def fill_with_dots(figure_size: int, dots_fill: NDArray) -> AppliablePixmap:
+def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray]=[]) -> AppliablePixmap:
     # there must be enough room for all the dots
-    amount_of_dots = dots_fill.shape[0]
-    dot_size = dots_fill.shape[1]
+    amount_of_dots = len(dots_fill) + len(priority_dots)
+    dot_size = dots_fill[0].shape[0]
 
-    assert dots_fill.shape[1] == dots_fill.shape[2]
-    assert figure_size**2 >= amount_of_dots * ((dot_size)**2)
+    assert dots_fill[0].shape[0] == dots_fill[0].shape[1]
+    assert figure_size**2 >= amount_of_dots * (pi*(dot_size)**2)
 
     available_positions = full((figure_size, figure_size), True)
     canvas = full((figure_size, figure_size), 0, float64)
 
-    available_positions[:, :dot_size] = False
-    available_positions[:, -dot_size:] = False
-    available_positions[:dot_size, :] = False
-    available_positions[-dot_size:, :] = False
+    available_positions[:, :int(dot_size/2)] = False
+    available_positions[:, -int(dot_size/2):] = False
+    available_positions[:int(dot_size/2), :] = False
+    available_positions[-int(dot_size/2):, :] = False
 
     filler_xs, filler_ys = mgrid[:dot_size, :dot_size]
     filler_mask = argwhere(square(filler_xs - dot_size/2) +
                            square(filler_ys - dot_size/2) <= square(dot_size/2))
     
     xs, ys = mgrid[:figure_size, :figure_size]
+    complete_requirement = priority_dots + [Dot(dot_size/2, None, fill) for fill in dots_fill]
+    for dot in complete_requirement:
+        if dot.position == None:
+            remaining_position_indices = argwhere(available_positions)
+            next_center = remaining_position_indices[choice(
+                len(remaining_position_indices))]
 
-    for fill in dots_fill:
-        remaining_position_indices = argwhere(available_positions)
-        next_center = remaining_position_indices[choice(
-            len(remaining_position_indices))]
+            dot.position = array([next_center[0], next_center[1]])
 
-        dot = Dot(next_center[0], next_center[1], dot_size/2)
+        shifted_mask = filler_mask + array([dot.position[0] - dot.r, dot.position[1] - dot.r], dtype=int64)
+        canvas[shifted_mask[:,0], shifted_mask[:,1]] = dot.fill[filler_mask[:,0], filler_mask[:,1]]
 
-        shifted_mask = filler_mask + array([dot.x - dot.r, dot.y - dot.r], dtype=int)
-        canvas[shifted_mask[:,0], shifted_mask[:,1]] = fill[filler_mask[:,0], filler_mask[:,1]]
-
-        circle = square(xs - dot.x) + square(ys - dot.y)
+        circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
         available_positions &= logical_not(circle <= square(dot.r*2))
 
     image = array(canvas * 127, dtype=uint8) + 127

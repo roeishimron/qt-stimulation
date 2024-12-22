@@ -23,15 +23,15 @@ def run():
 
     size = int(screen_height*3/4)
 
-    targets = (fill_with_dots(int(size), array([
+    targets = (fill_with_dots(int(size), [
         create_gabor_values(100, 3, horizontal=False,
                             raidal_easing=150) for _ in range(int(10))
-    ]))
+    ])
         for _ in range(20))
-    nons = (fill_with_dots(int(size), array([
+    nons = (fill_with_dots(int(size), [
         create_gabor_values(100, 3, horizontal=choice([True, False]),
                             raidal_easing=150) for _ in range(int(10))
-    ]))
+    ])
         for _ in range(20))
  
     mask = generate_solid_color(size, 100)
