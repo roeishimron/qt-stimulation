@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from typing import List, Iterable
-from stims import generate_increasing_durations, generate_sin, generate_grey, generate_solid_color
+from stims import generate_increasing_durations, generate_sin, generate_grey, generate_solid_color, fill_with_dots, create_gabor_values
 from response_recorder import ResponseRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
@@ -11,7 +11,7 @@ from staircase_experiment import StaircaseExperiment, TimedStimuliRuntimeGenerat
 from random import choices, random, choice
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from copy import deepcopy
-from numpy import pi
+from numpy import pi, array
 
 
 def run():
@@ -23,9 +23,17 @@ def run():
 
     size = int(screen_height*3/4)
 
-    targets = (generate_sin(size, 10, random()*pi, step=True) for _ in range(100))
-    nons = (generate_sin(size, 10, random()*pi,  step=False) for _ in range(100))
-    
+    targets = (fill_with_dots(int(size), array([
+        create_gabor_values(100, 3, horizontal=False,
+                            raidal_easing=150) for _ in range(int(10))
+    ]))
+        for _ in range(20))
+    nons = (fill_with_dots(int(size), array([
+        create_gabor_values(100, 3, horizontal=choice([True, False]),
+                            raidal_easing=150) for _ in range(int(10))
+    ]))
+        for _ in range(20))
+ 
     mask = generate_solid_color(size, 100)
 
     generator = TimedStimuliRuntimeGenerator(OddballStimuli(size, targets, nons, 1, 3), cycle([mask]))

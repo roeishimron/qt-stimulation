@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import sin, pi, linspace, uint8, tile, full, sqrt, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange
+from numpy import sin, pi, linspace, uint8, float64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
 from numpy.random import choice
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
@@ -24,7 +24,7 @@ def gaussian(size: int, sigma):
     return exp(-(x**2 + y**2)/sigma)
 
 
-def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1, rotation=0, step=False, raidal_easing=inf) -> NDArray:
+def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1, horizontal=False, step=False, raidal_easing=inf) -> NDArray:
     assert figure_size >= 2*frequency
 
     sin_flips = (frequency*figure_size)
@@ -32,21 +32,24 @@ def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1, rotation
 
     x_range = linspace(offset, virtual_size + offset, figure_size)
     sinsusoid = sin(x_range)*contrast
-
+    
     if step:
         sinsusoid = (sinsusoid > 0)*2-1
 
     frame = tile(sinsusoid, (figure_size, 1))
+
+    if horizontal:
+        frame = frame.transpose()
 
     frame = frame * gaussian(figure_size, raidal_easing)
 
     return frame
 
 
-def generate_sin(figure_size, frequency=1, offset=0, contrast=1, rotation=0, step=False, raidal_easing=inf) -> AppliablePixmap:
+def generate_sin(figure_size, frequency=1, offset=0, contrast=1, horizontal=False, step=False, raidal_easing=inf) -> AppliablePixmap:
     return array_into_pixmap(
         create_gabor_values(
-            figure_size, frequency, offset, contrast, rotation, step, raidal_easing))
+            figure_size, frequency, offset, contrast, horizontal, step, raidal_easing))
 
 # assuming array of values between 0 and 1
 
@@ -108,30 +111,45 @@ class Dot:
 # Note: Should have been split into several functions. It's avoided to save preformance.
 
 
-def fill_with_dots(figure_size: int, amount_of_dots: int, dot_size: int) -> AppliablePixmap:
+def fill_with_white_dots(figure_size: int, amount_of_dots: int, dot_size: int) -> AppliablePixmap:
+    fillers = ones(shape=(amount_of_dots, dot_size, dot_size))
+    return fill_with_dots(figure_size, fillers)
+
+
+def fill_with_dots(figure_size: int, dots_fill: NDArray) -> AppliablePixmap:
     # there must be enough room for all the dots
+    amount_of_dots = dots_fill.shape[0]
+    dot_size = dots_fill.shape[1]
+
+    assert dots_fill.shape[1] == dots_fill.shape[2]
     assert figure_size**2 >= amount_of_dots * ((dot_size)**2)
 
     available_positions = full((figure_size, figure_size), True)
-    canvas = full((figure_size, figure_size), False)
+    canvas = full((figure_size, figure_size), 0, float64)
 
     available_positions[:, :dot_size] = False
     available_positions[:, -dot_size:] = False
     available_positions[:dot_size, :] = False
     available_positions[-dot_size:, :] = False
 
+    filler_xs, filler_ys = mgrid[:dot_size, :dot_size]
+    filler_mask = argwhere(square(filler_xs - dot_size/2) +
+                           square(filler_ys - dot_size/2) <= square(dot_size/2))
+    
     xs, ys = mgrid[:figure_size, :figure_size]
 
-    for _ in range(amount_of_dots):
+    for fill in dots_fill:
         remaining_position_indices = argwhere(available_positions)
         next_center = remaining_position_indices[choice(
             len(remaining_position_indices))]
 
-        dot = Dot(next_center[0], next_center[1], dot_size)
-        circle = square(xs - dot.x) + square(ys - dot.y)
+        dot = Dot(next_center[0], next_center[1], dot_size/2)
 
-        canvas |= (circle <= square(dot.r))
+        shifted_mask = filler_mask + array([dot.x - dot.r, dot.y - dot.r], dtype=int)
+        canvas[shifted_mask[:,0], shifted_mask[:,1]] = fill[filler_mask[:,0], filler_mask[:,1]]
+
+        circle = square(xs - dot.x) + square(ys - dot.y)
         available_positions &= logical_not(circle <= square(dot.r*2))
 
-    image = array(canvas, dtype=uint8) * 127 + 127
+    image = array(canvas * 127, dtype=uint8) + 127
     return AppliablePixmap(QPixmap.fromImage(QImage(image, figure_size, figure_size, figure_size, QImage.Format.Format_Grayscale8)))
