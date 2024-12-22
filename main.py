@@ -1,2 +1,2 @@
-from experiments.modulating_sin import run
+from experiments.staircase import run
 run()
