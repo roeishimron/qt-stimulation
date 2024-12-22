@@ -32,13 +32,13 @@ def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1, horizont
 
     x_range = linspace(offset, virtual_size + offset, figure_size)
     sinsusoid = sin(x_range)*contrast
-    
+
     if step:
         sinsusoid = (sinsusoid > 0)*2-1
 
     frame = tile(sinsusoid, (figure_size, 1))
 
-    if horizontal:
+    if not horizontal:
         frame = frame.transpose()
 
     frame = frame * gaussian(figure_size, raidal_easing)
@@ -116,16 +116,32 @@ def fill_with_white_dots(figure_size: int, amount_of_dots: int, dot_size: int) -
     return fill_with_dots(figure_size, fillers)
 
 # returns is_horizontal and (x,y)
-def rec_at(position: int, width: int, height: int) -> Tuple[bool, NDArray]:
-    vecs = [height, width] * 2
-    horizontal = False
-    for v in vecs:
-        if position - v < 0:
-            return horizontal
-        horizontal = not horizontal
-        position -= v
 
-def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray]=[]) -> AppliablePixmap:
+
+def rec_at(position: int, width: int, height: int) -> Tuple[bool, Tuple[int, int]]:
+    vecs = [array([0,height]), array([width,0]), array([0,-height]), array([-width,0])]
+    assert position <= sum(abs(array(vecs).flatten()))
+    current_position = (0,0)
+    for v in vecs:
+        length = sum(abs(v))
+        if position - length < 0:
+            exact = current_position + v/length*(position)
+            return (v[0]!=0, (exact[0], exact[1]))
+        position -= length
+        current_position += v
+
+
+def gabors_around_rec(width: int, height: int, amount_of_dots: int,
+                       offset: int, dot_size: int, gabor_freq: int) -> List[NDArray]:
+    length = 2*(width+height)
+    rects = [rec_at(i, width, height) for i in range(0, length, int(length/amount_of_dots))]
+    return [
+        Dot(dot_size/2, array([x, y]) + offset, create_gabor_values(dot_size,
+            horizontal=horizontal, frequency=gabor_freq, raidal_easing=150))
+        for (horizontal, (x, y)) in rects]
+
+
+def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:
     # there must be enough room for all the dots
     amount_of_dots = len(dots_fill) + len(priority_dots)
     dot_size = dots_fill[0].shape[0]
@@ -144,19 +160,22 @@ def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: Li
     filler_xs, filler_ys = mgrid[:dot_size, :dot_size]
     filler_mask = argwhere(square(filler_xs - dot_size/2) +
                            square(filler_ys - dot_size/2) <= square(dot_size/2))
-    
+
     xs, ys = mgrid[:figure_size, :figure_size]
-    complete_requirement = priority_dots + [Dot(dot_size/2, None, fill) for fill in dots_fill]
+    complete_requirement = priority_dots + \
+        [Dot(dot_size/2, array([]), fill) for fill in dots_fill]
     for dot in complete_requirement:
-        if dot.position == None:
+        if dot.position.shape[0] == 0:
             remaining_position_indices = argwhere(available_positions)
             next_center = remaining_position_indices[choice(
                 len(remaining_position_indices))]
 
             dot.position = array([next_center[0], next_center[1]])
 
-        shifted_mask = filler_mask + array([dot.position[0] - dot.r, dot.position[1] - dot.r], dtype=int64)
-        canvas[shifted_mask[:,0], shifted_mask[:,1]] = dot.fill[filler_mask[:,0], filler_mask[:,1]]
+        shifted_mask = filler_mask + \
+            array([dot.position[0] - dot.r, dot.position[1] - dot.r], dtype=int64)
+        canvas[shifted_mask[:, 0], shifted_mask[:, 1]
+               ] = dot.fill[filler_mask[:, 0], filler_mask[:, 1]]
 
         circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
         available_positions &= logical_not(circle <= square(dot.r*2))

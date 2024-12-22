@@ -1,2 +1,2 @@
-from experiments.staircase import run
+from experiments.staircase_shapes import run
 run()
