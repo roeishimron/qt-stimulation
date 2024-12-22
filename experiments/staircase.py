@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from typing import List, Iterable
-from stims import generate_increasing_durations, generate_sin, generate_grey, generate_solid_color, fill_with_dots, create_gabor_values
+from stims import generate_noise, generate_solid_color, fill_with_dots, create_gabor_values
 from response_recorder import ResponseRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
@@ -34,7 +34,7 @@ def run():
     ])
         for _ in range(20))
  
-    mask = generate_solid_color(size, 100)
+    mask = generate_noise(size)
 
     generator = TimedStimuliRuntimeGenerator(OddballStimuli(size, targets, nons, 1, 3), cycle([mask]))
 

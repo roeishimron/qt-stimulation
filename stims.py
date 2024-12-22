@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from numpy import sin, pi, linspace, uint8, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
-from numpy.random import choice
+from numpy.random import choice, rand
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
 from animator import AppliablePixmap
@@ -72,6 +72,11 @@ def generate_solid_color(figure_size: int, h: int, s: int = 255, v: int = 255):
     color.setHsv(h, s, v)
     image.fill(color)
     return AppliablePixmap(QPixmap.fromImage(image))
+
+
+def generate_noise(figure_size: int) -> AppliablePixmap:
+    bools = rand(figure_size, figure_size) > 0.5
+    return array_into_pixmap(bools * 2 - 1)
 
 
 def inflate_randomley(source: List[Any], factor: int) -> List[Any]:

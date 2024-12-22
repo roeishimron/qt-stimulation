@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from typing import List, Iterable
-from stims import generate_increasing_durations, generate_sin, generate_grey, gabors_around_rec, generate_solid_color, fill_with_dots, create_gabor_values
+from stims import generate_noise, gabors_around_rec, generate_solid_color, fill_with_dots, create_gabor_values
 from response_recorder import ResponseRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
@@ -41,10 +41,10 @@ def run():
                           randint(*line_range), 10, int(size/4), GABOR_SIZE, GABOR_FREQ))
         for s in range(20))
 
-    mask = generate_solid_color(size, 100)
+    mask = generate_noise(size)
 
     generator = TimedStimuliRuntimeGenerator(
-        OddballStimuli(size, targets, nons, 1, 3), cycle([mask]))
+        OddballStimuli(size, cycle(targets), cycle(nons), 1, 3), cycle([mask]))
 
     main_window = StaircaseExperiment.new(size, generator,
                                           SoftSerial(),
