@@ -47,7 +47,7 @@ def run():
     mask = generate_noise(width, height)
 
     generator = TimedStimuliRuntimeGenerator(
-        OddballStimuli(height, cycle(combined), 1, 1), cycle([mask]))
+        (height, width), cycle(targets), cycle(nons), cycle([mask]))
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),

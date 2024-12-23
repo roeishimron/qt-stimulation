@@ -162,7 +162,6 @@ class Animator:
 
     def stop(self):
         self.animation.stop()
-        self.display_break()
 
     def display_break(self):
         self.effect.setOpacity(1)

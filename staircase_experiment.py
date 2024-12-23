@@ -5,6 +5,9 @@ from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli, Appliable
 from typing import Callable, List, Iterable, Tuple
 from viewing_experiment import Experiment, ViewExperiment
+from random import choice
+from stims import place_in_figure, array_into_pixmap
+from numpy.typing import NDArray
 
 #should implement:
 class StimuliRuntimeGenerator:
@@ -22,28 +25,43 @@ class TimedStimuliRuntimeGenerator:
 
     #Oddballs are the targets!
 
-    targets: Iterable[Appliable]
-    non_targets: Iterable[Appliable]
     mask: Iterable[Appliable]
+    targets: Iterable[NDArray]
+    distractors: Iterable[NDArray]
 
-    last_is_target: bool
 
-    def __init__(self, stimuli: OddballStimuli, mask: Iterable[Appliable]):
-        self.stimuli = stimuli
+    screen_dimentions: Tuple[int, int]
+
+    last_is_left: bool
+
+    def __init__(self, screen_dimentions: Tuple[int, int], targets: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
+        self.targets = targets
+        self.distractors = distractors
         self.mask = mask
+        self.screen_dimentions = screen_dimentions
         
-        self.last_is_target = None
+        self.last_is_left = None
 
-    def accept_response(self, response: bool) -> bool:
-        assert self.last_is_target is not None
-        return self.last_is_target == response
+    def accept_response(self, response_is_left: bool) -> bool:
+        assert self.last_is_left is not None
+        return self.last_is_left == response_is_left
 
     def next_stimuli_and_durations(self, difficulty: int)-> Tuple[OddballStimuli, List[int]]:
         assert difficulty <= self.get_max_difficulty()
         duration = self.MAX_TIME - difficulty
-        (self.last_is_target, stimulus) = self.stimuli.next_stimulation()
-        return (OddballStimuli(self.stimuli.size, iter([stimulus, next(self.mask)])),
-                [duration, self.MASK_DURATION])
+
+        target_is_left = choice([True, False])
+        self.last_is_left = target_is_left
+        target_and_distractor = (next(self.distractors), next(self.targets))
+
+        choice_screen = place_in_figure(self.screen_dimentions, 
+                                        target_and_distractor[int(target_is_left)],
+                                        target_and_distractor[int(not target_is_left)])
+        
+
+        return (OddballStimuli(self.screen_dimentions[0], 
+                               iter([array_into_pixmap(target_and_distractor[1]), next(self.mask), choice_screen])),
+                [duration, self.MASK_DURATION, 0])
 
     def get_max_difficulty(self) -> int:
         return self.MAX_TIME - self.MIN_TIME
@@ -77,10 +95,10 @@ class StaircaseExperiment:
         if self.remaining_to_stop == 0 or key == Qt.Key.Key_Q:
             return self.experiment.quit()
 
-        if key not in {Qt.Key.Key_Up, Qt.Key.Key_Down}:
+        if key not in {Qt.Key.Key_Left, Qt.Key.Key_Right}:
             return
         
-        success = self.stimuli_generator.accept_response(key == Qt.Key.Key_Up)
+        success = self.stimuli_generator.accept_response(key == Qt.Key.Key_Left)
         print(f"the user was {["wrong", "correct"][int(success)]}")
         
         if success:
@@ -107,14 +125,10 @@ class StaircaseExperiment:
 
     @Slot()
     def trial_end(self):
-        self.experiment.trial_end()
         if self.remaining_to_stop == 0:
             self.experiment.quit()
 
         self.experiment.main_window.keyReleaseEvent = self.accept_answer
-
-        #should also wait for user answer. This will remove the `wait` animator parameter
-
 
 
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial, 
