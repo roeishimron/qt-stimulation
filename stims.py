@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import sin, pi, linspace, uint8, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
+from numpy import sin, pi, linspace, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
 from numpy.random import choice, rand
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
@@ -51,20 +51,32 @@ def generate_sin(figure_size, frequency=1, offset=0, contrast=1, horizontal=Fals
         create_gabor_values(
             figure_size, frequency, offset, contrast, horizontal, step, raidal_easing))
 
-# assuming array of values between 0 and 1
-
-
+# assuming array of values between -1 and 1
 def array_into_pixmap(arr: NDArray) -> AppliablePixmap:
     mormalized_to_pixels = (((arr * 255) + 255)/2)
     mormalized_to_pixels = array(mormalized_to_pixels, dtype=uint8)
-    figure_size = arr.__len__()
 
-    return AppliablePixmap(QPixmap.fromImage(QImage(mormalized_to_pixels, figure_size, figure_size, figure_size, QImage.Format.Format_Grayscale8)))
+    return AppliablePixmap(QPixmap.fromImage(QImage(mormalized_to_pixels, arr.shape[1], arr.shape[0], arr.shape[1], QImage.Format.Format_Grayscale8)))
 
 
 def generate_grey(figure_size: int) -> AppliablePixmap:
     return generate_sin(figure_size, 0, 0, 0)
 
+# left and right are between -1 and 1
+def place_in_figure(figure_size: Tuple[int,int], left: NDArray, right: NDArray) -> AppliablePixmap:
+    assert left.shape[1] + right.shape[1] <= figure_size[1]
+    assert max(left.shape[0], right.shape[0]) <= figure_size[0]
+
+    # Assuming both middle
+    grid = zeros((figure_size[0], figure_size[1]), dtype=float64)
+    left_center = array([figure_size[0]/2, figure_size[1]/4], dtype=int)
+    grid[left_center[0] - int(left.shape[0]/2):left_center[0] + int(left.shape[0]/2),
+         left_center[1] - int(left.shape[1]/2):left_center[1] + int(left.shape[1]/2)] = left
+    right_center = array([figure_size[0]/2, figure_size[1]/4*3], dtype=int)
+    grid[right_center[0] - int(right.shape[0]/2):right_center[0] + int(right.shape[0]/2),
+         right_center[1] - int(right.shape[1]/2):right_center[1] + int(right.shape[1]/2)] = right
+    
+    return array_into_pixmap(grid)
 
 def generate_solid_color(figure_size: int, h: int, s: int = 255, v: int = 255):
     image = QImage(figure_size, figure_size, QImage.Format.Format_RGB16)
@@ -74,8 +86,8 @@ def generate_solid_color(figure_size: int, h: int, s: int = 255, v: int = 255):
     return AppliablePixmap(QPixmap.fromImage(image))
 
 
-def generate_noise(figure_size: int) -> AppliablePixmap:
-    bools = rand(figure_size, figure_size) > 0.5
+def generate_noise(width: int, height: int) -> AppliablePixmap:
+    bools = rand(height, width) > 0.5
     return array_into_pixmap(bools * 2 - 1)
 
 
@@ -185,5 +197,9 @@ def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: Li
         circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
         available_positions &= logical_not(circle <= square(dot.r*2))
 
-    image = array(canvas * 127, dtype=uint8) + 127
-    return AppliablePixmap(QPixmap.fromImage(QImage(image, figure_size, figure_size, figure_size, QImage.Format.Format_Grayscale8)))
+    return canvas
+
+def dots_image(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:
+    return array_into_pixmap(
+        fill_with_dots(figure_size, dots_fill, priority_dots)
+    )
