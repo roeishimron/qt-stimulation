@@ -24,26 +24,21 @@ def run():
     width = int(app.primaryScreen().geometry().width()*9/10)
 
     GABOR_SIZE = 100
-    GABOR_FREQ = 3
-
-    line_range = (int(height/2-height/6), int(height/2+height/6))
-    offset_range = ()
+    GABOR_FREQ = 2
+    RADIAL_EASING = 120
 
     targets = (fill_with_dots(int(height), array([
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,
-                            raidal_easing=150) for _ in range(int(3))
-    ]), gabors_around_rec(int(height/2), int(height/2), 10, int(height/4), GABOR_SIZE, GABOR_FREQ))
-        for s in [randint(*line_range) for _ in range(20)])
+                            raidal_easing=RADIAL_EASING) for _ in range(int(3))
+    ]), gabors_around_rec(int(height/2), int(height/2), 10, int(height/4), GABOR_SIZE, GABOR_FREQ, RADIAL_EASING))
+        for _ in range(20))
 
     nons = (fill_with_dots(int(height), array([
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,
-                            raidal_easing=150) for _ in range(int(13))
+                            raidal_easing=RADIAL_EASING) for _ in range(int(13))
     ]))
         for s in range(20))
     
-    combined = starmap(lambda t,n: place_in_figure(
-        (height, width),t,n), zip(targets, nons))
-
     mask = generate_noise(width, height)
 
     generator = TimedStimuliRuntimeGenerator(
