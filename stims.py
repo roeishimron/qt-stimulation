@@ -14,7 +14,7 @@ from random import shuffle, randint
 
 def gaussian(size: int, sigma):
 
-    RANGE = 23
+    RANGE = 70
 
     x, y = meshgrid(linspace(-RANGE, RANGE, size),
                     linspace(-RANGE, RANGE, size))

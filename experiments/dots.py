@@ -20,7 +20,7 @@ def run():
     # According to https://www.pnas.org/doi/epdf/10.1073/pnas.1917849117 it's more important than controlling the figure size.
     GABOR_SIZE = 100
     GABOR_FREQ = 2
-    RADIAL_EASING = 120
+    RADIAL_EASING = 1000
 
     base = (array_into_pixmap(fill_with_dots(int(height), array([
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=True,

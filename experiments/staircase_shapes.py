@@ -25,7 +25,7 @@ def run():
 
     GABOR_SIZE = 100
     GABOR_FREQ = 2
-    RADIAL_EASING = 120
+    RADIAL_EASING = 1000
 
     targets = (fill_with_dots(int(height), array([
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,

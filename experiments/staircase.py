@@ -20,25 +20,32 @@ def run():
 
 
     screen_height = app.primaryScreen().geometry().height()
+    height = int(screen_height*2/3)
+    width = int(app.primaryScreen().geometry().width()*9/10)
+
+    GABOR_FREQ = 1
+    GABOR_SIZE = 100
+    RADIAL_EASING = 1000
 
     size = int(screen_height*3/4)
 
-    targets = (fill_with_dots(int(size), [
-        create_gabor_values(100, 3, horizontal=False,
-                            raidal_easing=150) for _ in range(int(10))
+    targets = (fill_with_dots(int(height), [
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,
+                            raidal_easing=RADIAL_EASING) for _ in range(int(10))
     ])
         for _ in range(20))
-    nons = (fill_with_dots(int(size), [
-        create_gabor_values(100, 3, horizontal=choice([True, False]),
-                            raidal_easing=150) for _ in range(int(10))
+    
+    nons = (fill_with_dots(int(height), [
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=choice([True, False]),
+                            raidal_easing=RADIAL_EASING) for _ in range(int(10))
     ])
         for _ in range(20))
  
-    mask = generate_noise(size)
+    mask = generate_noise(width, height)
 
-    generator = TimedStimuliRuntimeGenerator(OddballStimuli(size, targets, nons, 1, 3), cycle([mask]))
+    generator = TimedStimuliRuntimeGenerator((height, width), cycle(targets), cycle(nons), cycle([mask]))
 
-    main_window = StaircaseExperiment.new(size, generator,
+    main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),
         use_step=True, fixation="+")
     main_window.experiment.show()
