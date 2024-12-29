@@ -23,44 +23,45 @@ class TimedStimuliRuntimeGenerator:
     MIN_TIME = 10
     MASK_DURATION = 300
 
-    #Oddballs are the targets!
-
     mask: Iterable[Appliable]
-    targets: Iterable[NDArray]
+    stims: Iterable[NDArray]
     distractors: Iterable[NDArray]
 
 
     screen_dimentions: Tuple[int, int]
 
-    last_is_left: bool
+    target_is_left: bool
 
-    def __init__(self, screen_dimentions: Tuple[int, int], targets: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
-        self.targets = targets
+    def __init__(self, screen_dimentions: Tuple[int, int], stims: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
+        self.stims = stims
         self.distractors = distractors
         self.mask = mask
         self.screen_dimentions = screen_dimentions
         
-        self.last_is_left = None
+        self.target_is_left = None
 
     def accept_response(self, response_is_left: bool) -> bool:
-        assert self.last_is_left is not None
-        return self.last_is_left == response_is_left
+        assert self.target_is_left is not None
+        return self.target_is_left == response_is_left
 
     def next_stimuli_and_durations(self, difficulty: int)-> Tuple[OddballStimuli, List[int]]:
         assert difficulty <= self.get_max_difficulty()
         duration = self.MAX_TIME - difficulty
 
-        target_is_left = choice([True, False])
-        self.last_is_left = target_is_left
-        target_and_distractor = (next(self.distractors), next(self.targets))
+        stim_is_left = choice([True, False])
+        stim_is_target = choice([True, False])
+
+        self.target_is_left = (stim_is_left and stim_is_target) or ((not stim_is_left) and (not stim_is_target))
+        stim_and_distractor = (next(self.stims), next(self.distractors))
 
         choice_screen = place_in_figure(self.screen_dimentions, 
-                                        target_and_distractor[int(target_is_left)],
-                                        target_and_distractor[int(not target_is_left)])
+                                        stim_and_distractor[int(not stim_is_left)],
+                                        stim_and_distractor[int(stim_is_left)])
         
 
         return (OddballStimuli(self.screen_dimentions[0], 
-                               iter([array_into_pixmap(target_and_distractor[1]), next(self.mask), choice_screen])),
+                               iter([array_into_pixmap(stim_and_distractor[int(not stim_is_target)]),
+                                      next(self.mask), choice_screen])),
                 [duration, self.MASK_DURATION, 0])
 
     def get_max_difficulty(self) -> int:
