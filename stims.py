@@ -62,7 +62,7 @@ def array_into_pixmap(arr: NDArray) -> AppliablePixmap:
 def generate_grey(figure_size: int) -> AppliablePixmap:
     return generate_sin(figure_size, 0, 0, 0)
 
-# left and right are between -1 and 1
+# left and right "pixel" values are between -1 and 1
 def place_in_figure(figure_size: Tuple[int,int], left: NDArray, right: NDArray) -> AppliablePixmap:
     assert left.shape[1] + right.shape[1] <= figure_size[1]
     assert max(left.shape[0], right.shape[0]) <= figure_size[0]
@@ -149,12 +149,13 @@ def rec_at(position: int, width: int, height: int) -> Tuple[bool, Tuple[int, int
 
 
 def gabors_around_rec(width: int, height: int, amount_of_dots: int,
-                       offset: int, dot_size: int, gabor_freq: int) -> List[NDArray]:
+                       offset: int, dot_size: int, gabor_freq: int,
+                       raidal_easing: int) -> List[NDArray]:
     length = 2*(width+height)
     rects = [rec_at(i, width, height) for i in range(0, length, int(length/amount_of_dots))]
     return [
         Dot(dot_size/2, array([x, y]) + offset, create_gabor_values(dot_size,
-            horizontal=horizontal, frequency=gabor_freq, raidal_easing=150))
+            horizontal=horizontal, frequency=gabor_freq, raidal_easing=raidal_easing))
         for (horizontal, (x, y)) in rects]
 
 
