@@ -93,14 +93,14 @@ class StaircaseExperiment:
     def accept_answer(self, event: QKeyEvent):
             
         key = event.key()
-        if self.remaining_to_stop == 0 or key == Qt.Key.Key_Q:
+        if key == Qt.Key.Key_Q:
             return self.experiment.quit()
 
         if key not in {Qt.Key.Key_Left, Qt.Key.Key_Right}:
             return
         
         success = self.stimuli_generator.accept_response(key == Qt.Key.Key_Left)
-        print(f"the user was {["wrong", "correct"][int(success)]}")
+        print(f"{["wrong", "correct"][int(success)]}!, Difficulty is {self.current_difficulty} and there are {self.remaining_to_stop} reversals left")
         
         if success:
             self.remaining_to_stepup -= 1
@@ -111,6 +111,9 @@ class StaircaseExperiment:
             self.remaining_to_stepup = 3 
             self.remaining_to_stop -= 1
             self.stepdown()
+        
+        if self.remaining_to_stop == 0:
+            return self.experiment.quit()
         
         self.reset_animator()
         self.experiment.trial_start()
