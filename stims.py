@@ -86,9 +86,21 @@ def generate_solid_color(figure_size: int, h: int, s: int = 255, v: int = 255):
     return AppliablePixmap(QPixmap.fromImage(image))
 
 
-def generate_noise(width: int, height: int) -> AppliablePixmap:
-    bools = rand(height, width) > 0.5
-    return array_into_pixmap(bools * 2 - 1)
+def generate_noise(width: int, height: int, kernel_size: int=1) -> AppliablePixmap:
+    assert width % kernel_size == 0 and height % kernel_size == 0
+    virtual_height = int(height / kernel_size)
+    virtual_width = int(width / kernel_size)
+
+    bools = rand(virtual_height, virtual_width) > 0.5
+    
+    screen = zeros((height, width))
+
+    for row in range(virtual_height):
+        for col in range(virtual_width):
+            screen[row*kernel_size:(row+1)*kernel_size, col*kernel_size:(col+1)*kernel_size] = bools[row, col]
+
+    
+    return array_into_pixmap(screen * 2 - 1)
 
 
 def inflate_randomley(source: List[Any], factor: int) -> List[Any]:
