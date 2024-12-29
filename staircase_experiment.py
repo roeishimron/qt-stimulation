@@ -18,7 +18,7 @@ class StimuliRuntimeGenerator:
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-class TimedStimuliRuntimeGenerator:
+class TimedSampleChoiceGenerator:
     MAX_TIME = 2058
     MIN_TIME = 10
     MASK_DURATION = 300
@@ -66,6 +66,31 @@ class TimedStimuliRuntimeGenerator:
 
     def get_max_difficulty(self) -> int:
         return self.MAX_TIME - self.MIN_TIME
+
+
+
+# Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
+class TimedChoiceGenerator(TimedSampleChoiceGenerator):
+    def __init__(self, screen_dimentions: Tuple[int, int], targets: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
+        return super().__init__(screen_dimentions, targets, distractors, mask)
+
+    def next_stimuli_and_durations(self, difficulty: int)-> Tuple[OddballStimuli, List[int]]:
+        assert difficulty <= self.get_max_difficulty()
+        duration = self.MAX_TIME - difficulty
+
+        targets = self.stims
+
+        self.target_is_left = choice([True, False])
+        stim_and_distractor = (next(targets), next(self.distractors))
+
+        choice_screen = place_in_figure(self.screen_dimentions, 
+                                        stim_and_distractor[int(not self.target_is_left)],
+                                        stim_and_distractor[int(self.target_is_left)])
+        
+
+        return (OddballStimuli(self.screen_dimentions[0], 
+                               iter([choice_screen, next(self.mask)])),
+                [duration, self.MASK_DURATION])
 
 
 class StaircaseExperiment:

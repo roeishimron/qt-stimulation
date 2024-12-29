@@ -7,7 +7,7 @@ from response_recorder import ResponseRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
 from itertools import cycle
-from staircase_experiment import StaircaseExperiment, TimedStimuliRuntimeGenerator
+from staircase_experiment import StaircaseExperiment, TimedSampleChoiceGenerator
 from random import choices, random, choice
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from copy import deepcopy
@@ -43,7 +43,7 @@ def run():
  
     mask = generate_noise(width, height)
 
-    generator = TimedStimuliRuntimeGenerator((height, width), cycle(targets), cycle(nons), cycle([mask]))
+    generator = TimedSampleChoiceGenerator((height, width), cycle(targets), cycle(nons), cycle([mask]))
 
     main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),
