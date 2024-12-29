@@ -1,2 +1,2 @@
-from experiments.staircase import run
+from experiments.dots_staircase import run
 run()
