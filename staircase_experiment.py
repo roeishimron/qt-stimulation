@@ -8,8 +8,9 @@ from viewing_experiment import Experiment, ViewExperiment
 from random import choice
 from stims import place_in_figure, array_into_pixmap
 from numpy.typing import NDArray
-
-# should implement:
+from math import ceil
+from dataclasses import dataclass, asdict
+from json import dumps
 
 
 class StimuliRuntimeGenerator:
@@ -21,9 +22,11 @@ class StimuliRuntimeGenerator:
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
 class TimedSampleChoiceGenerator:
-    MAX_TIME = 2058
-    MIN_TIME = 10
-    MASK_DURATION = 300
+    MAX_FRAMES = 33
+    MIN_FRAMES = 1
+    FPS_MS = 1000/60
+
+    MASK_DURATION = 20 * FPS_MS
 
     mask: Iterable[Appliable]
     stims: Iterable[NDArray]
@@ -47,7 +50,7 @@ class TimedSampleChoiceGenerator:
 
     def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
         assert difficulty <= self.get_max_difficulty()
-        duration = self.MAX_TIME - difficulty
+        duration = (self.MAX_FRAMES - difficulty) * self.FPS_MS
 
         stim_is_left = choice([True, False])
         stim_is_target = choice([True, False])
@@ -67,7 +70,7 @@ class TimedSampleChoiceGenerator:
                 [duration, self.MASK_DURATION, 0])
 
     def get_max_difficulty(self) -> int:
-        return self.MAX_TIME - self.MIN_TIME
+        return self.MAX_FRAMES - self.MIN_FRAMES
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
@@ -77,7 +80,7 @@ class TimedChoiceGenerator(TimedSampleChoiceGenerator):
 
     def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
         assert difficulty <= self.get_max_difficulty()
-        duration = self.MAX_TIME - difficulty
+        duration = (self.MAX_FRAMES - difficulty) * self.FPS_MS
 
         targets = self.stims
 
@@ -94,6 +97,13 @@ class TimedChoiceGenerator(TimedSampleChoiceGenerator):
                 [duration, self.MASK_DURATION])
 
 
+@dataclass
+class ExperimentState:
+    trial_no: int
+    difficulty: int
+    success: bool
+
+
 class StaircaseExperiment:
     experiment: Experiment
     stimuli_generator: StimuliRuntimeGenerator
@@ -107,20 +117,36 @@ class StaircaseExperiment:
     current_difficulty: int
     max_difficulty: int
 
+    is_last_step_up: bool
+    current_step: int
+
+    trial_no: int
+
     remaining_to_calibration_period: int
 
+    def get_step_size(self) -> int:
+        return ceil(self.max_difficulty / 2**(self.current_step+1))
+
+    def record_to_file(self, state: ExperimentState):
+        with open("results.txt", "+a") as f:
+            f.write(dumps(asdict(state)) + "\n")
+
     def stepup(self):
-        current_level = self.amount_of_levels - self.remaining_to_stop
-        self.current_difficulty = int(
-            (self.current_difficulty * current_level + self.max_difficulty)/(current_level + 1))
+        self.current_difficulty += self.get_step_size()
+        self.current_step += 1
+        if not self.is_last_step_up:
+            self.remaining_to_stop -= 1
+        self.is_last_step_up = True
 
     def stepdown(self):
-        current_level = self.amount_of_levels - self.remaining_to_stop
-        self.current_difficulty = int(
-            (self.current_difficulty * current_level)/(current_level+1))
+        self.current_difficulty -= self.get_step_size()
+        self.current_difficulty = max(self.current_difficulty, 0)
+        self.current_step += 1
+        if self.is_last_step_up:
+            self.remaining_to_stop -= 1
+        self.is_last_step_up = False
 
     def accept_answer(self, event: QKeyEvent):
-
         key = event.key()
         if key == Qt.Key.Key_Q:
             return self.experiment.quit()
@@ -130,17 +156,21 @@ class StaircaseExperiment:
 
         success = self.stimuli_generator.accept_response(
             key == Qt.Key.Key_Left)
-        print(f"{["wrong", "correct"][int(success)]}!, Difficulty is {
-              self.current_difficulty} and there are {self.remaining_to_stop} reversals left")
+
+        print(f"{["wrong", "correct"][int(success)]}!, Difficulty is {self.current_difficulty} with step {
+              self.get_step_size()} and there are {self.remaining_to_stop} reversals left")
+
+        self.trial_no += 1
+        self.record_to_file(ExperimentState(
+            self.trial_no, self.current_difficulty, success))
 
         if success:
             self.remaining_to_stepup -= 1
             if self.remaining_to_stepup == 0:
                 self.stepup()
-                self.remaining_to_stepup = 1  # streaks counts
+                self.remaining_to_stepup = 3  # streaks don't count
         else:
             self.remaining_to_stepup = 3
-            self.remaining_to_stop -= 1
             self.stepdown()
 
         if self.remaining_to_stop == 0:
@@ -180,15 +210,21 @@ class StaircaseExperiment:
 
         obj.remaining_to_stepup = 3
 
-        obj.remaining_to_stop = 8
+        obj.remaining_to_stop = 10
         obj.amount_of_levels = obj.remaining_to_stop
 
         obj.current_difficulty = 0
+
+        obj.is_last_step_up = True
+        obj.current_step = 0
+        obj.trial_no = 0
 
         obj.max_difficulty = obj.stimuli_generator.get_max_difficulty()
 
         obj.experiment.setup(
             event_trigger, None, obj.animator_display, fixation, on_runtime_keypress)
         obj.reset_animator()
+
+        open('results.txt', 'w').close()
 
         return obj

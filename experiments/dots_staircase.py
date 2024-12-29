@@ -7,17 +7,25 @@ from response_recorder import ResponseRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
 from itertools import cycle
-from staircase_experiment import StaircaseExperiment, TimedChoiceGenerator
+from staircase_experiment import StaircaseExperiment, TimedChoiceGenerator, ExperimentState
 from random import choices, random, choice
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from copy import deepcopy
 from numpy import pi, array
+from json import loads
+from matplotlib.pyplot import plot, show
+
+def log_into_graph():
+    sorted_states = list(map(lambda l: ExperimentState(**loads(l)),  open("results.txt").read().splitlines()))
+    xs = list(map(lambda s: s.trial_no, sorted_states))
+    ys = list(map(lambda s: 33-s.difficulty, sorted_states))
+    plot(xs, ys)
+    show(block=True)
 
 
 def run():
     # Create the Qt Application
     app = QApplication(sys.argv)
-
 
     screen_height = app.primaryScreen().geometry().height()
     height = int(screen_height*2/3)
@@ -49,3 +57,4 @@ def run():
     main_window.experiment.show()
     # Run the main Qt loop
     app.exec()
+    log_into_graph()
