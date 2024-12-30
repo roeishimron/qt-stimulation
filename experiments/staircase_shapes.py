@@ -28,13 +28,13 @@ def run():
     RADIAL_EASING = 1000
 
     targets = (fill_with_dots(int(height), array([
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ,
                             raidal_easing=RADIAL_EASING) for _ in range(int(3))
     ]), gabors_around_rec(int(height/2), int(height/2), 10, int(height/4), GABOR_SIZE, GABOR_FREQ, RADIAL_EASING))
         for _ in range(20))
 
     nons = (fill_with_dots(int(height), array([
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ,
                             raidal_easing=RADIAL_EASING) for _ in range(int(13))
     ]))
         for s in range(20))

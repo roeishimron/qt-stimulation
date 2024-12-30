@@ -23,20 +23,20 @@ def run():
     height = int(screen_height*2/3)
     width = int(app.primaryScreen().geometry().width()*9/10)
 
-    GABOR_FREQ = 1
+    GABOR_FREQ = 2
     GABOR_SIZE = 100
     RADIAL_EASING = 1000
 
     size = int(screen_height*3/4)
 
     targets = (fill_with_dots(int(height), [
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=False,
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ,
                             raidal_easing=RADIAL_EASING) for _ in range(int(10))
     ])
         for _ in range(20))
     
     nons = (fill_with_dots(int(height), [
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=choice([True, False]),
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
                             raidal_easing=RADIAL_EASING) for _ in range(int(10))
     ])
         for _ in range(20))

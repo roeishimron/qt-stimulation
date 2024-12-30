@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import sin, pi, linspace, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
+from numpy import cos, sin, pi, linspace, sqrt, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
 from numpy.random import choice, rand
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
@@ -23,33 +23,56 @@ def gaussian(size: int, sigma):
 
     return exp(-(x**2 + y**2)/sigma)
 
+def _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation) -> NDArray:
+    assert 0 <= rotation <= pi/2
+    sin_flips = frequency
+    virtual_size = sin_flips * 2 * pi
 
-def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1, horizontal=False, step=False, raidal_easing=inf) -> NDArray:
-    assert figure_size >= 2*frequency
+    new_x_axis = array([sin(rotation), cos(rotation)])
+    orthogonal_values = zeros((figure_size, figure_size))
+    for x in range(orthogonal_values.shape[0]):
+        for y in range(orthogonal_values.shape[1]):
+            orthogonal_values[x,y] = sqrt(sum(square(array([x,y]) * new_x_axis))) + offset
+    
+    # normalize so that the max length arrives at the right amount of flips
+    orthogonal_values = orthogonal_values * virtual_size / figure_size
+    return sin(orthogonal_values)*contrast
 
+def _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, horizontal: bool) -> NDArray:
     sin_flips = (frequency*figure_size)
     virtual_size = sin_flips * 2 * pi
 
     x_range = linspace(offset, virtual_size + offset, figure_size)
     sinsusoid = sin(x_range)*contrast
 
-    if step:
-        sinsusoid = (sinsusoid > 0)*2-1
-
     frame = tile(sinsusoid, (figure_size, 1))
 
     if not horizontal:
         frame = frame.transpose()
+    return frame
+
+# currently, the frequency is NOT accurate due to the rotation support. It IS accurate for 0,90deg
+def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1, 
+                        step=False, raidal_easing=inf, rotation=0) -> NDArray:
+    assert figure_size >= 2*frequency
+    frame = None
+    if rotation == 0 or rotation==pi/2:
+        frame = _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, rotation == pi/2)
+    else:
+        frame = _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation)
+
+    if step:
+        frame = (frame > 0)*2-1
 
     frame = frame * gaussian(figure_size, raidal_easing)
 
     return frame
 
 
-def generate_sin(figure_size, frequency=1, offset=0, contrast=1, horizontal=False, step=False, raidal_easing=inf) -> AppliablePixmap:
+def generate_sin(figure_size, frequency=1, offset=0, contrast=1, step=False, raidal_easing=inf, rotation=0) -> AppliablePixmap:
     return array_into_pixmap(
         create_gabor_values(
-            figure_size, frequency, offset, contrast, horizontal, step, raidal_easing))
+            figure_size, frequency, offset, contrast, step, raidal_easing, rotation))
 
 # assuming array of values between -1 and 1
 def array_into_pixmap(arr: NDArray) -> AppliablePixmap:
@@ -147,7 +170,7 @@ def fill_with_white_dots(figure_size: int, amount_of_dots: int, dot_size: int) -
 # returns is_horizontal and (x,y)
 
 
-def rec_at(position: int, width: int, height: int) -> Tuple[bool, Tuple[int, int]]:
+def rec_at(position: int, width: int, height: int) -> Tuple[float64, Tuple[int, int]]:
     vecs = [array([0,height]), array([width,0]), array([0,-height]), array([-width,0])]
     assert position <= sum(abs(array(vecs).flatten()))
     current_position = (0,0)
@@ -155,7 +178,10 @@ def rec_at(position: int, width: int, height: int) -> Tuple[bool, Tuple[int, int
         length = sum(abs(v))
         if position - length < 0:
             exact = current_position + v/length*(position)
-            return (v[0]!=0, (exact[0], exact[1]))
+            if v[0] == 0:
+                return (0, (exact[0], exact[1]))
+            return (pi/2, (exact[0], exact[1]))
+            
         position -= length
         current_position += v
 
@@ -167,8 +193,8 @@ def gabors_around_rec(width: int, height: int, amount_of_dots: int,
     rects = [rec_at(i, width, height) for i in range(0, length, int(length/amount_of_dots))]
     return [
         Dot(dot_size/2, array([x, y]) + offset, create_gabor_values(dot_size,
-            horizontal=horizontal, frequency=gabor_freq, raidal_easing=raidal_easing))
-        for (horizontal, (x, y)) in rects]
+            rotation=rotation, frequency=gabor_freq, raidal_easing=raidal_easing))
+        for (rotation, (x, y)) in rects]
 
 
 def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:

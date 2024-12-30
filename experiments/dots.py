@@ -23,12 +23,12 @@ def run():
     RADIAL_EASING = 1000
 
     base = (array_into_pixmap(fill_with_dots(int(height), array([
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=True,
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=pi/2,
                             raidal_easing=RADIAL_EASING) for _ in range(int(16))
     ]))) for _ in range(20))
 
     oddball = (array_into_pixmap(fill_with_dots(int(height), array([
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ, horizontal=True,
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=pi/2,
                             raidal_easing=RADIAL_EASING) for _ in range(int(8))
     ]))) for _ in range(20))
 
