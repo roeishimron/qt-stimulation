@@ -24,15 +24,15 @@ def gaussian(size: int, sigma):
     return exp(-(x**2 + y**2)/sigma)
 
 def _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation) -> NDArray:
-    assert 0 <= rotation <= pi/2
     sin_flips = frequency
     virtual_size = sin_flips * 2 * pi
+    assert figure_size % 2 == 0
 
     new_x_axis = array([sin(rotation), cos(rotation)])
     orthogonal_values = zeros((figure_size, figure_size))
-    for x in range(orthogonal_values.shape[0]):
-        for y in range(orthogonal_values.shape[1]):
-            orthogonal_values[x,y] = sqrt(sum(square(array([x,y]) * new_x_axis))) + offset
+    for x in range(int(-figure_size/2), int(figure_size/2)):
+        for y in range(int(-figure_size/2), int(figure_size/2)):
+            orthogonal_values[int(x+figure_size/2),int(y+figure_size/2)] = sum(array([x,y]) * new_x_axis) + offset
     
     # normalize so that the max length arrives at the right amount of flips
     orthogonal_values = orthogonal_values * virtual_size / figure_size
@@ -56,8 +56,8 @@ def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1,
                         step=False, raidal_easing=inf, rotation=0) -> NDArray:
     assert figure_size >= 2*frequency
     frame = None
-    if rotation == 0 or rotation==pi/2:
-        frame = _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, rotation == pi/2)
+    if rotation % pi == 0:
+        frame = _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, rotation % pi/2 == 0)
     else:
         frame = _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation)
 
@@ -179,16 +179,22 @@ def rec_at(position: int, width: int, height: int) -> Tuple[float64, Tuple[int, 
         if position - length < 0:
             exact = current_position + v/length*(position)
             if v[0] == 0:
-                return (0, (exact[0], exact[1]))
-            return (pi/2, (exact[0], exact[1]))
+                return (pi/2, (exact[0], exact[1]))
+            return (0, (exact[0], exact[1]))
             
         position -= length
         current_position += v
 
 
+def circle_at(center: Tuple[int,int], radius: int, angle_from_0: float64) -> Tuple[float64, Tuple[int, int]]:
+    
+    coordinates = array(array(center) + array([cos(angle_from_0), sin(angle_from_0)])*radius, dtype=int)
+    ortho = pi/2 - angle_from_0
+    return (ortho, (coordinates[0], coordinates[1]))
+
 def gabors_around_rec(width: int, height: int, amount_of_dots: int,
                        offset: int, dot_size: int, gabor_freq: int,
-                       raidal_easing: int) -> List[NDArray]:
+                       raidal_easing: int) -> List[Dot]:
     length = 2*(width+height)
     rects = [rec_at(i, width, height) for i in range(0, length, int(length/amount_of_dots))]
     return [
@@ -196,6 +202,13 @@ def gabors_around_rec(width: int, height: int, amount_of_dots: int,
             rotation=rotation, frequency=gabor_freq, raidal_easing=raidal_easing))
         for (rotation, (x, y)) in rects]
 
+def gabors_around_circle(center: Tuple[int,int], radius: int, amount_of_dots: int, 
+                         dot_size: int, gabor_freq: int, radial_easing:int) -> List[Dot]:
+    angles = linspace(0, pi*2, amount_of_dots)
+    properties = [circle_at(center, radius, angle) for angle in angles]
+    return [Dot(dot_size/2, array(position), 
+                create_gabor_values(dot_size, gabor_freq, raidal_easing=radial_easing, rotation=rotation))
+                for (rotation, position) in properties]
 
 def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:
     # there must be enough room for all the dots
@@ -203,7 +216,7 @@ def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: Li
     dot_size = dots_fill[0].shape[0]
 
     assert dots_fill[0].shape[0] == dots_fill[0].shape[1]
-    assert figure_size**2 >= amount_of_dots * (pi*(dot_size)**2)
+    assert figure_size**2 >= amount_of_dots * (pi*(dot_size/2)**2)
 
     available_positions = full((figure_size, figure_size), True)
     canvas = full((figure_size, figure_size), 0, float64)
