@@ -26,20 +26,21 @@ def run():
     GABOR_FREQ = 2
     GABOR_SIZE = 100
     RADIAL_EASING = 1000
+    AMOUNT_OF_TARGETS = 20
+    GABORS_PER_STIMULUS = 10
 
-    size = int(screen_height*3/4)
-
+    orientations = [random()*pi for _ in range(AMOUNT_OF_TARGETS)]
     targets = (fill_with_dots(int(height), [
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ,
-                            raidal_easing=RADIAL_EASING) for _ in range(int(10))
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=orientation,
+                            raidal_easing=RADIAL_EASING) for _ in range(int(GABORS_PER_STIMULUS))
     ])
-        for _ in range(20))
+        for orientation in orientations)
     
     nons = (fill_with_dots(int(height), [
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
-                            raidal_easing=RADIAL_EASING) for _ in range(int(10))
+                            raidal_easing=RADIAL_EASING) for _ in range(int(GABORS_PER_STIMULUS))
     ])
-        for _ in range(20))
+        for _ in range(AMOUNT_OF_TARGETS))
  
     mask = generate_noise(width, height)
 
