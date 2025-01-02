@@ -1,2 +1,2 @@
-from experiments.staircase_two_stims.side import run
+from experiments.staircase_two_stims.coherent_circle import run
 run()
