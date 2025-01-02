@@ -24,6 +24,11 @@
 			"source": "/dev/dri/renderD128",
 			"target": "/dev/dri/renderD128",
 			"type": "bind"
+		},
+		{
+			"source": "/dev/snd",
+			"target": "/dev/snd",
+			"type": "bind"
 		}
 	],
 	"containerEnv": {

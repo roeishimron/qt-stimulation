@@ -12,6 +12,7 @@ from math import ceil
 from dataclasses import dataclass, asdict
 from json import dumps, loads
 from matplotlib.pyplot import plot, show
+from subprocess import run
 
 class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
@@ -182,11 +183,13 @@ class StaircaseExperiment:
             self.trial_no, self.current_difficulty, success))
 
         if success:
+            run(["aplay", "success.wav"]) # intentionaly not parallel
             self.remaining_to_stepup -= 1
             if self.remaining_to_stepup == 0:
                 self.stepup()
                 self.remaining_to_stepup = 3  # streaks don't count
         else:
+            run(["aplay", "fail.wav"]) # intentionaly not parallel
             self.remaining_to_stepup = 3
             self.stepdown()
 

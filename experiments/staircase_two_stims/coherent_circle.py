@@ -32,7 +32,7 @@ def run():
     GABOR_FREQ = 2
     RADIAL_EASING = 1000
     AMOUNT_OF_DOTS = 30
-    COHERENT_DOTS = 20
+    COHERENT_DOTS = 15
 
     targets = (fill_with_dots(int(height), array([
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi,
