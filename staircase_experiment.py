@@ -6,7 +6,7 @@ from animator import Animator, OddballStimuli, Appliable
 from typing import Callable, List, Iterable, Tuple
 from viewing_experiment import Experiment, ViewExperiment
 from random import choice
-from stims import place_in_figure, array_into_pixmap
+from stims import place_in_figure, array_into_pixmap, generate_grey
 from numpy.typing import NDArray
 from math import ceil
 from dataclasses import dataclass, asdict
@@ -75,7 +75,11 @@ class TimedSampleChoiceGenerator:
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
 class TimedChoiceGenerator(TimedSampleChoiceGenerator):
+
+    gray: Appliable
+
     def __init__(self, screen_dimentions: Tuple[int, int], targets: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
+        self.gray = generate_grey(1)
         return super().__init__(screen_dimentions, targets, distractors, mask)
 
     def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
@@ -91,10 +95,12 @@ class TimedChoiceGenerator(TimedSampleChoiceGenerator):
                                         stim_and_distractor[int(
                                             not self.target_is_left)],
                                         stim_and_distractor[int(self.target_is_left)])
+                                        
+        
 
         return (OddballStimuli(self.screen_dimentions[0],
-                               iter([choice_screen, next(self.mask)])),
-                [duration, self.MASK_DURATION])
+                               iter([choice_screen, next(self.mask), self.gray])),
+                [duration, self.MASK_DURATION, 0])
 
 
 @dataclass
