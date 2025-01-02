@@ -203,12 +203,16 @@ def gabors_around_rec(width: int, height: int, amount_of_dots: int,
         for (rotation, (x, y)) in rects]
 
 def gabors_around_circle(center: Tuple[int,int], radius: int, amount_of_dots: int, 
-                         dot_size: int, gabor_freq: int, radial_easing:int) -> List[Dot]:
+                         dot_size: int, gabor_freq: int, radial_easing:int, flip_one=False) -> List[Dot]:
     angles = linspace(0, pi*2, amount_of_dots)
     properties = [circle_at(center, radius, angle) for angle in angles]
+    
+    flip_index = randint(0,len(angles)-1) if flip_one else -1
+
     return [Dot(dot_size/2, array(position), 
-                create_gabor_values(dot_size, gabor_freq, raidal_easing=radial_easing, rotation=rotation))
-                for (rotation, position) in properties]
+                create_gabor_values(dot_size, gabor_freq, raidal_easing=radial_easing,
+                                     rotation=rotation+pi/2 if i == flip_index else rotation))
+                for (i,(rotation, position)) in enumerate(properties)]
 
 def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:
     # there must be enough room for all the dots
