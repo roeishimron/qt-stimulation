@@ -31,9 +31,9 @@ def run():
     
     nons = [create_gabor_values(int(height), 0)]
  
-    mask = generate_noise(width, height, 32)
+    mask = (generate_noise(width, height, 24) for _ in range(20))
 
-    generator = TimedChoiceGenerator((height, width), cycle(targets), cycle(nons), cycle([mask]))
+    generator = TimedChoiceGenerator((height, width), cycle(targets), cycle(nons), cycle(mask))
 
     main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),

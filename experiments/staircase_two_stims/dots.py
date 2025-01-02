@@ -28,15 +28,15 @@ def run():
         for _ in range(20))
 
     nons = (fill_with_dots(int(height), [
-        create_gabor_values(GABOR_SIZE, GABOR_FREQ,
+        create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
                             raidal_easing=RADIAL_EASING) for _ in range(int(8))
     ])
         for _ in range(20))
 
-    mask = generate_noise(width, height, 32)
+    mask = (generate_noise(width, height, 24) for _ in range(20))
 
     generator = TimedChoiceGenerator(
-        (height, width), cycle(stims), cycle(nons), cycle([mask]))
+        (height, width), cycle(stims), cycle(nons), cycle(mask))
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
