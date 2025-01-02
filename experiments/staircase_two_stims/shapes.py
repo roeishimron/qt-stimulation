@@ -1,18 +1,11 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-from typing import List, Iterable
-from stims import generate_noise, gabors_around_rec, gabors_around_circle, place_in_figure, generate_solid_color, fill_with_dots, create_gabor_values
-from response_recorder import ResponseRecorder
+from stims import generate_noise, gabors_around_circle, fill_with_dots, create_gabor_values
 from soft_serial import SoftSerial
-from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
 from itertools import cycle
-from staircase_experiment import StaircaseExperiment, TimedSampleChoiceGenerator, ExperimentState
-from random import choices, random, choice, randint
-from experiments.words import COMMON_HEBREW_WORDS, into_arabic
-from copy import deepcopy
+from staircase_experiment import StaircaseExperiment, TimedChoiceGenerator, ExperimentState
+from random import random
 from numpy import pi, array
-from itertools import starmap
 from json import loads
 from matplotlib.pyplot import plot, show
 
@@ -39,7 +32,7 @@ def run():
     GABOR_FREQ = 2
     RADIAL_EASING = 1000
     AMOUNT_OF_DOTS = 30
-    COHERENT_DOTS = 20
+    COHERENT_DOTS = 10
 
     targets = (fill_with_dots(int(height), array([
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi,
@@ -53,9 +46,9 @@ def run():
     ]))
         for _ in range(20))
     
-    mask = generate_noise(width, height)
+    mask = generate_noise(width, height, 32)
 
-    generator = TimedSampleChoiceGenerator(
+    generator = TimedChoiceGenerator(
         (height, width), cycle(targets), cycle(nons), cycle([mask]))
 
     main_window = StaircaseExperiment.new(height, generator,
@@ -64,3 +57,5 @@ def run():
     main_window.experiment.show()
     # Run the main Qt loop
     app.exec()
+    main_window.log_into_graph()
+
