@@ -1,2 +1,2 @@
-from experiments.dots_staircase import run
+from experiments.staircase_two_stims.side import run
 run()
