@@ -10,8 +10,8 @@ from stims import place_in_figure, array_into_pixmap
 from numpy.typing import NDArray
 from math import ceil
 from dataclasses import dataclass, asdict
-from json import dumps
-
+from json import dumps, loads
+from matplotlib.pyplot import plot, show
 
 class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
@@ -124,15 +124,26 @@ class StaircaseExperiment:
 
     remaining_to_calibration_period: int
 
+    RESULTS_FILENAME = "results.txt"
+
     def get_step_size(self) -> int:
         return ceil(self.max_difficulty / 2**(self.current_step+1))
 
+    def log_into_graph(self):
+        sorted_states = list(map(lambda l: ExperimentState(
+            **loads(l)),  open(self.RESULTS_FILENAME).read().splitlines()))
+        xs = list(map(lambda s: s.trial_no, sorted_states))
+        ys = list(map(lambda s: 33-s.difficulty, sorted_states))
+        plot(xs, ys)
+        show(block=True)
+
     def record_to_file(self, state: ExperimentState):
-        with open("results.txt", "+a") as f:
+        with open(self.RESULTS_FILENAME, "+a") as f:
             f.write(dumps(asdict(state)) + "\n")
 
     def stepup(self):
-        self.current_difficulty += self.get_step_size()
+        if self.current_difficulty != self.max_difficulty:
+            self.current_difficulty += self.get_step_size()
         self.current_step += 1
         if not self.is_last_step_up:
             self.remaining_to_stop -= 1
