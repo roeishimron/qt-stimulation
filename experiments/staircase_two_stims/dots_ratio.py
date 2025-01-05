@@ -42,6 +42,8 @@ class GaborRatioGenerator(FunctionToStimuliGenerator):
         ratio = self.ratio_space[-(difficulty+1)]
         amounts = self._ratio_into_two_devidors(ratio)
 
+        print(f"required: {ratio} got {amounts[0]/amounts[1]}")
+
         first = fill_with_dots(int(self.figure_size), [
         create_gabor_values(self.GABOR_SIZE, self.GABOR_FREQ, rotation=random()*pi/2,
                             raidal_easing=self.RADIAL_EASING) for _ in range(amounts[0])
