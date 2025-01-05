@@ -13,8 +13,6 @@ from numpy.typing import NDArray
 
 class GaborRatioGenerator(FunctionToStimuliGenerator):
 
-    FPS_MS = 1000/60
-    MAX_DIFFICULTY = 32
     DISPLAY_TIME = 1000
 
     RATIO_RANGE = (1, 2)

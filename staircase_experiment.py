@@ -19,13 +19,11 @@ class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
     # def next_stimuli_and_durations(difficulty: int)-> (OddballStimuli, List[int])
     # def get_max_difficulty() -> int
-    pass
+    MAX_DIFFICULTY = 32 # All should vary the difficulty between 0 and 32 
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-class FunctionToStimuliGenerator:
-    MAX_DIFFICULTY = 32
-    MIN_DIFFICULTY = 0
+class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
 
     # returns ((stim, distractor, mask), (view_duration, mask_durtion)) while difficulties are hard-code
     stim_generator: Callable[[
@@ -47,7 +45,7 @@ class FunctionToStimuliGenerator:
         return self.target_is_left == response_is_left
 
     def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
-        assert difficulty <= self.get_max_difficulty()
+        assert difficulty <= self.MAX_DIFFICULTY
 
         self.target_is_left = choice([True, False])
         generated = self.stim_generator(difficulty)
@@ -62,9 +60,6 @@ class FunctionToStimuliGenerator:
         return (OddballStimuli(self.screen_dimentions[0],
                                iter([choice_screen, stim_distractor_mask[-1], self.gray])),
                 [durations[0], durations[1], 0])
-
-    def get_max_difficulty(self) -> int:
-        return self.MAX_DIFFICULTY - self.MIN_DIFFICULTY
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
@@ -94,9 +89,8 @@ class TimedChoiceGenerator(FunctionToStimuliGenerator):
 # DEPRECATED: Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
 
 
-class TimedSampleChoiceGenerator:
+class TimedSampleChoiceGenerator(StimuliRuntimeGenerator):
     MAX_FRAMES = 33
-    MIN_FRAMES = 1
     FPS_MS = 1000/60
 
     MASK_DURATION = 20 * FPS_MS
@@ -142,8 +136,6 @@ class TimedSampleChoiceGenerator:
                                      next(self.mask), choice_screen])),
                 [duration, self.MASK_DURATION, 0])
 
-    def get_max_difficulty(self) -> int:
-        return self.MAX_FRAMES - self.MIN_FRAMES
 
 
 @dataclass
@@ -170,8 +162,6 @@ class StaircaseExperiment:
     current_step: int
 
     trial_no: int
-
-    remaining_to_calibration_period: int
 
     RESULTS_FILENAME = "results.txt"
 
@@ -281,7 +271,7 @@ class StaircaseExperiment:
         obj.current_step = 0
         obj.trial_no = 0
 
-        obj.max_difficulty = obj.stimuli_generator.get_max_difficulty()
+        obj.max_difficulty = obj.stimuli_generator.MAX_DIFFICULTY
 
         obj.experiment.setup(
             event_trigger, None, obj.animator_display, fixation, on_runtime_keypress)
