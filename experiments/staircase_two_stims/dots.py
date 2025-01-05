@@ -4,7 +4,7 @@ from stims import generate_noise, fill_with_dots, create_gabor_values
 from soft_serial import SoftSerial
 from itertools import cycle
 from staircase_experiment import StaircaseExperiment, TimedChoiceGenerator
-from random import random
+from random import random, shuffle
 from numpy import pi
 from numpy.typing import NDArray
 
@@ -21,17 +21,20 @@ def run():
     GABOR_SIZE = 100
     RADIAL_EASING = 1000
 
+    base_sizes = list(range(7,15))
+    shuffle(base_sizes)
+
     stims = (fill_with_dots(int(height), [
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
-                            raidal_easing=RADIAL_EASING) for _ in range(int(16))
+                            raidal_easing=RADIAL_EASING) for _ in range(s*2)
     ])
-        for _ in range(20))
+        for s in base_sizes)
 
     nons = (fill_with_dots(int(height), [
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
-                            raidal_easing=RADIAL_EASING) for _ in range(int(8))
+                            raidal_easing=RADIAL_EASING) for _ in range(s)
     ])
-        for _ in range(20))
+        for s in base_sizes)
 
     mask = (generate_noise(width, height, 24) for _ in range(20))
 
