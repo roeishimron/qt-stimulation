@@ -31,6 +31,8 @@ class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
     screen_dimentions: Tuple[int, int]
     gray: Appliable
 
+    INTERTRIAL_DELAY = 300
+
     target_is_left: bool
 
     def __init__(self, screen_dimentions: Tuple[int, int],
@@ -60,8 +62,8 @@ class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
                                         stim_distractor_mask[int(self.target_is_left)])
 
         return (OddballStimuli(self.screen_dimentions[0],
-                               iter([choice_screen, stim_distractor_mask[-1], self.gray])),
-                [durations[0], durations[1], 0])
+                               iter([self.gray, choice_screen, stim_distractor_mask[-1]])),
+                [self.INTERTRIAL_DELAY, durations[0], durations[1]])
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
@@ -193,6 +195,8 @@ class StaircaseExperiment:
     upper_limit: int
     amount_of_currects: int
 
+    key_pressed_during_trial: int
+
     RESULTS_FILENAME = "results.txt"
 
     def get_step_size(self) -> int:
@@ -226,8 +230,12 @@ class StaircaseExperiment:
             self.remaining_to_stop -= 1
         self.is_last_step_up = False
 
-    def accept_answer(self, event: QKeyEvent):
-        key = event.key()
+
+    @Slot()
+    def accept_keypress_after_stim(self, event: QKeyEvent):
+        return self.accept_answer(event.key())
+        
+    def accept_answer(self, key: int):
         if key == Qt.Key.Key_Q:
             return self.experiment.quit()
 
@@ -273,20 +281,27 @@ class StaircaseExperiment:
         )
         self.experiment.set_animator(animator)
 
+    def update_last_pressed_key(self, event: QKeyEvent):
+        self.key_pressed_during_trial = event.key()
+
     @Slot()
     def trial_end(self):
-        if self.remaining_to_stop == 0:
-            self.experiment.quit()
+        captured_key = self.key_pressed_during_trial
+        self.key_pressed_during_trial = None
+        self.experiment.main_window.keyReleaseEvent = lambda _: print("clicked too late, there was a click before")
 
-        self.experiment.main_window.keyReleaseEvent = self.accept_answer
+        if captured_key != None:
+            self.accept_answer(captured_key)
+        else:
+            self.experiment.main_window.keyReleaseEvent = self.accept_keypress_after_stim
 
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
-            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass"),
             upper_limit: int=2**32):
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
+
         obj.animator_display = QLabel()
 
         obj.stimuli_generator = stimuli_generator
@@ -305,13 +320,17 @@ class StaircaseExperiment:
         obj.trial_no = 0
 
         obj.max_difficulty = obj.stimuli_generator.MAX_DIFFICULTY
+        obj.key_pressed_during_trial = None
 
         obj.experiment.setup(
-            event_trigger, None, obj.animator_display, fixation, on_runtime_keypress)
+            event_trigger, None, obj.animator_display, fixation, 
+            obj.update_last_pressed_key)
+        
         obj.reset_animator()
 
         obj.upper_limit = upper_limit
         obj.amount_of_currects = 0
+
 
         open('results.txt', 'w').close()
 
