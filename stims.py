@@ -214,12 +214,17 @@ def gabors_around_circle(center: Tuple[int,int], radius: int, amount_of_dots: in
                                      rotation=rotation+pi/2 if i == flip_index else rotation))
                 for (i,(rotation, position)) in enumerate(properties)]
 
-def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:
+def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[Dot] = []) -> NDArray:
     # there must be enough room for all the dots
     amount_of_dots = len(dots_fill) + len(priority_dots)
-    dot_size = dots_fill[0].shape[0]
 
-    assert dots_fill[0].shape[0] == dots_fill[0].shape[1]
+    if len(priority_dots) != 0:
+        dot_size = priority_dots[0].r*2
+
+    if len(dots_fill) != 0:
+        dot_size = dots_fill[0].shape[0]
+        assert dots_fill[0].shape[0] == dots_fill[0].shape[1]
+
     assert figure_size**2 >= amount_of_dots * (pi*(dot_size/2)**2)
 
     available_positions = full((figure_size, figure_size), True)
