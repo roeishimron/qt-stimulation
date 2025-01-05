@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QApplication
 from stims import generate_noise, fill_with_dots, create_gabor_values, generate_grey
 from soft_serial import SoftSerial
 from itertools import cycle
-from staircase_experiment import StaircaseExperiment, TimedChoiceGenerator
+from staircase_experiment import ConstantTimeChoiceGenerator, StaircaseExperiment, TimedChoiceGenerator
 from random import  random
 from numpy import pi
 
@@ -22,6 +22,7 @@ def run():
     RADIAL_EASING = 1000
     AMOUNT_OF_TARGETS = 20
     GABORS_PER_STIMULUS = 1
+    STIM_DURATION = 200
 
     targets = (fill_with_dots(int(height), [
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
@@ -33,7 +34,7 @@ def run():
  
     mask = (generate_noise(width, height, 24) for _ in range(20))
 
-    generator = TimedChoiceGenerator((height, width), cycle(targets), cycle(nons), cycle(mask))
+    generator = ConstantTimeChoiceGenerator((height, width), cycle(targets), cycle(nons), cycle(mask), STIM_DURATION)
 
     main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),

@@ -63,8 +63,8 @@ class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-class TimedChoiceGenerator(FunctionToStimuliGenerator):
-
+class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
+    
     FPS_MS = 1000/60
     MASK_DURATION = 20 * FPS_MS
     MAX_FRAMES = 33
@@ -72,19 +72,42 @@ class TimedChoiceGenerator(FunctionToStimuliGenerator):
     mask: Iterable[Appliable]
     stims: Iterable[NDArray]
     distractors: Iterable[NDArray]
+    time_generator: Callable[[int], int]
 
     def __init__(self, screen_dimentions: Tuple[int, int],
                  stims: Iterable[NDArray],
                  distractors: Iterable[NDArray],
-                 mask: Iterable[Appliable]):
+                 mask: Iterable[Appliable],
+                 time_generator: Callable[[int], int]):
+        
         self.stims = stims
         self.distractors = distractors
         self.mask = mask
+        self.time_generator = time_generator
         return super().__init__(screen_dimentions, self._generate_next_trial)
 
     def _generate_next_trial(self, difficulty: int):
         return ((next(self.stims), next(self.distractors), next(self.mask)),
-                (self.MAX_FRAMES * self.FPS_MS - difficulty, self.MASK_DURATION))
+                (self.time_generator(difficulty), self.MASK_DURATION))
+
+class TimedChoiceGenerator(DeterminedChoiceGenerator):
+    def __init__(self, screen_dimentions: Tuple[int, int],
+                 stims: Iterable[NDArray],
+                 distractors: Iterable[NDArray],
+                 mask: Iterable[Appliable]):
+        super().__init__(screen_dimentions, stims, distractors, mask, self._difficulty_into_ms)
+
+    def _difficulty_into_ms(self, difficulty:int) -> int:
+        return (self.MAX_FRAMES - difficulty) * self.FPS_MS 
+
+class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
+    def __init__(self, screen_dimentions: Tuple[int, int],
+                 stims: Iterable[NDArray],
+                 distractors: Iterable[NDArray],
+                 mask: Iterable[Appliable],
+                 stim_duration: int):
+        super().__init__(screen_dimentions, stims, distractors, mask, 
+                         lambda _: stim_duration)
 
 # DEPRECATED: Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
 
