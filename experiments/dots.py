@@ -36,7 +36,7 @@ def run():
         OddballStimuli(height, cycle(inflate_randomley(oddball, 10)),
                        cycle(inflate_randomley(base, 10)), 5), SoftSerial(), 5, True,
         fixation="+", trial_duration=45)
-    main_window.experiment.show()
+    main_window.show()
 
     # Run the main Qt loop
     app.exec()

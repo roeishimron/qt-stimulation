@@ -39,7 +39,7 @@ def run():
         SoftSerial(),
         use_step=True, fixation="+", upper_limit=120)
     
-    main_window.experiment.show()
+    main_window.show()
     # Run the main Qt loop
     app.exec()
     main_window.log_into_graph()

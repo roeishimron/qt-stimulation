@@ -43,7 +43,7 @@ def run():
     main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),
         use_step=True, fixation="+")
-    main_window.experiment.show()
+    main_window.show()
     # Run the main Qt loop
     app.exec()
     main_window.log_into_graph()

@@ -115,3 +115,6 @@ class ViewExperiment():
         obj.experiment.setup(event_trigger, animator, stimuli_display, fixation, on_runtime_keypress)
         
         return obj
+
+    def show(self):
+        return self.experiment.show()

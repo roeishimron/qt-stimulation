@@ -13,7 +13,7 @@ from dataclasses import dataclass, asdict
 from json import dumps, loads
 from matplotlib.pyplot import plot, show
 from subprocess import run
-
+from time import time_ns
 
 class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
@@ -172,6 +172,7 @@ class ExperimentState:
     trial_no: int
     difficulty: int
     success: bool
+    response_time_ns: int
 
 
 class StaircaseExperiment:
@@ -196,6 +197,8 @@ class StaircaseExperiment:
     amount_of_currects: int
 
     key_pressed_during_trial: int
+    key_pressed_time: int
+    stimuli_present_time: int
 
     RESULTS_FILENAME = "results.txt"
 
@@ -233,6 +236,7 @@ class StaircaseExperiment:
 
     @Slot()
     def accept_keypress_after_stim(self, event: QKeyEvent):
+        self.key_pressed_time = time_ns()
         return self.accept_answer(event.key())
         
     def accept_answer(self, key: int):
@@ -250,7 +254,8 @@ class StaircaseExperiment:
 
         self.trial_no += 1
         self.record_to_file(ExperimentState(
-            self.trial_no, self.current_difficulty, success))
+            self.trial_no, self.current_difficulty, 
+            success, self.key_pressed_time - self.stimuli_present_time))
 
         if success:
             self.amount_of_currects += 1
@@ -269,7 +274,7 @@ class StaircaseExperiment:
             return self.experiment.quit()
 
         self.reset_animator()
-        self.experiment.trial_start()
+        self.trial_start()
 
     def reset_animator(self):
         (stimuli, durations) = self.stimuli_generator.next_stimuli_and_durations(
@@ -282,7 +287,17 @@ class StaircaseExperiment:
         self.experiment.set_animator(animator)
 
     def update_last_pressed_key(self, event: QKeyEvent):
+        self.key_pressed_time = time_ns()
         self.key_pressed_during_trial = event.key()
+
+    def show(self):
+        self.experiment.main_window.showFullScreen()
+        self.trial_start()
+
+    @Slot()
+    def trial_start(self):
+        self.stimuli_present_time = time_ns()
+        self.experiment.trial_start()
 
     @Slot()
     def trial_end(self):
@@ -326,12 +341,13 @@ class StaircaseExperiment:
             event_trigger, None, obj.animator_display, fixation, 
             obj.update_last_pressed_key)
         
-        obj.reset_animator()
 
         obj.upper_limit = upper_limit
         obj.amount_of_currects = 0
-
+        obj.key_pressed_time = None
+        obj.stimuli_present_time = 0
 
         open('results.txt', 'w').close()
 
+        obj.reset_animator()
         return obj
