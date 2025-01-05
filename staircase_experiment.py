@@ -19,7 +19,7 @@ class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
     # def next_stimuli_and_durations(difficulty: int)-> (OddballStimuli, List[int])
     # def get_max_difficulty() -> int
-    MAX_DIFFICULTY = 32 # All should vary the difficulty between 0 and 32 
+    MAX_DIFFICULTY = 32  # All should vary the difficulty between 0 and 32
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
@@ -34,7 +34,9 @@ class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
     target_is_left: bool
 
     def __init__(self, screen_dimentions: Tuple[int, int],
-                 stim_generator: Callable[[int], Tuple[NDArray, NDArray]]):
+                 stim_generator:  Callable[[int],
+                                           Tuple[Tuple[NDArray, NDArray, NDArray],
+                                                 Tuple[int, int]]]):
         self.stim_generator = stim_generator
         self.screen_dimentions = screen_dimentions
         self.target_is_left = None
@@ -64,7 +66,7 @@ class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
 class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
-    
+
     FPS_MS = 1000/60
     MASK_DURATION = 20 * FPS_MS
     MAX_FRAMES = 33
@@ -79,7 +81,7 @@ class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
                  distractors: Iterable[NDArray],
                  mask: Iterable[Appliable],
                  time_generator: Callable[[int], int]):
-        
+
         self.stims = stims
         self.distractors = distractors
         self.mask = mask
@@ -90,15 +92,18 @@ class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
         return ((next(self.stims), next(self.distractors), next(self.mask)),
                 (self.time_generator(difficulty), self.MASK_DURATION))
 
+
 class TimedChoiceGenerator(DeterminedChoiceGenerator):
     def __init__(self, screen_dimentions: Tuple[int, int],
                  stims: Iterable[NDArray],
                  distractors: Iterable[NDArray],
                  mask: Iterable[Appliable]):
-        super().__init__(screen_dimentions, stims, distractors, mask, self._difficulty_into_ms)
+        super().__init__(screen_dimentions, stims,
+                         distractors, mask, self._difficulty_into_ms)
 
-    def _difficulty_into_ms(self, difficulty:int) -> int:
-        return (self.MAX_FRAMES - difficulty) * self.FPS_MS 
+    def _difficulty_into_ms(self, difficulty: int) -> int:
+        return (self.MAX_FRAMES - difficulty) * self.FPS_MS
+
 
 class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
     def __init__(self, screen_dimentions: Tuple[int, int],
@@ -106,7 +111,7 @@ class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
                  distractors: Iterable[NDArray],
                  mask: Iterable[Appliable],
                  stim_duration: int):
-        super().__init__(screen_dimentions, stims, distractors, mask, 
+        super().__init__(screen_dimentions, stims, distractors, mask,
                          lambda _: stim_duration)
 
 # DEPRECATED: Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
@@ -158,7 +163,6 @@ class TimedSampleChoiceGenerator(StimuliRuntimeGenerator):
                                iter([array_into_pixmap(stim_and_distractor[int(not stim_is_target)]),
                                      next(self.mask), choice_screen])),
                 [duration, self.MASK_DURATION, 0])
-
 
 
 @dataclass

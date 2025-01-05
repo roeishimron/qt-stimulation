@@ -21,20 +21,20 @@ def run():
     GABOR_SIZE = 100
     RADIAL_EASING = 1000
     AMOUNT_OF_TARGETS = 20
-    GABORS_PER_STIMULUS = 1
     STIM_DURATION = 200
 
     targets = (fill_with_dots(int(height), [
         create_gabor_values(GABOR_SIZE, GABOR_FREQ, rotation=random()*pi/2,
-                            raidal_easing=RADIAL_EASING) for _ in range(int(GABORS_PER_STIMULUS))
-    ])
+                            raidal_easing=RADIAL_EASING)])
         for _ in range(AMOUNT_OF_TARGETS))
     
-    nons = [create_gabor_values(int(height), 0)]
+    nons = [create_gabor_values(int(height), 0)] # this is grey
  
     mask = (generate_noise(width, height, 24) for _ in range(20))
 
-    generator = ConstantTimeChoiceGenerator((height, width), cycle(targets), cycle(nons), cycle(mask), STIM_DURATION)
+    generator = ConstantTimeChoiceGenerator((height, width), 
+                                            cycle(targets), cycle(nons), cycle(mask), 
+                                            STIM_DURATION)
 
     main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),
