@@ -14,6 +14,7 @@ from json import dumps, loads
 from matplotlib.pyplot import plot, show
 from subprocess import run
 
+
 class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
     # def next_stimuli_and_durations(difficulty: int)-> (OddballStimuli, List[int])
@@ -22,6 +23,77 @@ class StimuliRuntimeGenerator:
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
+class FunctionToStimuliGenerator:
+    MAX_DIFFICULTY = 32
+    MIN_DIFFICULTY = 0
+
+    # returns ((stim, distractor, mask), (view_duration, mask_durtion)) while difficulties are hard-code
+    stim_generator: Callable[[
+        int], Tuple[Tuple[NDArray, NDArray, NDArray], Tuple[int, int]]]
+    screen_dimentions: Tuple[int, int]
+    gray: Appliable
+
+    target_is_left: bool
+
+    def __init__(self, screen_dimentions: Tuple[int, int],
+                 stim_generator: Callable[[int], Tuple[NDArray, NDArray]]):
+        self.stim_generator = stim_generator
+        self.screen_dimentions = screen_dimentions
+        self.target_is_left = None
+        self.gray = generate_grey(1)
+
+    def accept_response(self, response_is_left: bool) -> bool:
+        assert self.target_is_left is not None
+        return self.target_is_left == response_is_left
+
+    def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
+        assert difficulty <= self.get_max_difficulty()
+
+        self.target_is_left = choice([True, False])
+        generated = self.stim_generator(difficulty)
+        stim_distractor_mask = generated[0]
+        durations = generated[1]
+
+        choice_screen = place_in_figure(self.screen_dimentions,
+                                        stim_distractor_mask[int(
+                                            not self.target_is_left)],
+                                        stim_distractor_mask[int(self.target_is_left)])
+
+        return (OddballStimuli(self.screen_dimentions[0],
+                               iter([choice_screen, stim_distractor_mask[-1], self.gray])),
+                [durations[0], durations[1], 0])
+
+    def get_max_difficulty(self) -> int:
+        return self.MAX_DIFFICULTY - self.MIN_DIFFICULTY
+
+
+# Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
+class TimedChoiceGenerator(FunctionToStimuliGenerator):
+
+    FPS_MS = 1000/60
+    MASK_DURATION = 20 * FPS_MS
+    MAX_FRAMES = 33
+
+    mask: Iterable[Appliable]
+    stims: Iterable[NDArray]
+    distractors: Iterable[NDArray]
+
+    def __init__(self, screen_dimentions: Tuple[int, int],
+                 stims: Iterable[NDArray],
+                 distractors: Iterable[NDArray],
+                 mask: Iterable[Appliable]):
+        self.stims = stims
+        self.distractors = distractors
+        self.mask = mask
+        return super().__init__(screen_dimentions, self._generate_next_trial)
+
+    def _generate_next_trial(self, difficulty: int):
+        return ((next(self.stims), next(self.distractors), next(self.mask)),
+                (self.MAX_FRAMES * self.FPS_MS - difficulty, self.MASK_DURATION))
+
+# DEPRECATED: Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
+
+
 class TimedSampleChoiceGenerator:
     MAX_FRAMES = 33
     MIN_FRAMES = 1
@@ -72,36 +144,6 @@ class TimedSampleChoiceGenerator:
 
     def get_max_difficulty(self) -> int:
         return self.MAX_FRAMES - self.MIN_FRAMES
-
-
-# Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-class TimedChoiceGenerator(TimedSampleChoiceGenerator):
-
-    gray: Appliable
-
-    def __init__(self, screen_dimentions: Tuple[int, int], targets: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
-        self.gray = generate_grey(1)
-        return super().__init__(screen_dimentions, targets, distractors, mask)
-
-    def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
-        assert difficulty <= self.get_max_difficulty()
-        duration = (self.MAX_FRAMES - difficulty) * self.FPS_MS
-
-        targets = self.stims
-
-        self.target_is_left = choice([True, False])
-        stim_and_distractor = (next(targets), next(self.distractors))
-
-        choice_screen = place_in_figure(self.screen_dimentions,
-                                        stim_and_distractor[int(
-                                            not self.target_is_left)],
-                                        stim_and_distractor[int(self.target_is_left)])
-                                        
-        
-
-        return (OddballStimuli(self.screen_dimentions[0],
-                               iter([choice_screen, next(self.mask), self.gray])),
-                [duration, self.MASK_DURATION, 0])
 
 
 @dataclass
@@ -183,13 +225,13 @@ class StaircaseExperiment:
             self.trial_no, self.current_difficulty, success))
 
         if success:
-            run(["aplay", "success.wav"]) # intentionaly not parallel
+            run(["aplay", "success.wav"])  # intentionaly not parallel
             self.remaining_to_stepup -= 1
             if self.remaining_to_stepup == 0:
                 self.stepup()
                 self.remaining_to_stepup = 3  # streaks don't count
         else:
-            run(["aplay", "fail.wav"]) # intentionaly not parallel
+            run(["aplay", "fail.wav"])  # intentionaly not parallel
             self.remaining_to_stepup = 3
             self.stepdown()
 
