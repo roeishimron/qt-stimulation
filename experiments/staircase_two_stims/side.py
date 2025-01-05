@@ -12,7 +12,6 @@ def run():
     # Create the Qt Application
     app = QApplication(sys.argv)
 
-
     screen_height = app.primaryScreen().geometry().height()
     height = int(screen_height*2/3)
     width = int(app.primaryScreen().geometry().width()*9/10)
@@ -38,7 +37,8 @@ def run():
 
     main_window = StaircaseExperiment.new(height, generator,
         SoftSerial(),
-        use_step=True, fixation="+")
+        use_step=True, fixation="+", upper_limit=4)
+    
     main_window.experiment.show()
     # Run the main Qt loop
     app.exec()

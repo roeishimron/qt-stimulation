@@ -190,6 +190,9 @@ class StaircaseExperiment:
 
     trial_no: int
 
+    upper_limit: int
+    amount_of_currects: int
+
     RESULTS_FILENAME = "results.txt"
 
     def get_step_size(self) -> int:
@@ -242,6 +245,7 @@ class StaircaseExperiment:
             self.trial_no, self.current_difficulty, success))
 
         if success:
+            self.amount_of_currects += 1
             run(["aplay", "success.wav"])  # intentionaly not parallel
             self.remaining_to_stepup -= 1
             if self.remaining_to_stepup == 0:
@@ -252,7 +256,8 @@ class StaircaseExperiment:
             self.remaining_to_stepup = 3
             self.stepdown()
 
-        if self.remaining_to_stop == 0:
+        if self.remaining_to_stop == 0 or self.trial_no == self.upper_limit:
+            print(f"success rate was {self.amount_of_currects/self.trial_no}")
             return self.experiment.quit()
 
         self.reset_animator()
@@ -277,7 +282,8 @@ class StaircaseExperiment:
 
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
-            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass"),
+            upper_limit: int=2**32):
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
@@ -303,6 +309,9 @@ class StaircaseExperiment:
         obj.experiment.setup(
             event_trigger, None, obj.animator_display, fixation, on_runtime_keypress)
         obj.reset_animator()
+
+        obj.upper_limit = upper_limit
+        obj.amount_of_currects = 0
 
         open('results.txt', 'w').close()
 
