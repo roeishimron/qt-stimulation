@@ -51,4 +51,3 @@ def run(meta_generator:
     main_window.show()
     # Run the main Qt loop
     app.exec()
-    main_window.log_into_graph()
