@@ -12,7 +12,8 @@ Write the following command:
 ```bash
 ./experiment-runner <name> <experiment>
 ```
-Where instead of `<name>` write the patiant name (or id) and instead of `<experiment>` write one of the following supported expreiments:
+Where instead of `<name>` write the patiant name (or id) and instead of `<experiment>` write one of the following supported expreiments:  
+
 1. `side_demo`
 1. `side`
 1. `numerosity_demo`
