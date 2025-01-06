@@ -11,9 +11,10 @@ from numpy.typing import NDArray
 from math import ceil
 from dataclasses import dataclass, asdict
 from json import dumps, loads
-from matplotlib.pyplot import plot, show
+from matplotlib.pyplot import plot, show, xlabel, ylabel
 from subprocess import run
 from time import time_ns
+
 
 class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
@@ -100,9 +101,9 @@ class TimedChoiceGenerator(DeterminedChoiceGenerator):
     def __init__(self, screen_dimentions: Tuple[int, int],
                  stims: Iterable[NDArray],
                  distractors: Iterable[NDArray],
-                 mask: Iterable[Appliable], 
-                 frames_factor:int=1):
-        
+                 mask: Iterable[Appliable],
+                 frames_factor: int = 1):
+
         self.frames_factor = frames_factor
 
         super().__init__(screen_dimentions, stims,
@@ -211,11 +212,15 @@ class StaircaseExperiment:
     def get_step_size(self) -> int:
         return ceil(self.max_difficulty / 2**(self.current_step+1))
 
-    def log_into_graph(self):
+    def log_into_graph(self, y_name: str = "difficulty",
+                       y_axis_transformer: Callable[[int], int] = lambda y: 32-y):
         sorted_states = list(map(lambda l: ExperimentState(
             **loads(l)),  open(self.RESULTS_FILENAME).read().splitlines()))
         xs = list(map(lambda s: s.trial_no, sorted_states))
-        ys = list(map(lambda s: 32-s.difficulty, sorted_states))
+        ys = list(map(y_axis_transformer, map(lambda s: s.difficulty, sorted_states)))
+
+        xlabel("Trial")
+        ylabel(y_name)
         plot(xs, ys)
         show(block=True)
 
@@ -239,12 +244,11 @@ class StaircaseExperiment:
             self.remaining_to_stop -= 1
         self.is_last_step_up = False
 
-
     @Slot()
     def accept_keypress_after_stim(self, event: QKeyEvent):
         self.key_pressed_time = time_ns()
         return self.accept_answer(event.key())
-        
+
     def accept_answer(self, key: int):
         if key == Qt.Key.Key_Q:
             return self.experiment.quit()
@@ -260,7 +264,7 @@ class StaircaseExperiment:
 
         self.trial_no += 1
         self.record_to_file(ExperimentState(
-            self.trial_no, self.current_difficulty, 
+            self.trial_no, self.current_difficulty,
             success, self.key_pressed_time - self.stimuli_present_time))
 
         if success:
@@ -275,9 +279,9 @@ class StaircaseExperiment:
             self.remaining_to_stepup = 3
             self.stepdown()
 
-        if (self.remaining_to_stop == 0 or 
-            self.trial_no == self.upper_limit or 
-            self.current_difficulty > self.target_difficulty):
+        if (self.remaining_to_stop == 0 or
+            self.trial_no == self.upper_limit or
+                self.current_difficulty > self.target_difficulty):
             print(f"success rate was {self.amount_of_currects/self.trial_no}")
             return self.experiment.quit()
 
@@ -311,7 +315,8 @@ class StaircaseExperiment:
     def trial_end(self):
         captured_key = self.key_pressed_during_trial
         self.key_pressed_during_trial = None
-        self.experiment.main_window.keyReleaseEvent = lambda _: print("clicked too late, there was a click before")
+        self.experiment.main_window.keyReleaseEvent = lambda _: print(
+            "clicked too late, there was a click before")
 
         if captured_key in {Qt.Key.Key_Right, Qt.Key.Key_Left}:
             self.accept_answer(captured_key)
@@ -320,8 +325,8 @@ class StaircaseExperiment:
 
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
-            upper_limit: int=2**32, 
-            target_difficulty: int=StimuliRuntimeGenerator().MAX_DIFFICULTY+1):
+            upper_limit: int = 2**32,
+            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY+1):
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
@@ -348,9 +353,8 @@ class StaircaseExperiment:
         obj.key_pressed_during_trial = None
 
         obj.experiment.setup(
-            event_trigger, None, obj.animator_display, fixation, 
+            event_trigger, None, obj.animator_display, fixation,
             obj.update_last_pressed_key)
-        
 
         obj.upper_limit = upper_limit
         obj.amount_of_currects = 0

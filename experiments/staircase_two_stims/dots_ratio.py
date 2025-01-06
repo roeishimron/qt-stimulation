@@ -83,4 +83,4 @@ def run():
     main_window.show()
     # Run the main Qt loop
     app.exec()
-    main_window.log_into_graph()
+    main_window.log_into_graph("ratio", lambda y: 2-y/32)
