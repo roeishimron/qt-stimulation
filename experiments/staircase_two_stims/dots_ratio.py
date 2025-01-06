@@ -29,7 +29,8 @@ class GaborRatioGenerator(FunctionToStimuliGenerator):
     grey: Appliable
 
     def __init__(self, screen_dimentions: Tuple[int, int]):
-        self.ratio_space = linspace(self.RATIO_RANGE[0], self.RATIO_RANGE[1], self.MAX_DIFFICULTY)
+        amount_of_difficulties = self.MAX_DIFFICULTY+1
+        self.ratio_space = linspace(self.RATIO_RANGE[0]+1/amount_of_difficulties, self.RATIO_RANGE[1], amount_of_difficulties)
         self.figure_size = screen_dimentions[0]
         self.grey = generate_grey(1)
         return super().__init__(screen_dimentions, self._generate_next_trial)
