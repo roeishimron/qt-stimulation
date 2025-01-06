@@ -6,7 +6,7 @@ from animator import OddballStimuli
 from itertools import cycle
 from viewing_experiment import ViewExperiment
 from random import randint
-from numpy import array, average, square, pi, sqrt
+from numpy import array, pi
 
 
 def run():
