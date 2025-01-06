@@ -3,12 +3,15 @@ from PySide6.QtWidgets import QApplication
 from stims import Dot, generate_noise, fill_with_dots, create_gabor_values, generate_grey
 from soft_serial import SoftSerial
 from itertools import cycle
-from staircase_experiment import ConstantTimeChoiceGenerator, StaircaseExperiment, TimedChoiceGenerator
+from staircase_experiment import ConstantTimeChoiceGenerator, StaircaseExperiment, StimuliRuntimeGenerator
 from random import shuffle
 from numpy import linspace, array
 
+from numpy.typing import NDArray
+from typing import Callable, Iterable, Tuple
 
-def run():
+def run(meta_generator:
+        Callable[[Tuple[int, int], Iterable[NDArray], Iterable[NDArray], Iterable[NDArray]], StimuliRuntimeGenerator]):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -36,9 +39,7 @@ def run():
     nons = [(create_gabor_values(int(height), 0))]  # this is grey
     mask = (generate_noise(width, height, 24) for _ in range(20))
 
-    generator = ConstantTimeChoiceGenerator((height, width),
-                                            cycle(targets), cycle(nons), cycle(mask),
-                                            STIM_DURATION)
+    generator = meta_generator((height, width), cycle(targets), cycle(nons), cycle(mask))
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
