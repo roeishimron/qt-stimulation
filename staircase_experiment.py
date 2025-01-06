@@ -109,7 +109,7 @@ class TimedChoiceGenerator(DeterminedChoiceGenerator):
                          distractors, mask, self._difficulty_into_ms)
 
     def _difficulty_into_ms(self, difficulty: int) -> int:
-        return ((self.MAX_DIFFICULTY - difficulty)*self.frames_factor) * self.FPS_MS
+        return ((self.MAX_DIFFICULTY - difficulty+1)*self.frames_factor) * self.FPS_MS
 
 
 class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
