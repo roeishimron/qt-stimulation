@@ -192,6 +192,7 @@ class StaircaseExperiment:
     amount_of_levels: int
     current_difficulty: int
     max_difficulty: int
+    target_difficulty: int
 
     is_last_step_up: bool
     current_step: int
@@ -274,7 +275,9 @@ class StaircaseExperiment:
             self.remaining_to_stepup = 3
             self.stepdown()
 
-        if self.remaining_to_stop == 0 or self.trial_no == self.upper_limit:
+        if (self.remaining_to_stop == 0 or 
+            self.trial_no == self.upper_limit or 
+            self.current_difficulty > self.target_difficulty):
             print(f"success rate was {self.amount_of_currects/self.trial_no}")
             return self.experiment.quit()
 
@@ -317,7 +320,8 @@ class StaircaseExperiment:
 
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
-            upper_limit: int=2**32):
+            upper_limit: int=2**32, 
+            target_difficulty: int=StimuliRuntimeGenerator().MAX_DIFFICULTY+1):
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
@@ -340,6 +344,7 @@ class StaircaseExperiment:
         obj.trial_no = 0
 
         obj.max_difficulty = obj.stimuli_generator.MAX_DIFFICULTY
+        obj.target_difficulty = target_difficulty
         obj.key_pressed_during_trial = None
 
         obj.experiment.setup(

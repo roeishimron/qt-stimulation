@@ -11,7 +11,8 @@ from numpy.typing import NDArray
 from typing import Callable, Iterable, Tuple
 
 def run(meta_generator:
-        Callable[[Tuple[int, int], Iterable[NDArray], Iterable[NDArray], Iterable[NDArray]], StimuliRuntimeGenerator]):
+        Callable[[Tuple[int, int], Iterable[NDArray], Iterable[NDArray], Iterable[NDArray]], StimuliRuntimeGenerator],
+        target_difficulty:int=StimuliRuntimeGenerator().MAX_DIFFICULTY+1):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -43,7 +44,9 @@ def run(meta_generator:
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
-                                          use_step=True, fixation="+", upper_limit=len(dots)*2)
+                                          use_step=True, fixation="+",
+                                          upper_limit=len(dots)*2,
+                                          target_difficulty=target_difficulty)
 
     main_window.show()
     # Run the main Qt loop
