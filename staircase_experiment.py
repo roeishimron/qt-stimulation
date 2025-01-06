@@ -305,7 +305,7 @@ class StaircaseExperiment:
         self.key_pressed_during_trial = None
         self.experiment.main_window.keyReleaseEvent = lambda _: print("clicked too late, there was a click before")
 
-        if captured_key != None:
+        if captured_key in {Qt.Key.Key_Right, Qt.Key.Key_Left}:
             self.accept_answer(captured_key)
         else:
             self.experiment.main_window.keyReleaseEvent = self.accept_keypress_after_stim
