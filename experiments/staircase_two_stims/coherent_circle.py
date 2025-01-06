@@ -14,7 +14,7 @@ def log_into_graph():
     sorted_states = list(map(lambda l: ExperimentState(
         **loads(l)),  open("logs/results.txt").read().splitlines()))
     xs = list(map(lambda s: s.trial_no, sorted_states))
-    ys = list(map(lambda s: 33-s.difficulty, sorted_states))
+    ys = list(map(lambda s: 32-s.difficulty, sorted_states))
     plot(xs, ys)
     show(block=True)
 
