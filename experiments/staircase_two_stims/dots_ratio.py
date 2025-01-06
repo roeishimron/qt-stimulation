@@ -16,7 +16,7 @@ class GaborRatioGenerator(FunctionToStimuliGenerator):
     DISPLAY_TIME = 1000
 
     RATIO_RANGE = (1, 2)
-    AMOUNTS_RANGE = (7,30)
+    AMOUNTS_RANGE = (7,28)
     
 
     GABOR_FREQ = 2
