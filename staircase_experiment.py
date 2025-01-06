@@ -19,7 +19,7 @@ class StimuliRuntimeGenerator:
     # def accept_response(response: bool) -> bool
     # def next_stimuli_and_durations(difficulty: int)-> (OddballStimuli, List[int])
     # def get_max_difficulty() -> int
-    MAX_DIFFICULTY = 32  # All should vary the difficulty between 0 and 32
+    MAX_DIFFICULTY = 31  # All should vary the difficulty between 0 and 31
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
