@@ -207,10 +207,12 @@ class StaircaseExperiment:
     key_pressed_time: int
     stimuli_present_time: int
 
+    step_size: int
+
     RESULTS_FILENAME = "logs/results.txt"
 
     def get_step_size(self) -> int:
-        return ceil(self.max_difficulty / 2**(self.current_step+1))
+        return self.step_size
 
     def log_into_graph(self, y_name: str = "difficulty",
                        y_axis_transformer: Callable[[int], int] = lambda y: 32-y):
@@ -231,6 +233,8 @@ class StaircaseExperiment:
     def stepup(self):
         if self.current_difficulty != self.max_difficulty:
             self.current_difficulty += self.get_step_size()
+        
+        self.step_size = ceil(self.step_size/2)
         self.current_step += 1
         if not self.is_last_step_up:
             self.remaining_to_stop -= 1
@@ -350,6 +354,7 @@ class StaircaseExperiment:
 
         obj.max_difficulty = obj.stimuli_generator.MAX_DIFFICULTY
         obj.target_difficulty = target_difficulty
+        obj.step_size = int((obj.max_difficulty+1)/2) # staring from 0!
         obj.key_pressed_during_trial = None
 
         obj.experiment.setup(
