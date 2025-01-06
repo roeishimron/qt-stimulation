@@ -1,7 +1,12 @@
 import os
 import experiments
 import experiments.staircase_two_stims
+import experiments.staircase_two_stims.dots
+import experiments.staircase_two_stims.dots.dots
+import experiments.staircase_two_stims.dots.dots_demo
+import experiments.staircase_two_stims.dots_ratio
 import experiments.staircase_two_stims.side
+import experiments.staircase_two_stims.side.demo
 import experiments.staircase_two_stims.side.side
 
 name = os.environ["name"]
@@ -14,6 +19,6 @@ elif experiment == "side_demo":
 elif experiment == "dots":
     experiments.staircase_two_stims.dots.dots.run()
 elif experiment == "dots_demo":
-    experiments.staircase_two_stims.dots.demo.run()
+    experiments.staircase_two_stims.dots.dots_demo.run()
 elif experiment == "dots_ratio":
     experiments.staircase_two_stims.dots_ratio.run()
