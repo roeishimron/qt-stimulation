@@ -1,5 +1,4 @@
 *.pyc
 *.jpg
 *.jpeg
-results.txt
-positions.txt
+logs/*

@@ -205,7 +205,7 @@ class StaircaseExperiment:
     key_pressed_time: int
     stimuli_present_time: int
 
-    RESULTS_FILENAME = "results.txt"
+    RESULTS_FILENAME = "logs/results.txt"
 
     def get_step_size(self) -> int:
         return ceil(self.max_difficulty / 2**(self.current_step+1))
@@ -352,7 +352,7 @@ class StaircaseExperiment:
         obj.key_pressed_time = None
         obj.stimuli_present_time = 0
 
-        open('results.txt', 'w').close()
+        open('logs/results.txt', 'w').close()
 
         obj.reset_animator()
         return obj
