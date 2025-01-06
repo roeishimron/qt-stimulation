@@ -6,7 +6,6 @@ from itertools import cycle
 from staircase_experiment import StaircaseExperiment, StimuliRuntimeGenerator
 from random import random, shuffle
 from numpy import pi
-from numpy.typing import NDArray
 
 from numpy.typing import NDArray
 from typing import Callable, Iterable, Tuple
