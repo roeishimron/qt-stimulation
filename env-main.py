@@ -16,9 +16,9 @@ if experiment == "side":
     experiments.staircase_two_stims.side.side.run()
 elif experiment == "side_demo":
     experiments.staircase_two_stims.side.demo.run()
-elif experiment == "dots":
+elif experiment == "numerosity_SOA":
     experiments.staircase_two_stims.dots.dots.run()
-elif experiment == "dots_demo":
+elif experiment == "numerosity_demo":
     experiments.staircase_two_stims.dots.dots_demo.run()
-elif experiment == "dots_ratio":
+elif experiment == "numerosity_ratio":
     experiments.staircase_two_stims.dots_ratio.run()
