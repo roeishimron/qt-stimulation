@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/vscode/devcontainers/python:3
+COPY requirements.txt /tmp/requirements.txt
+COPY apt-requirements.txt /tmp/apt-requirements.txt
+
+RUN echo "alias ll='ls -alF'"  >> ~/.bashrc
+
+RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
+RUN pip install -r /tmp/requirements.txt
