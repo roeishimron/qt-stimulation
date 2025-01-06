@@ -71,7 +71,6 @@ class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
 
     FPS_MS = 1000/60
     MASK_DURATION = 20 * FPS_MS
-    MAX_FRAMES = 33
 
     mask: Iterable[Appliable]
     stims: Iterable[NDArray]
@@ -96,15 +95,21 @@ class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
 
 
 class TimedChoiceGenerator(DeterminedChoiceGenerator):
+    frames_factor: int
+
     def __init__(self, screen_dimentions: Tuple[int, int],
                  stims: Iterable[NDArray],
                  distractors: Iterable[NDArray],
-                 mask: Iterable[Appliable]):
+                 mask: Iterable[Appliable], 
+                 frames_factor:int=1):
+        
+        self.frames_factor = frames_factor
+
         super().__init__(screen_dimentions, stims,
                          distractors, mask, self._difficulty_into_ms)
 
     def _difficulty_into_ms(self, difficulty: int) -> int:
-        return (self.MAX_FRAMES - difficulty) * self.FPS_MS
+        return ((self.MAX_DIFFICULTY - difficulty)*self.frames_factor+1) * self.FPS_MS
 
 
 class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
