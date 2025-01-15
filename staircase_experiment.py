@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 from math import ceil
 from dataclasses import dataclass, asdict
 from json import dumps, loads
-from matplotlib.pyplot import plot, show, xlabel, ylabel
+from matplotlib.pyplot import plot, show, xlabel, ylabel, savefig, cla
 from subprocess import run
 from time import time_ns
 
@@ -215,16 +215,26 @@ class StaircaseExperiment:
         return self.step_size
 
     def log_into_graph(self, y_name: str = "difficulty",
-                       y_axis_transformer: Callable[[int], int] = lambda y: 32-y):
+                       y_axis_transformer: Callable[[int], int] = lambda y: 32-y,
+                       filename=None, block=True, should_save=False, label=""):
+        
+        if filename == None: #no default arg for properties....
+            filename = self.RESULTS_FILENAME
+        
         sorted_states = list(map(lambda l: ExperimentState(
-            **loads(l)),  open(self.RESULTS_FILENAME).read().splitlines()))
+            **loads(l)),  open(filename).read().splitlines()))
         xs = list(map(lambda s: s.trial_no, sorted_states))
         ys = list(map(y_axis_transformer, map(lambda s: s.difficulty, sorted_states)))
 
         xlabel("Trial")
         ylabel(y_name)
-        plot(xs, ys)
-        show(block=True)
+        plot(xs, ys, label=label)
+        show(block=block)
+        if should_save:
+            savefig(filename.replace(".txt", ".png"))
+            cla()
+
+
 
     def record_to_file(self, state: ExperimentState):
         with open(self.RESULTS_FILENAME, "+a") as f:
