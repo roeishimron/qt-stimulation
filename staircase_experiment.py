@@ -24,7 +24,7 @@ class StimuliRuntimeGenerator:
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
+class FunctionToStimuliChoiceGenerator(StimuliRuntimeGenerator):
 
     # returns ((stim, distractor, mask), (view_duration, mask_durtion)) while difficulties are hard-code
     stim_generator: Callable[[
@@ -68,7 +68,7 @@ class FunctionToStimuliGenerator(StimuliRuntimeGenerator):
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-class DeterminedChoiceGenerator(FunctionToStimuliGenerator):
+class DeterminedChoiceGenerator(FunctionToStimuliChoiceGenerator):
 
     FPS_MS = 1000/60
     MASK_DURATION = 20 * FPS_MS

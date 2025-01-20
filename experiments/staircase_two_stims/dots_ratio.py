@@ -5,13 +5,13 @@ from animator import Appliable
 from stims import generate_grey, generate_noise, fill_with_dots, create_gabor_values
 from soft_serial import SoftSerial
 from itertools import cycle
-from staircase_experiment import FunctionToStimuliGenerator, StaircaseExperiment, TimedChoiceGenerator
+from staircase_experiment import FunctionToStimuliChoiceGenerator, StaircaseExperiment, TimedChoiceGenerator
 from random import random, shuffle
 from numpy import linspace, pi
 from numpy.typing import NDArray
 
 
-class GaborRatioGenerator(FunctionToStimuliGenerator):
+class GaborRatioGenerator(FunctionToStimuliChoiceGenerator):
 
     DISPLAY_TIME = 1000
 
