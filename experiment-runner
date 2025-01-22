@@ -1,2 +1,1 @@
-mkdir $1_$2
-docker run -it -e name=$1 -e experiment=$2 -e DISPLAY=unix:0 -e PULSE_SERVER=unix:/mnt/wslg/PulseServer --mount type=bind,source="/tmp/.X11-unix",target="/tmp/.X11-unix" --mount type=bind,source=/mnt/wslg,target=/mnt/wslg  --device /dev/dri/renderD128:/dev/dri/renderD128 --device /dev/snd:/dev/snd --privileged --mount type=bind,source=$PWD/$1_$2,target=/home/logs experiments
+docker run -it -e DISPLAY=unix:0 -e PULSE_SERVER=unix:/mnt/wslg/PulseServer --mount type=bind,source="/tmp/.X11-unix",target="/tmp/.X11-unix" --mount type=bind,source=/mnt/wslg,target=/mnt/wslg  --device /dev/dri/renderD128:/dev/dri/renderD128 --device /dev/snd:/dev/snd --privileged --mount type=bind,source=$PWD,target=/output roeishimron/experiments:latest
