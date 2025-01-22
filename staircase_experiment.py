@@ -340,7 +340,7 @@ class StaircaseExperiment:
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
             upper_limit: int = 2**32,
-            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY+1):
+            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY+1): # default is unreachable
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
