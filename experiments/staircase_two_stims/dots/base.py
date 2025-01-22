@@ -12,7 +12,8 @@ from typing import Callable, Iterable, Tuple
 
 
 def run(meta_generator:
-        Callable[[Tuple[int, int], Iterable[NDArray], Iterable[NDArray], Iterable[NDArray]], StimuliRuntimeGenerator]):
+        Callable[[Tuple[int, int], Iterable[NDArray], Iterable[NDArray], Iterable[NDArray]], StimuliRuntimeGenerator],
+        saveto=""):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -46,7 +47,8 @@ def run(meta_generator:
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
-                                          use_step=True, fixation="+")
+                                          use_step=True, fixation="+",
+                                          saveto=saveto)
     main_window.show()
     # Run the main Qt loop
     app.exec()

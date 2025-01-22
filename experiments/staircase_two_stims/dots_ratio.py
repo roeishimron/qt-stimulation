@@ -68,7 +68,7 @@ class GaborRatioGenerator(FunctionToStimuliChoiceGenerator):
 
         return best_match
 
-def run():
+def run(saveto=""):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -80,7 +80,8 @@ def run():
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
-                                          use_step=True, fixation="+")
+                                          use_step=True, fixation="+",
+                                          saveto=saveto)
     main_window.show()
     # Run the main Qt loop
     app.exec()

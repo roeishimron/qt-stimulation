@@ -252,7 +252,7 @@ class StaircaseExperiment:
 
     step_size: int
 
-    RESULTS_FILENAME = "logs/results.txt"
+    results_filename : str
 
     def get_step_size(self) -> int:
         return self.step_size
@@ -262,7 +262,7 @@ class StaircaseExperiment:
                        filename=None, block=True, should_save=False, label=""):
         
         if filename == None: #no default arg for properties....
-            filename = self.RESULTS_FILENAME
+            filename = self.results_filename
         
         sorted_states = list(map(lambda l: ExperimentState(
             **loads(l)),  open(filename).read().splitlines()))
@@ -280,7 +280,7 @@ class StaircaseExperiment:
 
 
     def record_to_file(self, state: ExperimentState):
-        with open(self.RESULTS_FILENAME, "+a") as f:
+        with open(self.results_filename, "+a") as f:
             f.write(dumps(asdict(state)) + "\n")
 
     def stepup(self):
@@ -383,7 +383,8 @@ class StaircaseExperiment:
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
             upper_limit: int = 2**32,
-            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY+1): # default is unreachable
+            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY+1, # default is unreachable
+            saveto = "logs"): 
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
@@ -418,8 +419,9 @@ class StaircaseExperiment:
         obj.amount_of_currects = 0
         obj.key_pressed_time = None
         obj.stimuli_present_time = 0
+        obj.results_filename = f"{saveto}/results.txt"
 
-        open('logs/results.txt', 'w').close()
+        open(obj.results_filename, 'w').close() # delete old copy
 
         obj.reset_animator()
         return obj
