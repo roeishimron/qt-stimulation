@@ -30,7 +30,7 @@ def run(meta_generator:
     positions = [(x, y) for x in position_xs for y in position_xs]
     shuffle(positions)
 
-    with open("logs/positions.txt", "w") as f:
+    with open(f"{saveto}/positions.txt", "w") as f:
         f.write(",".join(f"({x},{y})" for (x,y) in positions))
     
     dots = [Dot(GABOR_SIZE/2, array(p),
