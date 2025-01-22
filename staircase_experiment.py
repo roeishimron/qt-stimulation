@@ -165,57 +165,6 @@ class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
         super().__init__(screen_dimentions, stims, distractors, mask,
                          lambda _: stim_duration)
 
-# DEPRECATED: Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
-
-
-class TimedSampleChoiceGenerator(StimuliRuntimeGenerator):
-    MAX_FRAMES = 33
-    FPS_MS = 1000/60
-
-    MASK_DURATION = 20 * FPS_MS
-
-    mask: Iterable[Appliable]
-    stims: Iterable[NDArray]
-    distractors: Iterable[NDArray]
-
-    screen_dimentions: Tuple[int, int]
-
-    target_is_left: bool
-
-    def __init__(self, screen_dimentions: Tuple[int, int], stims: Iterable[NDArray], distractors: Iterable[NDArray], mask: Iterable[Appliable]):
-        self.stims = stims
-        self.distractors = distractors
-        self.mask = mask
-        self.screen_dimentions = screen_dimentions
-
-        self.target_is_left = None
-
-    def accept_response(self, response_is_left: bool) -> bool:
-        assert self.target_is_left is not None
-        return self.target_is_left == response_is_left
-
-    def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
-        assert difficulty <= self.get_max_difficulty()
-        duration = (self.MAX_FRAMES - difficulty) * self.FPS_MS
-
-        stim_is_left = choice([True, False])
-        stim_is_target = choice([True, False])
-
-        self.target_is_left = (stim_is_left and stim_is_target) or (
-            (not stim_is_left) and (not stim_is_target))
-        stim_and_distractor = (next(self.stims), next(self.distractors))
-
-        choice_screen = place_in_figure(self.screen_dimentions,
-                                        stim_and_distractor[int(
-                                            not stim_is_left)],
-                                        stim_and_distractor[int(stim_is_left)])
-
-        return (OddballStimuli(self.screen_dimentions[0],
-                               iter([array_into_pixmap(stim_and_distractor[int(not stim_is_target)]),
-                                     next(self.mask), choice_screen])),
-                [duration, self.MASK_DURATION, 0])
-
-
 @dataclass
 class ExperimentState:
     trial_no: int
