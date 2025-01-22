@@ -56,7 +56,7 @@ def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1,
                         step=False, raidal_easing=inf, rotation=0) -> NDArray:
     assert figure_size >= 2*frequency
     frame = None
-    if rotation % pi == 0:
+    if rotation % (pi/2) == 0:
         frame = _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, rotation % pi/2 == 0)
     else:
         frame = _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation)
