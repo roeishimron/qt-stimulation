@@ -63,8 +63,8 @@ class FunctionToStimuliChoiceGenerator(StimuliRuntimeGenerator):
                                         stim_distractor_mask[int(self.target_is_left)])
 
         return (OddballStimuli(self.screen_dimentions[0],
-                               iter([self.gray, choice_screen, stim_distractor_mask[-1]])),
-                [self.INTERTRIAL_DELAY, durations[0], durations[1]])
+                               iter([self.gray, choice_screen, stim_distractor_mask[-1], self.gray])),
+                [self.INTERTRIAL_DELAY, durations[0], durations[1], 0])
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
