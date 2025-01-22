@@ -22,7 +22,7 @@ class GaborSizeGenerator(FunctionToStimuliChoiceGenerator):
 
     figure_size: int
     grey_stim: NDArray
-    grey_mask: NDArray
+    grey_mask: Appliable
     
     def __init__(self, screen_dimentions: Tuple[int, int]):
         self.figure_size = screen_dimentions[0]

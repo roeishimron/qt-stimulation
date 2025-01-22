@@ -28,7 +28,7 @@ class FunctionToStimuliChoiceGenerator(StimuliRuntimeGenerator):
 
     # returns ((stim, distractor, mask), (view_duration, mask_durtion)) while difficulties are hard-code
     stim_generator: Callable[[
-        int], Tuple[Tuple[NDArray, NDArray, NDArray], Tuple[int, int]]]
+        int], Tuple[Tuple[NDArray, NDArray, Appliable], Tuple[int, int]]]
     screen_dimentions: Tuple[int, int]
     gray: Appliable
 
@@ -38,7 +38,7 @@ class FunctionToStimuliChoiceGenerator(StimuliRuntimeGenerator):
 
     def __init__(self, screen_dimentions: Tuple[int, int],
                  stim_generator:  Callable[[int],
-                                           Tuple[Tuple[NDArray, NDArray, NDArray],
+                                           Tuple[Tuple[NDArray, NDArray, Appliable],
                                                  Tuple[int, int]]]):
         self.stim_generator = stim_generator
         self.screen_dimentions = screen_dimentions
