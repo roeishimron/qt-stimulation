@@ -49,7 +49,7 @@ class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
         return ((stim, is_horizontal, mask), (self.DISPLAY_TIME, self.DISPLAY_TIME))
 
 
-def run():
+def run(saveto=""):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -61,7 +61,8 @@ def run():
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
-                                          use_step=True, fixation="")
+                                          use_step=True, fixation="",
+                                          saveto=saveto)
     main_window.show()
     # Run the main Qt loop
     app.exec()

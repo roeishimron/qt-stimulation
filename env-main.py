@@ -8,6 +8,8 @@ import experiments.staircase_two_stims.dots_ratio
 import experiments.staircase_two_stims.side
 import experiments.staircase_two_stims.side.demo
 import experiments.staircase_two_stims.side.side
+import  experiments.staircase_two_stims.csf_frequencial
+import  experiments.staircase_two_stims.csf_spacial
 
 print("Subject Name:")
 name = input()
@@ -27,5 +29,9 @@ elif experiment == "numerosity_demo":
     experiments.staircase_two_stims.dots.dots_demo.run(output_folder)
 elif experiment == "numerosity_ratio":
     experiments.staircase_two_stims.dots_ratio.run(output_folder)
+elif experiment == "csf_freq":
+    experiments.staircase_two_stims.csf_frequencial.run(output_folder)
+elif experiment == "csf_space":
+    experiments.staircase_two_stims.csf_spacial.run(output_folder)
 else:
     print("No such experiment!")
