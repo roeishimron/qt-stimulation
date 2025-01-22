@@ -23,6 +23,49 @@ class StimuliRuntimeGenerator:
     MAX_DIFFICULTY = 31  # All should vary the difficulty between 0 and 31
 
 
+# accepting a stimuli and it's "targetness" instead of two stimuli
+class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
+    # returns ((stim, is_target, mask), (view_duration, mask_durtion)) while difficulties are hard-code
+    stim_generator: Callable[[
+        int], Tuple[Tuple[Appliable, bool, Appliable], Tuple[int, int]]]
+    screen_dimentions: Tuple[int, int]
+    gray: Appliable
+
+    INTERTRIAL_DELAY = 300
+
+    last_is_target: bool
+
+    current_mask : Appliable
+
+    def __init__(self, screen_dimentions: Tuple[int, int],
+                 stim_generator:  Callable[[int],
+                                           Tuple[Tuple[Appliable, bool, Appliable],
+                                                 Tuple[int, int]]]):
+        self.stim_generator = stim_generator
+        self.screen_dimentions = screen_dimentions
+        self.last_is_target = None
+        self.gray = generate_grey(1)
+
+    def accept_response(self, response_is_left: bool) -> bool:
+        assert self.last_is_target is not None
+        return self.last_is_target == response_is_left
+
+    def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
+        assert difficulty <= self.MAX_DIFFICULTY
+        
+        generated = self.stim_generator(difficulty)
+        stim_value_mask = generated[0]
+        
+        self.last_is_target = stim_value_mask[1]
+
+        durations = generated[1]
+
+        return (OddballStimuli(self.screen_dimentions[0],
+                               iter([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
+                [self.INTERTRIAL_DELAY, durations[0], durations[1], 0])
+
+
+
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
 class FunctionToStimuliChoiceGenerator(StimuliRuntimeGenerator):
 
