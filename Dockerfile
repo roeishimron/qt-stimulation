@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
 RUN apt-get update && apt-get install -y pulseaudio
 RUN pip install -r /tmp/requirements.txt
 
+ENV DISPLAY=unix:0 PULSE_SERVER=unix:/mnt/wslg/PulseServer
+
 COPY . /home
 
 CMD cd home && python env-main.py
