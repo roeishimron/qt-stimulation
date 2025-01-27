@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import cos, sin, pi, linspace, sqrt, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros
+from numpy import cos, sin, pi, linspace, sqrt, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros, where, all
 from numpy.random import choice, rand
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
@@ -232,41 +232,41 @@ def gabors_around_circle(center: Tuple[int, int], radius: int, amount_of_dots: i
             for (i, (rotation, position)) in enumerate(properties)]
 
 
-def fill_with_dots(figure_size: int, dots_fill: List[NDArray], priority_dots: List[Dot] = []) -> NDArray:
-    # there must be enough room for all the dots
-    amount_of_dots = len(dots_fill) + len(priority_dots)
+def get_false_margins(radius: int, figure_size: int):
+    available_positions = full((figure_size, figure_size), True)
 
-    if len(priority_dots) != 0:
-        dot_size = priority_dots[0].r*2
+    available_positions[:, :int(radius)] = False
+    available_positions[:, -int(radius):] = False
+    available_positions[:int(radius), :] = False
+    available_positions[-int(radius):, :] = False
 
-    if len(dots_fill) != 0:
-        dot_size = dots_fill[0].shape[0]
-        assert dots_fill[0].shape[0] == dots_fill[0].shape[1]
+    return available_positions
 
-    assert figure_size**2 >= amount_of_dots * (pi*(dot_size/2)**2)
+
+# there must be enough room for all the dots
+def fill_with_dots(figure_size: int,
+                   dots_fill: List[NDArray],
+                   priority_dots: List[Dot] = [],
+                   backdround_value: float = 0) -> NDArray:
 
     available_positions = full((figure_size, figure_size), True)
-    canvas = full((figure_size, figure_size), 0, float64)
-
-    available_positions[:, :int(dot_size/2)] = False
-    available_positions[:, -int(dot_size/2):] = False
-    available_positions[:int(dot_size/2), :] = False
-    available_positions[-int(dot_size/2):, :] = False
-
-    filler_xs, filler_ys = mgrid[:dot_size, :dot_size]
-    filler_mask = argwhere(square(filler_xs - dot_size/2) +
-                           square(filler_ys - dot_size/2) <= square(dot_size/2))
+    canvas = full((figure_size, figure_size), backdround_value, float64)
 
     xs, ys = mgrid[:figure_size, :figure_size]
     complete_requirement = priority_dots + \
-        [Dot(dot_size/2, array([]), fill) for fill in dots_fill]
+        [Dot(int(fill.shape[0]/2), array([]), fill) for fill in dots_fill]
+
     for dot in complete_requirement:
         if dot.position.shape[0] == 0:
-            remaining_position_indices = argwhere(available_positions)
-            next_center = remaining_position_indices[choice(
+            remaining_position_indices = argwhere(
+                available_positions & get_false_margins(dot.r, figure_size))
+
+            dot.position = remaining_position_indices[choice(
                 len(remaining_position_indices))]
 
-            dot.position = array([next_center[0], next_center[1]])
+        filler_xs, filler_ys = mgrid[:dot.r*2, :dot.r*2]
+        filler_mask = argwhere(square(filler_xs - dot.r) +
+                               square(filler_ys - dot.r) < square(dot.r))
 
         shifted_mask = filler_mask + \
             array([dot.position[0] - dot.r, dot.position[1] - dot.r], dtype=int64)

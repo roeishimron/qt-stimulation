@@ -55,14 +55,16 @@ class Experiment():
         self.main_window.setCentralWidget(main_widget)
 
     def setup(self, event_trigger: SoftSerial, animator: Animator, stimuli_display: QLabel, fixation: str = "",
-              on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+              on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print(
+                  "key pressed, pass"),
+              background: str = "grey"):
 
         self.main_window = QMainWindow()
 
         self.on_runtime_keypress = on_runtime_keypress
         self.event_trigger = event_trigger
 
-        self.main_window.setStyleSheet('background: rgb(127, 127, 127);')
+        self.main_window.setStyleSheet(f'background: {background};')
 
         self.animator = animator
 
@@ -96,13 +98,17 @@ class ViewExperiment:
     def new_with_constant_frequency(stimuli: OddballStimuli, event_trigger: SoftSerial,
                                     frequency: float, use_step: bool = False,
                                     trial_duration: int = 30, fixation: str = "",
-                                    on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+                                    on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print(
+                                        "key pressed, pass"),
+                                    background: str = "grey"):
         durations = [1000/frequency] * frequency*trial_duration
-        return ViewExperiment.new(stimuli, event_trigger, durations, use_step, fixation, on_runtime_keypress)
+        return ViewExperiment.new(stimuli, event_trigger, durations, use_step, fixation, on_runtime_keypress, background)
 
     def new(stimuli: OddballStimuli, event_trigger: SoftSerial,
             durations: List[int], use_step: bool = False, fixation: str = "",
-            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print(
+                "key pressed, pass"),
+            background: str = "grey"):
         obj = ViewExperiment()
         obj.experiment = Experiment()
 
@@ -113,7 +119,7 @@ class ViewExperiment:
                             obj.experiment.frame_change_to_base, use_step)
 
         obj.experiment.setup(event_trigger, animator,
-                             stimuli_display, fixation, on_runtime_keypress)
+                             stimuli_display, fixation, on_runtime_keypress, background)
 
         return obj
 
