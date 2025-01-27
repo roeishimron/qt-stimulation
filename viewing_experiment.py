@@ -54,8 +54,8 @@ class Experiment():
 
         self.main_window.setCentralWidget(main_widget)
 
-    def setup(self, event_trigger: SoftSerial, animator: Animator, stimuli_display:QLabel, fixation: str = "", 
-            on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
+    def setup(self, event_trigger: SoftSerial, animator: Animator, stimuli_display: QLabel, fixation: str = "",
+              on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
 
         self.main_window = QMainWindow()
 
@@ -105,15 +105,16 @@ class ViewExperiment:
             on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
         obj = ViewExperiment()
         obj.experiment = Experiment()
-        
+
         stimuli_display = QLabel()
 
         animator = Animator(stimuli, stimuli_display, durations,
-                                obj.experiment.trial_end, obj.experiment.frame_change_to_oddball,
-                                obj.experiment.frame_change_to_base, use_step)
-        
-        obj.experiment.setup(event_trigger, animator, stimuli_display, fixation, on_runtime_keypress)
-        
+                            obj.experiment.trial_end, obj.experiment.frame_change_to_oddball,
+                            obj.experiment.frame_change_to_base, use_step)
+
+        obj.experiment.setup(event_trigger, animator,
+                             stimuli_display, fixation, on_runtime_keypress)
+
         return obj
 
     def show(self):
