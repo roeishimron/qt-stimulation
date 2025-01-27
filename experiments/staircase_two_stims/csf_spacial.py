@@ -43,7 +43,7 @@ class GaborSizeGenerator(FunctionToStimuliChoiceGenerator):
         return ((stim, self.grey_stim, self.grey_mask), (self.DISPLAY_TIME, 0))
 
 
-def run(saveto=""):
+def run(saveto="logs"):
     # Create the Qt Application
     app = QApplication(sys.argv)
 

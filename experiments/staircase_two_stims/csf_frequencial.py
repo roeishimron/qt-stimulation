@@ -49,7 +49,7 @@ class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
         return ((stim, is_horizontal, mask), (self.DISPLAY_TIME, self.DISPLAY_TIME))
 
 
-def run(saveto=""):
+def run(saveto="logs"):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
