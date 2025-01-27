@@ -247,7 +247,8 @@ def get_false_margins(radius: int, figure_size: int):
 def fill_with_dots(figure_size: int,
                    dots_fill: List[NDArray],
                    priority_dots: List[Dot] = [],
-                   backdround_value: float = 0) -> NDArray:
+                   backdround_value: float = 0,
+                   minimum_distance_factor: float=2) -> NDArray:
 
     available_positions = full((figure_size, figure_size), True)
     canvas = full((figure_size, figure_size), backdround_value, float64)
@@ -264,6 +265,9 @@ def fill_with_dots(figure_size: int,
             dot.position = remaining_position_indices[choice(
                 len(remaining_position_indices))]
 
+        circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
+        available_positions &= logical_not(circle <= square(dot.r*2*minimum_distance_factor))
+        
         filler_xs, filler_ys = mgrid[:dot.r*2, :dot.r*2]
         filler_mask = argwhere(square(filler_xs - dot.r) +
                                square(filler_ys - dot.r) < square(dot.r))
@@ -273,8 +277,6 @@ def fill_with_dots(figure_size: int,
         canvas[shifted_mask[:, 0], shifted_mask[:, 1]
                ] = dot.fill[filler_mask[:, 0], filler_mask[:, 1]]
 
-        circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
-        available_positions &= logical_not(circle <= square(dot.r*2))
 
     return canvas
 
