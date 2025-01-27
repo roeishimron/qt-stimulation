@@ -90,7 +90,7 @@ class Experiment():
             self.on_runtime_keypress(event)
 
 
-class ViewExperiment():
+class ViewExperiment:
     experiment: Experiment
 
     def new_with_constant_frequency(stimuli: OddballStimuli, event_trigger: SoftSerial,
@@ -103,7 +103,7 @@ class ViewExperiment():
     def new(stimuli: OddballStimuli, event_trigger: SoftSerial,
             durations: List[int], use_step: bool = False, fixation: str = "",
             on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print("key pressed, pass")):
-        obj = ViewExperiment
+        obj = ViewExperiment()
         obj.experiment = Experiment()
         
         stimuli_display = QLabel()
