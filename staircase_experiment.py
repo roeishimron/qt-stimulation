@@ -204,7 +204,7 @@ class StaircaseExperiment:
     results_filename : str
 
     def get_step_size(self) -> int:
-        return self.step_size
+        return min(self.step_size, self.max_difficulty - self.current_difficulty)
 
     def log_into_graph(self, y_name: str = "difficulty",
                        y_axis_transformer: Callable[[int], int] = lambda y: 32-y,
