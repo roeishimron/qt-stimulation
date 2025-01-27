@@ -29,6 +29,7 @@ class SoftSerial(Serial):
             if value == Codes.BreakEnd:
                 for _ in range(30):
                     self.open()
+                    self.write(bytes((0xff)))
                     self.flush()
                     self.close()
                 # super().write(value.to_bytes())
