@@ -4,6 +4,7 @@ from PySide6.QtGui import QScreen, QKeyEvent
 from soft_serial import SoftSerial, Codes
 from animator import Animator, OddballStimuli
 from typing import Callable, List
+from random import choices
 
 
 class Experiment():
@@ -101,7 +102,11 @@ class ViewExperiment:
                                     on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print(
                                         "key pressed, pass"),
                                     background: str = "grey"):
-        durations = [1000/frequency] * frequency*trial_duration
+
+        remainder = 1000/frequency - int(1000/frequency)
+
+        durations = [int(1000/frequency) + choices([0, 1], [1-remainder, remainder])[0]
+                     for _ in range(frequency*trial_duration)]
         return ViewExperiment.new(stimuli, event_trigger, durations, use_step, fixation, on_runtime_keypress, background)
 
     def new(stimuli: OddballStimuli, event_trigger: SoftSerial,
