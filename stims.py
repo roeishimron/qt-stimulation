@@ -241,7 +241,7 @@ def fill_with_dots(figure_size: int,
                    dots_fill: List[NDArray],
                    priority_dots: List[Dot] = [],
                    backdround_value: float = 0,
-                   minimum_distance_factor: float=2) -> NDArray:
+                   minimum_distance_factor: float=1) -> NDArray:
 
     available_positions = full((figure_size, figure_size), True)
     canvas = full((figure_size, figure_size), backdround_value, float64)
