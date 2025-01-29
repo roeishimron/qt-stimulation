@@ -172,13 +172,6 @@ class Dot:
     position: NDArray
     fill: NDArray
 
-# Note: Should have been split into several functions. It's avoided to save preformance.
-
-
-def fill_with_white_dots(figure_size: int, amount_of_dots: int, dot_size: int) -> AppliablePixmap:
-    fillers = ones(shape=(amount_of_dots, dot_size, dot_size))
-    return fill_with_dots(figure_size, fillers)
-
 # returns is_horizontal and (x,y)
 
 
@@ -279,9 +272,3 @@ def fill_with_dots(figure_size: int,
 
 
     return canvas
-
-
-def dots_image(figure_size: int, dots_fill: List[NDArray], priority_dots: List[NDArray] = []) -> AppliablePixmap:
-    return array_into_pixmap(
-        fill_with_dots(figure_size, dots_fill, priority_dots)
-    )
