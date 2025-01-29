@@ -68,7 +68,7 @@ class GaborRatioGenerator(FunctionToStimuliChoiceGenerator):
 
         return best_match
 
-def run(saveto=""):
+def run(saveto="logs"):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
