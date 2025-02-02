@@ -16,7 +16,7 @@ name = input()
 print("Experiment Name:")
 experiment = input()
 
-output_folder = f"/output/{name}_results" # Expected to explicitly volume the output
+output_folder = f"/output/{name}_{experiment}_results" # Expected to explicitly volume the output
 Path(output_folder).mkdir(exist_ok=True)
 
 if experiment == "side":
