@@ -47,7 +47,7 @@ class Experiment():
         layout = QGridLayout()
         self.fixation = QLabel(fixation)
         self.fixation.setStyleSheet(
-            "background: rgba(0, 0, 0, 0); font-size: 100pt; color: red")
+            "background: rgba(0, 0, 0, 0); font-size: 50pt; color: grey")
         layout.addWidget(stimuli_display, 0, 0)
         layout.addWidget(self.fixation, 0, 0,
                          Qt.AlignmentFlag.AlignCenter)
