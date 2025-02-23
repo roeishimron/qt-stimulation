@@ -85,7 +85,7 @@ def generate_sin(figure_size, frequency=1, offset=0, contrast=1, step=False, rai
 
 
 def array_into_pixmap(arr: NDArray) -> AppliablePixmap:
-    mormalized_to_pixels = (((arr * 255) + 255)/2)
+    mormalized_to_pixels = (((arr * 255) + 256)/2)
     mormalized_to_pixels = array(mormalized_to_pixels, dtype=uint8)
 
     return AppliablePixmap(QPixmap.fromImage(QImage(mormalized_to_pixels, arr.shape[1], arr.shape[0], arr.shape[1], QImage.Format.Format_Grayscale8)))
