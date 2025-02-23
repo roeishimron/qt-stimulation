@@ -213,15 +213,16 @@ def gabors_around_rec(width: int, height: int, amount_of_dots: int,
 
 
 def gabors_around_circle(center: Tuple[int, int], radius: int, amount_of_dots: int,
-                         dot_size: int, gabor_freq: int, radial_easing: int, flip_one=False) -> List[Dot]:
-    angles = linspace(0, pi*2, amount_of_dots)
+                         dot_size: int, gabor_freq: int, radial_easing: int, flip_one=False,
+                         offset=0, fill_reduction=0) -> List[Dot]:
+    angles = linspace(offset, pi*2 + offset, amount_of_dots)
     properties = [circle_at(center, radius, angle) for angle in angles]
 
     flip_index = randint(0, len(angles)-1) if flip_one else -1
 
     return [Dot(dot_size/2, array(position),
                 create_gabor_values(dot_size, gabor_freq, raidal_easing=radial_easing,
-                                    rotation=rotation+pi/2 if i == flip_index else rotation))
+                                    rotation=rotation+pi/2 if i == flip_index else rotation)-fill_reduction)
             for (i, (rotation, position)) in enumerate(properties)]
 
 
