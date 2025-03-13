@@ -14,6 +14,7 @@ class Experiment():
     event_trigger: SoftSerial
     fixation: QLabel
     on_runtime_keypress: Callable[[QKeyEvent], None]
+    allow_break : bool
 
     @Slot()
     def frame_change_to_oddball(self):
@@ -33,7 +34,8 @@ class Experiment():
 
     def show(self):
         self.main_window.showFullScreen()
-        self.trial_start()
+        self.animator.display_break()
+        self.main_window.keyReleaseEvent = self.key_released_at_break
 
     def trial_start(self):
         # in order to take the last event as reference
@@ -82,12 +84,13 @@ class Experiment():
     def key_released_at_break(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Q:
             self.quit()
-        else:
-            # seems like `quit()` returns
+        elif event.key() == Qt.Key.Key_Space:
             self.trial_start()
+        else:
+            print("Unrecognized key during break")
 
     def key_released_default(self, event: QKeyEvent):
-        if event.key() == Qt.Key.Key_B:
+        if self.allow_break and event.key() == Qt.Key.Key_B:
             self.trial_end()
         else:
             self.on_runtime_keypress(event)
@@ -113,9 +116,11 @@ class ViewExperiment:
             durations: List[int], use_step: bool = False, fixation: str = "",
             on_runtime_keypress: Callable[[QKeyEvent], None] = lambda _: print(
                 "key pressed, pass"),
-            background: str = "grey"):
+            background: str = "grey", allow_break:bool=True):
+
         obj = ViewExperiment()
         obj.experiment = Experiment()
+        obj.experiment.allow_break = allow_break
 
         stimuli_display = QLabel()
 

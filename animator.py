@@ -166,7 +166,7 @@ class Animator:
     def display_break(self):
         self.effect.setOpacity(1)
         self.display.setText(
-            "This is a break.\nPress any key to continue (or Q to quit)")
+            "This is a break.\nPress `space` to continue (or Q to quit)")
         current_font = self.display.font()
         current_font.setPointSize(28)
         current_font.setFamily(DEFAULT_FONT)
