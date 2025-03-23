@@ -27,7 +27,7 @@ def run():
 
     AMOUNT_OF_BASE = 63
     DOT_SIZE = 70
-    COHERENCES = [10, 12, 14, 16, 18, 20, 22]
+    COHERENCES = [5, 6, 7, 8, 9, 10, 11]
     DISPLAY_FREQUENCY = 6
     TRIAL_DURATION = 16
     AMOUNT_OF_EXAMPLES = 8
@@ -35,48 +35,48 @@ def run():
     RADIAL_EASING = 1200
     SPACIAL_FREQUENCY = 2
     AMOUNT_OF_TRIALS = len(COHERENCES)
-    ODDBALL_RATIO = 2
+    ODDBALL_MODULATION = 2
 
-    MAX_RADIUS = int(height/2) - DOT_SIZE*2
-    MIN_RADIUS = int(MAX_RADIUS/2)
+    RADIUS = int((height/2 - DOT_SIZE*2)/2)
+    CENTER_RANGE = (int(RADIUS + DOT_SIZE/2),
+                    int(height - RADIUS - DOT_SIZE/2),)
 
     AMOUNT_OF_DURATIONS = TRIAL_DURATION * DISPLAY_FREQUENCY * AMOUNT_OF_TRIALS
     assert AMOUNT_OF_DURATIONS == int(AMOUNT_OF_DURATIONS)
     assert 60 % DISPLAY_FREQUENCY == 0
     durations = [1/DISPLAY_FREQUENCY*1000] * int(AMOUNT_OF_DURATIONS)
 
-    assert (TRIAL_DURATION*DISPLAY_FREQUENCY) % (ODDBALL_RATIO *
+    assert (TRIAL_DURATION*DISPLAY_FREQUENCY) % (ODDBALL_MODULATION *
                                                  AMOUNT_OF_EXAMPLES) == 0
     TRIAL_INFLATION = int(
-        (TRIAL_DURATION*DISPLAY_FREQUENCY)/ODDBALL_RATIO/AMOUNT_OF_EXAMPLES)
+        (TRIAL_DURATION*DISPLAY_FREQUENCY)/ODDBALL_MODULATION/AMOUNT_OF_EXAMPLES)
     assert AMOUNT_OF_EXAMPLES*TRIAL_INFLATION * \
-        AMOUNT_OF_TRIALS*ODDBALL_RATIO == AMOUNT_OF_DURATIONS
+        AMOUNT_OF_TRIALS*ODDBALL_MODULATION == AMOUNT_OF_DURATIONS
 
     oddballs = [inflate_randomley([array_into_pixmap(
         fill_with_dots(int(height),
                        [create_gabor_values(
                            DOT_SIZE, SPACIAL_FREQUENCY, rotation=random()*pi,
                            offset=pi/2, raidal_easing=RADIAL_EASING)
-                           for _ in range(AMOUNT_OF_BASE - radius_into_amount_of_dots(r, c, MAX_RADIUS))],
-                priority_dots=gabors_around_circle((int(height/2), int(height/2)), r,
-                                                   radius_into_amount_of_dots(
-                                                       r, c, MAX_RADIUS),
+                           for _ in range(AMOUNT_OF_BASE - coherence)],
+                priority_dots=gabors_around_circle(center, RADIUS, coherence,
                                                    DOT_SIZE, SPACIAL_FREQUENCY,
                                                    RADIAL_EASING, offset=random()*pi)))
-        for r in [randint(MIN_RADIUS, MAX_RADIUS) for _ in range(AMOUNT_OF_EXAMPLES)]], TRIAL_INFLATION)
-        for c in COHERENCES]
+                for center in [(randint(*CENTER_RANGE), randint(*CENTER_RANGE)) for _ in range(AMOUNT_OF_EXAMPLES)]],
+            TRIAL_INFLATION)
+        for coherence in COHERENCES]
 
     base = inflate_randomley([array_into_pixmap(
         fill_with_dots(int(height),
                        [create_gabor_values(
                            DOT_SIZE, SPACIAL_FREQUENCY, rotation=random()*pi, raidal_easing=RADIAL_EASING)
                            for _ in range(AMOUNT_OF_BASE)]))
-        for _ in range(AMOUNT_OF_EXAMPLES*(ODDBALL_RATIO-1))], TRIAL_INFLATION*AMOUNT_OF_TRIALS)
+        for _ in range(AMOUNT_OF_EXAMPLES*(ODDBALL_MODULATION-1))], TRIAL_INFLATION*AMOUNT_OF_TRIALS)
 
     oddballs = flatten(oddballs)
     main_window = ViewExperiment.new(
         OddballStimuli(height, cycle(oddballs), cycle(
-            base), ODDBALL_RATIO), SoftSerial(), durations, True,
+            base), ODDBALL_MODULATION), SoftSerial(), durations, True,
         fixation="+", allow_break=False)
 
     main_window.show()
