@@ -1,5 +1,5 @@
 import sys
-from typing import Tuple, Iterable
+from typing import Tuple, List
 from PySide6.QtWidgets import QApplication
 from animator import Appliable
 from soft_serial import SoftSerial
@@ -8,20 +8,18 @@ from staircase_experiment import FunctionToStimuliIdentificationGenerator, Stair
 from random import random, shuffle, choice, randint
 from numpy import linspace, pi, array
 from numpy.typing import NDArray
-from stims import Dot, create_gabor_values, fill_with_dots, generate_noise, array_into_pixmap
+from stims import Dot, create_gabor_values, fill_with_dots, generate_grey, array_into_pixmap
 
 class ImageGenerator(FunctionToStimuliIdentificationGenerator):
 
     DISPLAY_TIME = 2000
-    MASK_TIME = 500
+    MASK_TIME = 0
 
     RADIAL_EASING = 1200
 
-    AMOUNT_OF_BASE = 63
-    DOT_SIZE = 64
+    AMOUNT_OF_BASE = 32
+    DOT_SIZE = 92
     SPACIAL_FREQUENCY = 2
-
-    masks: Iterable
 
     frequency_space: NDArray
 
@@ -32,8 +30,6 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
         # varying linearly over the cycle pixel size, minimum is 4
 
         self.frequency_space = [int(self.figure_size/(self.MAX_DIFFICULTY + 3 - i)) for i in range(self.MAX_DIFFICULTY + 1)]
-        self.masks = cycle((generate_noise(self.figure_size, self.figure_size, 24) for _ in range(20)))
-
         return super().__init__(screen_dimentions, self._generate_next_trial)
 
     def _generate_next_trial(self, difficulty: int):
@@ -53,7 +49,7 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
         frame = fill_with_dots(self.figure_size, gabors_fill)
 
         image = array_into_pixmap(frame)
-        return ((image, is_horizontal, next(self.masks)), (self.DISPLAY_TIME, self.MASK_TIME))
+        return ((image, is_horizontal, self.gray), (self.DISPLAY_TIME, self.MASK_TIME))
 
     def difficulty_into_uniform_width(self, d: int):
         return 180 * d/self.MAX_DIFFICULTY

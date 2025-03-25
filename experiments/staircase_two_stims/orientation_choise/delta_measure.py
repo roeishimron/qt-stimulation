@@ -13,15 +13,14 @@ from stims import Dot, create_gabor_values, fill_with_dots, generate_noise, arra
 class ImageGenerator(FunctionToStimuliIdentificationGenerator):
 
     DISPLAY_TIME = 2000
-    MASK_TIME = 500
+    MASK_TIME = 0
 
-    RADIAL_EASING = 1100
+    RADIAL_EASING = 1200
 
     AMOUNT_OF_BASE = 32
-    DOT_SIZE = 98
+    DOT_SIZE = 92
+    
     SPACIAL_FREQUENCY = 2
-
-    masks: Iterable
 
     frequency_space: NDArray
 
@@ -32,7 +31,6 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
         # varying linearly over the cycle pixel size, minimum is 4
 
         self.frequency_space = [int(self.figure_size/(self.MAX_DIFFICULTY + 3 - i)) for i in range(self.MAX_DIFFICULTY + 1)]
-        self.masks = cycle((generate_noise(self.figure_size, self.figure_size, 24) for _ in range(20)))
 
         return super().__init__(screen_dimentions, self._generate_next_trial)
 
@@ -56,7 +54,7 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
         
         frame = fill_with_dots(self.figure_size, noise_fill, signal)
         image = array_into_pixmap(frame)
-        return ((image, is_horizontal, next(self.masks)), (self.DISPLAY_TIME, self.MASK_TIME))
+        return ((image, is_horizontal, self.gray), (self.DISPLAY_TIME, self.MASK_TIME))
 
     def difficulty_into_snr(self, d: int):
         assert d <= self.MAX_DIFFICULTY
