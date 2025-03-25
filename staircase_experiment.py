@@ -360,6 +360,7 @@ class StaircaseExperiment:
         obj.step_size = int((obj.max_difficulty+1)/2) # staring from 0!
         obj.key_pressed_during_trial = None
 
+        obj.experiment.allow_break = True
         obj.experiment.setup(
             event_trigger, None, obj.animator_display, fixation,
             obj.update_last_pressed_key)
