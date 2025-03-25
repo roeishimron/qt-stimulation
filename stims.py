@@ -34,11 +34,11 @@ def _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation
     for x in range(int(-figure_size/2), int(figure_size/2)):
         for y in range(int(-figure_size/2), int(figure_size/2)):
             orthogonal_values[int(x+figure_size/2), int(y+figure_size/2)
-                              ] = sum(array([x, y]) * new_x_axis) + offset
+                              ] = sum(array([x, y]) * new_x_axis) 
 
     # normalize so that the max length arrives at the right amount of flips
     orthogonal_values = orthogonal_values * virtual_size / figure_size
-    return sin(orthogonal_values)*contrast
+    return sin(orthogonal_values+offset)*contrast
 
 
 def _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, horizontal: bool) -> NDArray:
@@ -238,6 +238,7 @@ def get_false_margins(radius: int, figure_size: int):
 
 
 # there must be enough room for all the dots
+# Priority dots are allowed to be without position
 def fill_with_dots(figure_size: int,
                    dots_fill: List[NDArray],
                    priority_dots: List[Dot] = [],
