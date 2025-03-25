@@ -8,7 +8,7 @@ from staircase_experiment import FunctionToStimuliIdentificationGenerator, Stair
 from random import random, shuffle, choice, randint
 from numpy import linspace, pi, array
 from numpy.typing import NDArray
-from stims import Dot, create_gabor_values, fill_with_dots, generate_grey, array_into_pixmap
+from stims import Dot, create_gabor_values, fill_with_dots, AppliablePixmap, array_into_pixmap
 
 class ImageGenerator(FunctionToStimuliIdentificationGenerator):
 
@@ -21,15 +21,11 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
     DOT_SIZE = 92
     SPACIAL_FREQUENCY = 2
 
-    frequency_space: NDArray
-
     figure_size: int
+    current_image: AppliablePixmap
     
     def __init__(self, screen_dimentions: Tuple[int, int]):
         self.figure_size = screen_dimentions[0]
-        # varying linearly over the cycle pixel size, minimum is 4
-
-        self.frequency_space = [int(self.figure_size/(self.MAX_DIFFICULTY + 3 - i)) for i in range(self.MAX_DIFFICULTY + 1)]
         return super().__init__(screen_dimentions, self._generate_next_trial)
 
     def _generate_next_trial(self, difficulty: int):
@@ -48,8 +44,8 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
         
         frame = fill_with_dots(self.figure_size, gabors_fill)
 
-        image = array_into_pixmap(frame)
-        return ((image, is_horizontal, self.gray), (self.DISPLAY_TIME, self.MASK_TIME))
+        self.current_image = array_into_pixmap(frame)
+        return ((self.current_image, is_horizontal, self.gray), (self.DISPLAY_TIME, self.MASK_TIME))
 
     def difficulty_into_uniform_width(self, d: int):
         return 180 * d/self.MAX_DIFFICULTY

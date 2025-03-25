@@ -1,19 +1,18 @@
 import sys
-from typing import Tuple, Iterable
+from typing import Tuple
+from random import random, choice
+
+from numpy import pi, array
 from PySide6.QtWidgets import QApplication
-from animator import Appliable
+
 from soft_serial import SoftSerial
-from itertools import cycle
 from staircase_experiment import FunctionToStimuliIdentificationGenerator, StaircaseExperiment, TimedChoiceGenerator
-from random import random, shuffle, choice, randint
-from numpy import linspace, pi, array
-from numpy.typing import NDArray
-from stims import Dot, create_gabor_values, fill_with_dots, generate_noise, array_into_pixmap
+from stims import Dot, create_gabor_values, fill_with_dots, array_into_pixmap, AppliablePixmap
 
 class ImageGenerator(FunctionToStimuliIdentificationGenerator):
 
     DISPLAY_TIME = 2000
-    MASK_TIME = 0
+    MASK_TIME = 1
 
     RADIAL_EASING = 1200
 
@@ -22,16 +21,11 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
     
     SPACIAL_FREQUENCY = 2
 
-    frequency_space: NDArray
-
     figure_size: int
+    current_image: AppliablePixmap
     
     def __init__(self, screen_dimentions: Tuple[int, int]):
         self.figure_size = screen_dimentions[0]
-        # varying linearly over the cycle pixel size, minimum is 4
-
-        self.frequency_space = [int(self.figure_size/(self.MAX_DIFFICULTY + 3 - i)) for i in range(self.MAX_DIFFICULTY + 1)]
-
         return super().__init__(screen_dimentions, self._generate_next_trial)
 
     def _generate_next_trial(self, difficulty: int):
@@ -53,15 +47,14 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
                            for _ in range(amount_of_noise)]
         
         frame = fill_with_dots(self.figure_size, noise_fill, signal)
-        image = array_into_pixmap(frame)
-        return ((image, is_horizontal, self.gray), (self.DISPLAY_TIME, self.MASK_TIME))
+        self.current_image = array_into_pixmap(frame)
+        return ((self.current_image, is_horizontal, self.gray), (self.DISPLAY_TIME, self.MASK_TIME))
 
-    def difficulty_into_snr(self, d: int):
+    def difficulty_into_percent_coherence(self, d: int):
         assert d <= self.MAX_DIFFICULTY
         
         amount_of_signal = self.MAX_DIFFICULTY - d
-        amount_of_noise = self.AMOUNT_OF_BASE - amount_of_signal
-        return amount_of_signal/amount_of_noise # allow division by as inf
+        return amount_of_signal/self.AMOUNT_OF_BASE # allow division by as inf
     
 
 def run(saveto="logs"):
@@ -81,4 +74,4 @@ def run(saveto="logs"):
     main_window.show()
     # Run the main Qt loop
     app.exec()
-    main_window.log_into_graph("SNR", generator.difficulty_into_snr)
+    main_window.log_into_graph("Percent Coherent", generator.difficulty_into_percent_coherence)
