@@ -5,6 +5,9 @@ import experiments.staircase_two_stims.dots
 import experiments.staircase_two_stims.dots.dots
 import experiments.staircase_two_stims.dots.dots_demo
 import experiments.staircase_two_stims.dots_ratio
+import experiments.staircase_two_stims.orientation_choise
+import experiments.staircase_two_stims.orientation_choise.delta_measure
+import experiments.staircase_two_stims.orientation_choise.uniform_measure
 import experiments.staircase_two_stims.side
 import experiments.staircase_two_stims.side.demo
 import experiments.staircase_two_stims.side.side
@@ -33,5 +36,9 @@ elif experiment == "csf_freq":
     experiments.staircase_two_stims.csf_frequencial.run(output_folder)
 elif experiment == "csf_space":
     experiments.staircase_two_stims.csf_spacial.run(output_folder)
+elif experiment == "orientation_uniform":
+    experiments.staircase_two_stims.orientation_choise.uniform_measure.run(output_folder)
+elif experiment == "orientation_delta":
+    experiments.staircase_two_stims.orientation_choise.delta_measure.run(output_folder)
 else:
     print("No such experiment!")
