@@ -236,23 +236,13 @@ def get_false_margins(radius: int, figure_size: int):
 
     return available_positions
 
-
-# there must be enough room for all the dots
-# Priority dots are allowed to be without position
-def fill_with_dots(figure_size: int,
-                   dots_fill: List[NDArray],
-                   priority_dots: List[Dot] = [],
-                   backdround_value: float = 0,
-                   minimum_distance_factor: float=1) -> NDArray:
-
+# Set only dots without position
+def place_dots_in_square(figure_size:int, dots: List[Dot], minimum_distance_factor: float=1) -> List[Dot]:
+    
     available_positions = full((figure_size, figure_size), True)
-    canvas = full((figure_size, figure_size), backdround_value, float64)
-
     xs, ys = mgrid[:figure_size, :figure_size]
-    complete_requirement = priority_dots + \
-        [Dot(int(fill.shape[0]/2), array([]), fill) for fill in dots_fill]
 
-    for dot in complete_requirement:
+    for dot in dots:
         if dot.position.shape[0] == 0:
             remaining_position_indices = argwhere(
                 available_positions & get_false_margins(dot.r, figure_size))
@@ -262,7 +252,25 @@ def fill_with_dots(figure_size: int,
 
         circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
         available_positions &= logical_not(circle <= square(dot.r*2*minimum_distance_factor))
+    return dots
         
+
+# there must be enough room for all the dots
+# Priority dots are allowed to be without position
+def fill_with_dots(figure_size: int,
+                   dots_fill: List[NDArray],
+                   priority_dots: List[Dot] = [],
+                   backdround_value: float = 0,
+                   minimum_distance_factor: float=1) -> NDArray:
+
+    canvas = full((figure_size, figure_size), backdround_value, float64)
+
+    complete_requirement = priority_dots + \
+        [Dot(int(fill.shape[0]/2), array([]), fill) for fill in dots_fill]
+    
+    complete_requirement = place_dots_in_square(figure_size, complete_requirement, minimum_distance_factor)
+    
+    for dot in complete_requirement:
         filler_xs, filler_ys = mgrid[:dot.r*2, :dot.r*2]
         filler_mask = argwhere(square(filler_xs - dot.r) +
                                square(filler_ys - dot.r) < square(dot.r))
@@ -271,6 +279,5 @@ def fill_with_dots(figure_size: int,
             array([dot.position[0] - dot.r, dot.position[1] - dot.r], dtype=int64)
         canvas[shifted_mask[:, 0], shifted_mask[:, 1]
                ] = dot.fill[filler_mask[:, 0], filler_mask[:, 1]]
-
 
     return canvas
