@@ -13,7 +13,7 @@ from stims import Dot, create_gabor_values, fill_with_dots, AppliablePixmap, arr
 class ImageGenerator(FunctionToStimuliIdentificationGenerator):
 
     DISPLAY_TIME = 2000
-    MASK_TIME = 0
+    MASK_TIME = 1
 
     RADIAL_EASING = 1200
 

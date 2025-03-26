@@ -62,7 +62,7 @@ class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
 
         return (OddballStimuli(self.screen_dimentions[0],
                                iter([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
-                [self.INTERTRIAL_DELAY, durations[0], durations[1], 0])
+                [self.INTERTRIAL_DELAY, durations[0], durations[1], 1])
 
 
 
