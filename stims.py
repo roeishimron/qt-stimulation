@@ -237,7 +237,7 @@ def get_false_margins(radius: int, figure_size: int):
     return available_positions
 
 # Set only dots without position
-def place_dots_in_square(figure_size:int, dots: List[Dot], minimum_distance_factor: float=1) -> List[Dot]:
+def place_dots_in_frame(figure_size:int, dots: List[Dot], minimum_distance_factor: float=1) -> List[Dot]:
     
     available_positions = full((figure_size, figure_size), True)
     xs, ys = mgrid[:figure_size, :figure_size]
@@ -268,7 +268,7 @@ def fill_with_dots(figure_size: int,
     complete_requirement = priority_dots + \
         [Dot(int(fill.shape[0]/2), array([]), fill) for fill in dots_fill]
     
-    complete_requirement = place_dots_in_square(figure_size, complete_requirement, minimum_distance_factor)
+    complete_requirement = place_dots_in_frame(figure_size, complete_requirement, minimum_distance_factor)
     
     for dot in complete_requirement:
         filler_xs, filler_ys = mgrid[:dot.r*2, :dot.r*2]

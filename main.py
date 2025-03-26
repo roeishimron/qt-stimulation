@@ -1,2 +1,2 @@
-from experiments.staircase_two_stims.orientation_choise.delta_measure import run
+from experiments.staircase_two_stims.orientation_choise.circlular_uniform_measure import run
 run()

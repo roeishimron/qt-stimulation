@@ -35,7 +35,7 @@ class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
 
     last_is_target: bool
 
-    current_mask : Appliable
+    current_mask: Appliable
 
     def __init__(self, screen_dimentions: Tuple[int, int],
                  stim_generator:  Callable[[int],
@@ -52,10 +52,10 @@ class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
 
     def next_stimuli_and_durations(self, difficulty: int) -> Tuple[OddballStimuli, List[int]]:
         assert difficulty <= self.MAX_DIFFICULTY
-        
+
         generated = self.stim_generator(difficulty)
         stim_value_mask = generated[0]
-        
+
         self.last_is_target = stim_value_mask[1]
 
         durations = generated[1]
@@ -63,7 +63,6 @@ class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
         return (OddballStimuli(self.screen_dimentions[0],
                                iter([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
                 [self.INTERTRIAL_DELAY, durations[0], durations[1], 1])
-
 
 
 # Assuming random choice of the "targetness" of the stimuli as well as the stimuli itself
@@ -165,6 +164,7 @@ class ConstantTimeChoiceGenerator(DeterminedChoiceGenerator):
         super().__init__(screen_dimentions, stims, distractors, mask,
                          lambda _: stim_duration)
 
+
 @dataclass
 class ExperimentState:
     trial_no: int
@@ -201,22 +201,24 @@ class StaircaseExperiment:
 
     step_size: int
 
-    results_filename : str
+    results_filename: str
 
     def get_step_size(self) -> int:
         return min(self.step_size, self.max_difficulty - self.current_difficulty)
 
     def log_into_graph(self, y_name: str = "difficulty",
-                       y_axis_transformer: Callable[[int], int] = lambda y: 32-y,
+                       y_axis_transformer: Callable[[
+                           int], int] = lambda y: 32-y,
                        filename=None, block=True, should_save=False, label=""):
-        
-        if filename == None: #no default arg for properties....
+
+        if filename == None:  # no default arg for properties....
             filename = self.results_filename
-        
+
         sorted_states = list(map(lambda l: ExperimentState(
             **loads(l)),  open(filename).read().splitlines()))
         xs = list(map(lambda s: s.trial_no, sorted_states))
-        ys = list(map(y_axis_transformer, map(lambda s: s.difficulty, sorted_states)))
+        ys = list(map(y_axis_transformer, map(
+            lambda s: s.difficulty, sorted_states)))
 
         xlabel("Trial")
         ylabel(y_name)
@@ -226,8 +228,6 @@ class StaircaseExperiment:
             savefig(filename.replace(".txt", ".png"))
             cla()
 
-
-
     def record_to_file(self, state: ExperimentState):
         with open(self.results_filename, "+a") as f:
             f.write(dumps(asdict(state)) + "\n")
@@ -235,7 +235,7 @@ class StaircaseExperiment:
     def stepup(self):
         if self.current_difficulty != self.max_difficulty:
             self.current_difficulty += self.get_step_size()
-        
+
         self.step_size = ceil(self.step_size/2)
         self.current_step += 1
         if not self.is_last_step_up:
@@ -243,8 +243,8 @@ class StaircaseExperiment:
         self.is_last_step_up = True
 
     def stepdown(self):
-        self.current_difficulty -= self.get_step_size()
-        self.current_difficulty = max(self.current_difficulty, 0)
+        self.current_difficulty = max(
+            self.current_difficulty-self.step_size, 0)
         self.current_step += 1
         if self.is_last_step_up:
             self.remaining_to_stop -= 1
@@ -332,8 +332,9 @@ class StaircaseExperiment:
     def new(size: int, stimuli_generator: StimuliRuntimeGenerator, event_trigger: SoftSerial,
             use_step: bool = False, fixation: str = "",
             upper_limit: int = 2**32,
-            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY+1, # default is unreachable
-            saveto = "logs"): 
+            target_difficulty: int = StimuliRuntimeGenerator().MAX_DIFFICULTY +
+            1,  # default is unreachable
+            saveto="logs"):
 
         obj = StaircaseExperiment()
         obj.experiment = Experiment()
@@ -357,7 +358,7 @@ class StaircaseExperiment:
 
         obj.max_difficulty = obj.stimuli_generator.MAX_DIFFICULTY
         obj.target_difficulty = target_difficulty
-        obj.step_size = int((obj.max_difficulty+1)/2) # staring from 0!
+        obj.step_size = int((obj.max_difficulty+1)/2)  # staring from 0!
         obj.key_pressed_during_trial = None
 
         obj.experiment.allow_break = True
@@ -371,7 +372,7 @@ class StaircaseExperiment:
         obj.stimuli_present_time = 0
         obj.results_filename = f"{saveto}/results.txt"
 
-        open(obj.results_filename, 'w').close() # delete old copy
+        open(obj.results_filename, 'w').close()  # delete old copy
 
         obj.reset_animator()
         return obj
