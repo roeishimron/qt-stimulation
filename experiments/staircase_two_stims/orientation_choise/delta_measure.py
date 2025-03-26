@@ -17,7 +17,7 @@ class ImageGenerator(FunctionToStimuliIdentificationGenerator):
     RADIAL_EASING = 1200
 
     AMOUNT_OF_BASE = 32
-    DOT_SIZE = 92
+    DOT_SIZE = 90
     
     SPACIAL_FREQUENCY = 2
 
