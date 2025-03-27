@@ -25,7 +25,7 @@ def run():
 
     height = int(screen_height*5/6)
 
-    AMOUNT_OF_BASE = 80
+    AMOUNT_OF_BASE = 100
     DOT_SIZE = 70
     COHERENCES = [7, 8, 9, 10, 11, 12, 13]
     DISPLAY_FREQUENCY = 8
