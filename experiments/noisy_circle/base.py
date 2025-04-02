@@ -59,7 +59,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
         fill_with_dots(int(height),
                        [create_gabor_values(
                            DOT_SIZE, SPACIAL_FREQUENCY, rotation=random()*pi,
-                           offset=pi/2, raidal_easing=RADIAL_EASING)
+                           raidal_easing=RADIAL_EASING)
                            for _ in range(AMOUNT_OF_BASE - coherence)],
                 priority_dots=gabors_around_circle(center, RADIUS, coherence,
                                                    DOT_SIZE, SPACIAL_FREQUENCY,
