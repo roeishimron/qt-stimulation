@@ -1,2 +1,2 @@
-from experiments.staircase_two_stims.orientation_choise.circlular_uniform_measure import run
+from experiments.noisy_circle.circular import run
 run()
