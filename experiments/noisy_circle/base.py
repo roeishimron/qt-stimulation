@@ -33,10 +33,10 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     AMOUNT_OF_BASE = 100
     DOT_SIZE = 70
     COHERENCES = [7, 8, 9, 10, 11, 12, 13]
-    DISPLAY_FREQUENCY = 8
+    DISPLAY_FREQUENCY = 30
     ODDBALL_MODULATION = 3
     TRIAL_DURATION = 15
-    AMOUNT_OF_EXAMPLES = 8
+    AMOUNT_OF_EXAMPLES = 15
 
     RADIAL_EASING = 1000
     SPACIAL_FREQUENCY = 2
