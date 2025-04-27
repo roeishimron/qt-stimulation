@@ -24,6 +24,9 @@ class AppliablePixmap(Appliable):
 
     def apply_to_label(self, label: QLabel):
         label.setPixmap(self.pixmap)
+    
+    def get_pixmap(self) -> QPixmap:
+        return self.pixmap
 
 
 class AppliableText(Appliable):
