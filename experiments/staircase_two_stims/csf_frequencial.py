@@ -7,13 +7,13 @@ from soft_serial import SoftSerial
 from itertools import cycle
 from staircase_experiment import FunctionToStimuliIdentificationGenerator, StaircaseExperiment, TimedChoiceGenerator
 from random import random, shuffle, choice
-from numpy import linspace, pi, array
+from numpy import linspace, pi, array, arange
 from numpy.typing import NDArray
 
 
 class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
 
-    DISPLAY_TIME = 500
+    DISPLAY_TIME = 1000
 
     RADIAL_EASING = 1000
 
@@ -23,9 +23,8 @@ class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
     
     def __init__(self, screen_dimentions: Tuple[int, int]):
         self.figure_size = screen_dimentions[0]
-        # varying linearly over the cycle pixel size, minimum is 4
 
-        self.frequency_space = [int(self.figure_size/(self.MAX_DIFFICULTY + 3 - i)) for i in range(self.MAX_DIFFICULTY + 1)]
+        self.frequency_space = arange(self.MAX_DIFFICULTY+1) + 2
 
         return super().__init__(screen_dimentions, self._generate_next_trial)
 
@@ -46,7 +45,7 @@ class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
 
         stim = array_into_pixmap((vertical, horizontal)[int(is_horizontal)])
 
-        return ((stim, is_horizontal, mask), (self.DISPLAY_TIME, self.DISPLAY_TIME))
+        return ((stim, is_horizontal, mask), (self.DISPLAY_TIME, int(self.DISPLAY_TIME/2)))
 
 
 def run(saveto="logs"):
