@@ -122,7 +122,7 @@ class RealtimeViewingExperiment(QOpenGLWindow):
 
     def _new_trial(self, refresh_rate: int, break_duration: int,
                    amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: int):
-        self.event_trigger.write_int(Codes.BreakEnd)
+        self.event_trigger.parallel_write_int(Codes.BreakEnd)
         return (BreakFrameGenerator(refresh_rate, break_duration),
                 StimuliFrameGenerator(amount_of_stims, stimuli, frames_per_stim))
 
@@ -150,15 +150,17 @@ class RealtimeViewingExperiment(QOpenGLWindow):
             return
 
         self.remaining_to_swap = self.frame_generator.paint(
-            QPainter(self), self.screen, self.center)
-
-        if self.remaining_to_swap == 0:
+            QPainter(self), self.screen, self.center)  - 1 # -1 because the current counts!
+             
+        if self.remaining_to_swap < 0:
             try:
                 self.frame_generator = next(self.frame_generators)
             except StopIteration:
                 return self.close()
-
+        
         process_time = time_ns()-startime
         if process_time > 10**9/60:
             print(
-                f"Warning: process time was too long ({process_time*10**6} vs {1000/60})")
+                f"Warning: process time was too long ({process_time/10**9} vs {1/60} seconds)")
+
+        
