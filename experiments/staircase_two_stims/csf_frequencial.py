@@ -13,9 +13,9 @@ from numpy.typing import NDArray
 
 class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
 
-    DISPLAY_TIME = 1000
+    DISPLAY_TIME = 1500
 
-    RADIAL_EASING = 1000
+    RADIAL_EASING = 1200
 
     frequency_space: NDArray
 
@@ -35,17 +35,10 @@ class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
 
         is_horizontal = choice([True, False])
         
-        horizontal = create_gabor_values(self.figure_size, frequency, 
-                            raidal_easing=self.RADIAL_EASING, rotation=pi/2)
-        
-        vertical = create_gabor_values(self.figure_size, frequency, 
-                            raidal_easing=self.RADIAL_EASING, rotation=0)
-        
-        mask = array_into_pixmap(array((horizontal + vertical)/2))
+        stimulus = array_into_pixmap(create_gabor_values(self.figure_size, frequency, 
+                            raidal_easing=self.RADIAL_EASING, rotation=pi/2*int(is_horizontal)))
 
-        stim = array_into_pixmap((vertical, horizontal)[int(is_horizontal)])
-
-        return ((stim, is_horizontal, mask), (self.DISPLAY_TIME, int(self.DISPLAY_TIME/2)))
+        return ((stimulus, is_horizontal, self.gray), (self.DISPLAY_TIME, 0))
 
 
 def run(saveto="logs"):
@@ -65,4 +58,4 @@ def run(saveto="logs"):
     main_window.show()
     # Run the main Qt loop
     app.exec()
-    main_window.log_into_graph("pixel-size", lambda y: (32 - y) * 4)
+    main_window.log_into_graph("cycles per FIGURE", lambda y: generator.frequency_space[y])
