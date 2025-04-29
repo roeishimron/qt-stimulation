@@ -28,7 +28,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
 
     AMOUNT_OF_BASE = 100
     DOT_SIZE = 70
-    COHERENCES = [8, 9, 10, 11, 12]
+    COHERENCES = [11] #[8, 9, 10, 11, 12]
 
     FRAME_RATE = 60
     STIMULI_DISPLAY_FREQUENCY = 30
@@ -75,7 +75,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     oddballs = flatten(oddballs)
 
     realtime_window = RealtimeViewingExperiment(
-        OddballStimuli(height, iter(oddballs), iter(base), ODDBALL_MODULATION), SoftSerial(),
+        OddballStimuli(height, cycle(oddballs), cycle(base), ODDBALL_MODULATION), SoftSerial(),
         int(FRAME_RATE / STIMULI_DISPLAY_FREQUENCY), AMOUNT_OF_DURATIONS)
     realtime_window.showFullScreen()
 
