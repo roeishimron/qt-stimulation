@@ -14,6 +14,7 @@ from json import dumps, loads
 from matplotlib.pyplot import plot, show, xlabel, ylabel, savefig, cla
 from subprocess import run
 from time import time_ns
+from itertools import cycle
 
 
 class StimuliRuntimeGenerator:
@@ -61,7 +62,7 @@ class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
         durations = generated[1]
 
         return (OddballStimuli(self.screen_dimentions[0],
-                               iter([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
+                               cycle([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
                 [self.INTERTRIAL_DELAY, durations[0], durations[1], 1])
 
 
