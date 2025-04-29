@@ -1,6 +1,7 @@
 from serial import Serial, PortNotOpenError
 from serial.serialutil import SerialException
 from enum import IntEnum
+from threading import Thread
 
 class Codes(IntEnum):
     FrameChangeToOddball = 0x1
@@ -35,3 +36,9 @@ class SoftSerial(Serial):
                 # super().write(value.to_bytes())
         except (PortNotOpenError, SerialException):
             pass
+
+    def parallel_write_int(self, value: int):
+        # Assume that the last thread is already done
+        t = Thread(target=self.write_int, args=[value])
+        t.start()
+        
