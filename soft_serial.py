@@ -14,11 +14,11 @@ class Codes(IntEnum):
 
 class SoftSerial(Serial):
     EVENT_PORT_NAME = "/dev/ttyUSB0"
-    BAUDRATE = 115200
+    BAUDRATE = 9600
 
     def __init__(self):
         try:
-            super().__init__(baudrate=self.BAUDRATE, timeout=1)
+            super().__init__(baudrate=self.BAUDRATE)
             self.port = self.EVENT_PORT_NAME
             
         except SerialException as e:
@@ -28,11 +28,9 @@ class SoftSerial(Serial):
         # only at trial end until we'll have a proper event:
         try:
             if value == Codes.BreakEnd:
-                for _ in range(30):
-                    self.open()
-                    self.write(bytes((0xff)))
-                    self.flush()
-                    self.close()
+                self.open()
+                self.write(bytes((0x50)))
+                self.close()
                 # super().write(value.to_bytes())
         except (PortNotOpenError, SerialException):
             pass
