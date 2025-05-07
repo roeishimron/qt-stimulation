@@ -236,11 +236,15 @@ class StaircaseExperiment:
     def stepup(self):
         if self.current_difficulty != self.max_difficulty:
             self.current_difficulty += self.get_step_size()
+        else:
+            self.remaining_to_stop -= 1
+        
+        if not self.is_last_step_up: # Impossible for this and above `else` to run
+            self.remaining_to_stop -= 1
 
         self.step_size = ceil(self.step_size/2)
         self.current_step += 1
-        if not self.is_last_step_up:
-            self.remaining_to_stop -= 1
+        
         self.is_last_step_up = True
 
     def stepdown(self):
