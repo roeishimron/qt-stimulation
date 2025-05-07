@@ -38,7 +38,7 @@ class GaborFrequencyGenerator(FunctionToStimuliIdentificationGenerator):
         stimulus = array_into_pixmap(create_gabor_values(self.figure_size, frequency, 
                             raidal_easing=self.RADIAL_EASING, rotation=pi/2*int(is_horizontal)))
 
-        return ((stimulus, is_horizontal, self.gray), (self.DISPLAY_TIME, 0))
+        return ((stimulus, is_horizontal, self.gray), (self.DISPLAY_TIME, 100))
 
 
 def run(saveto="logs"):
