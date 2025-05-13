@@ -53,8 +53,9 @@ class StimuliFrameGenerator(IFrameGenerator):
         painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
 
         # Stimulus
-        painter.drawPixmap(center - QPoint(self.stimuli.size, self.stimuli.size)/2,
-                           self.stimuli.next_stimulation()[1].get_pixmap())
+        self.stimuli.next_stimulation()[1].draw_at(center - QPoint(self.stimuli.size, self.stimuli.size)/2,
+                                                   painter)
+
         # Fixation
         self.write_at(painter, center, "+")
 
@@ -150,17 +151,16 @@ class RealtimeViewingExperiment(QOpenGLWindow):
             return
 
         self.remaining_to_swap = self.frame_generator.paint(
-            QPainter(self), self.screen, self.center)  - 1 # -1 because the current counts!
-             
+            # -1 because the current counts!
+            QPainter(self), self.screen, self.center) - 1
+
         if self.remaining_to_swap < 0:
             try:
                 self.frame_generator = next(self.frame_generators)
             except StopIteration:
                 return self.close()
-        
+
         process_time = time_ns()-startime
         if process_time > 10**9/60:
             print(
                 f"Warning: process time was too long ({process_time/10**9} vs {1/60} seconds)")
-
-        

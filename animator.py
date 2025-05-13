@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
-from PySide6.QtGui import QPixmap, QFontDatabase, QFont
+from PySide6.QtGui import QPixmap, QFontDatabase, QFont, QPainter
 from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
-                            Slot, QByteArray)
+                            Slot, QByteArray, QPoint)
 from random import randint
 
 
@@ -25,8 +25,8 @@ class AppliablePixmap(Appliable):
     def apply_to_label(self, label: QLabel):
         label.setPixmap(self.pixmap)
     
-    def get_pixmap(self) -> QPixmap:
-        return self.pixmap
+    def draw_at(self, p: QPoint, painter: QPainter):
+        painter.drawPixmap(p, self.pixmap)
 
 
 class AppliableText(Appliable):
@@ -53,6 +53,20 @@ class AppliableText(Appliable):
         label.setFont(current_font)
         label.setStyleSheet(f'color: {self.color};')
         label.setText(self.text)
+    
+        
+    def draw_at(self, p: QPoint, painter: QPainter):
+        current_font = painter.font()
+        current_font.setPointSize(self.font_size)
+        current_font.setFamily(self.font_family)
+        current_font.setStyle(self.font_style)
+
+        painter.setFont(current_font)
+
+        painter.setPen(self.color)
+        font = painter.font()
+        painter.setFont(font)
+        painter.drawText(p, self.text)
 
 
 class OnShowCaller(Appliable):
