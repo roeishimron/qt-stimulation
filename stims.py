@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from numpy import cos, sin, pi, linspace, sqrt, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros, where, all
+from numpy import cos, sin, pi, linspace, sqrt, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros, where, all, clip
 from numpy.random import choice, rand
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
@@ -34,7 +34,7 @@ def _create_rotated_sin_frame(figure_size, frequency, offset, contrast, rotation
     for x in range(int(-figure_size/2), int(figure_size/2)):
         for y in range(int(-figure_size/2), int(figure_size/2)):
             orthogonal_values[int(x+figure_size/2), int(y+figure_size/2)
-                              ] = sum(array([x, y]) * new_x_axis) 
+                              ] = sum(array([x, y]) * new_x_axis)
 
     # normalize so that the max length arrives at the right amount of flips
     orthogonal_values = orthogonal_values * virtual_size / figure_size
@@ -237,23 +237,47 @@ def get_false_margins(radius: int, figure_size: int):
     return available_positions
 
 # Set only dots without position
-def place_dots_in_frame(figure_size:int, dots: List[Dot], minimum_distance_factor: float=1) -> List[Dot]:
-    
+
+
+def place_dots_in_frame(figure_size: int, dots: List[Dot], minimum_distance_factor: float = 1) -> List[Dot]:
+
     available_positions = full((figure_size, figure_size), True)
-    xs, ys = mgrid[:figure_size, :figure_size]
+
+    margin_cache, circle_mask_cache = {}, {}
 
     for dot in dots:
         if dot.position.shape[0] == 0:
-            remaining_position_indices = argwhere(
-                available_positions & get_false_margins(dot.r, figure_size))
+
+            margin = None
+            if dot.r in margin_cache:
+                margin = margin_cache[dot.r]
+            else:
+                margin = get_false_margins(dot.r, figure_size)
+                margin_cache[dot.r] = margin
+
+            remaining_position_indices = argwhere(available_positions & margin)
 
             dot.position = remaining_position_indices[choice(
                 len(remaining_position_indices))]
 
-        circle = square(xs - dot.position[0]) + square(ys - dot.position[1])
-        available_positions &= logical_not(circle <= square(dot.r*2*minimum_distance_factor))
-    return dots
+        r = 2*dot.r*minimum_distance_factor
+        x, y = dot.position[0], dot.position[1]
         
+        circle_mask = None
+        if r in circle_mask_cache:
+            circle_mask = circle_mask_cache[r]
+        else:
+            xs, ys = mgrid[:2*r, :2*r]
+            circle_mask = argwhere(square(xs - r) + square(ys - r) < square(r))
+            circle_mask_cache[r] = circle_mask
+
+        filler_mask = clip(circle_mask + array([x-r, y-r], dtype=int64),
+                           0, figure_size-1)
+
+        available_positions[filler_mask[:, 0], filler_mask[:, 1]] = False
+
+    return dots
+
 
 # there must be enough room for all the dots
 # Priority dots are allowed to be without position
@@ -261,15 +285,16 @@ def fill_with_dots(figure_size: int,
                    dots_fill: List[NDArray],
                    priority_dots: List[Dot] = [],
                    backdround_value: float = 0,
-                   minimum_distance_factor: float=1) -> NDArray:
+                   minimum_distance_factor: float = 1) -> NDArray:
 
     canvas = full((figure_size, figure_size), backdround_value, float64)
 
     complete_requirement = priority_dots + \
         [Dot(int(fill.shape[0]/2), array([]), fill) for fill in dots_fill]
-    
-    complete_requirement = place_dots_in_frame(figure_size, complete_requirement, minimum_distance_factor)
-    
+
+    complete_requirement = place_dots_in_frame(
+        figure_size, complete_requirement, minimum_distance_factor)
+
     for dot in complete_requirement:
         filler_xs, filler_ys = mgrid[:dot.r*2, :dot.r*2]
         filler_mask = argwhere(square(filler_xs - dot.r) +
