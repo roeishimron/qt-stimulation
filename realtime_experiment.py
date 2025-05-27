@@ -4,7 +4,7 @@ from PySide6.QtOpenGL import QOpenGLWindow, QOpenGLBuffer, QOpenGLPaintDevice
 from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter
 from PySide6.QtWidgets import QApplication
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtCore import QPoint, QSize, Qt, QRect
+from PySide6.QtCore import QPoint, QSize, Qt, QRect, Slot
 from stims import fill_with_dots, inflate_randomley, create_gabor_values, array_into_pixmap, gabors_around_circle, circle_at
 from animator import AppliableText
 from soft_serial import SoftSerial, Codes
@@ -24,7 +24,8 @@ class IFrameGenerator():
         pass
 
     def write_at(self, painter: QPainter, screen: QRect, text: str, font_size=40):
-        AppliableText(text, font_size, Qt.GlobalColor.gray).draw_at(screen, painter)
+        AppliableText(text, font_size, Qt.GlobalColor.gray).draw_at(
+            screen, painter)
 
 
 class StimuliFrameGenerator(IFrameGenerator):
@@ -89,16 +90,33 @@ class StimuliFrameGenerator(IFrameGenerator):
         return 1
 
 
-class BreakFrameGenerator(StimuliFrameGenerator):
+class CountdownFrameGenerator(StimuliFrameGenerator):
 
     def __init__(self, refresh_rate: int, break_duration: OddballStimuli):
         stim_per_second = OddballStimuli((AppliableText(f"{break_duration-i}")
-                                             for i in range(break_duration)))
-        
+                                          for i in range(break_duration)))
+
         super().__init__(break_duration, stim_per_second, refresh_rate, show_fixation=False)
 
 
-class RealtimeViewingExperiment(QOpenGLWindow):
+class BreakFrameGenerator(IFrameGenerator):
+    in_break: bool
+
+    def __init__(self):
+        self.in_break = True
+
+    def paint(self, painter, screen):
+        self.write_at(painter, screen,
+                      "This is a break, press `space` to continue")
+        return self.in_break
+
+    @Slot()
+    def end_break(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            self.in_break = False
+
+
+class RealtimeViewingExperiment(QOpenGLWidget):
     event_trigger: SoftSerial
     painter: QPainter
     remaining_to_swap: int
@@ -113,9 +131,9 @@ class RealtimeViewingExperiment(QOpenGLWindow):
     frame_generator: IFrameGenerator
 
     def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
-                 frames_per_stim: int, amount_of_stims: int, break_duration=10, amount_of_trials=3,
+                 frames_per_stim: int, amount_of_stims: int, break_duration=3, amount_of_trials=3,
                  use_step=False, show_fixation_cross=True):
-        super().__init__(QOpenGLWindow.UpdateBehavior.PartialUpdateBlend)
+        super().__init__()
 
         REFRESH_RATE = 60
 
@@ -138,9 +156,12 @@ class RealtimeViewingExperiment(QOpenGLWindow):
                    amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: int,
                    use_step: bool, show_fixation_cross: bool):
         self.event_trigger.parallel_write_int(Codes.BreakEnd)
-        return (BreakFrameGenerator(refresh_rate, break_duration),
-                StimuliFrameGenerator(amount_of_stims, stimuli, 
-                                      frames_per_stim, use_step, 
+        break_frame_generator = BreakFrameGenerator()
+        self.keyReleaseEvent = break_frame_generator.end_break
+        return (break_frame_generator,
+                CountdownFrameGenerator(refresh_rate, break_duration),
+                StimuliFrameGenerator(amount_of_stims, stimuli,
+                                      frames_per_stim, use_step,
                                       show_fixation_cross))
 
     def _apply_format(self):
