@@ -6,85 +6,96 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import QPoint, QSize, Qt, QRect
 from stims import fill_with_dots, inflate_randomley, create_gabor_values, array_into_pixmap, gabors_around_circle, circle_at
+from animator import AppliableText
 from soft_serial import SoftSerial, Codes
 from animator import OddballStimuli, Appliable
 from itertools import chain, cycle, islice, repeat
 from viewing_experiment import ViewExperiment
 from random import random, sample
-from numpy import array, pi, arange, square, average, inf, linspace
+from numpy import array, pi, arange, square, average, inf, linspace, float64, cos, sin, ones
+from numpy.typing import NDArray
 from typing import Callable, Tuple, Iterable, List
 
 from time import time_ns
 
 
 class IFrameGenerator():
-    def paint(self, painter: QPainter, screen: QRect, center: QPoint) -> int:
+    def paint(self, painter: QPainter, screen: QRect) -> int:
         pass
 
-    def write_at(self, painter: QPainter, target: QPoint, text: str, font_size=40, bold=True):
-        painter.setPen(Qt.GlobalColor.gray)
-        font = painter.font()
-        font.setPixelSize(font_size)
-        font.setBold(bold)
-        painter.setFont(font)
-        painter.drawText(target, text)
+    def write_at(self, painter: QPainter, screen: QRect, text: str, font_size=40):
+        AppliableText(text, font_size, Qt.GlobalColor.gray).draw_at(screen, painter)
 
 
 class StimuliFrameGenerator(IFrameGenerator):
+
     amount_of_stims: int
     stimuli: OddballStimuli
     frames_per_stim: int
 
+    interstim_opacities: NDArray[float64]
+    current_interstim_index: int
+    current_stimulation: Appliable
+
+    show_fixation: bool
+
+    # The smoothing function accepts relative time and returns the opacity at that time
     def __init__(self, amount_of_stims: int, stimuli: OddballStimuli,
-                 frames_per_stim: int):
+                 frames_per_stim: int, use_step=False, show_fixation=True):
         self.amount_of_stims = amount_of_stims
         self.stimuli = stimuli
         self.frames_per_stim = frames_per_stim
 
-    # returns how much frames until next call, zero if finished
-    def paint(self, painter: QPainter, screen: QRect, center: QPoint) -> int:
-        assert self.amount_of_stims > 0
-        self.amount_of_stims -= 1
+        if use_step:
+            self.interstim_opacities = ones(frames_per_stim)
+        else:
+            self.interstim_opacities = sin(
+                linspace(0, pi, frames_per_stim, False))
 
-        if self.amount_of_stims == 0:
-            return 0
+        self.current_interstim_index = 0
+
+        self.show_fixation = show_fixation
+
+    def paint(self, painter: QPainter, screen: QRect) -> int:
 
         # Background
         painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
+
+        painter.setOpacity(
+            self.interstim_opacities[self.current_interstim_index])
+
+        # The current stim ended
+        if self.current_interstim_index == 0:
+
+            # All stims ended
+            if self.amount_of_stims == 0:
+                return 0
+
+            self.amount_of_stims -= 1
+            self.current_stimulation = self.stimuli.next_stimulation()[1]
+
+        self.current_interstim_index = (
+            self.current_interstim_index+1) % self.frames_per_stim
 
         # Stimulus
-        self.stimuli.next_stimulation()[1].draw_at(center - QPoint(self.stimuli.size, self.stimuli.size)/2,
-                                                   painter)
+        self.current_stimulation.draw_at(screen, painter)
+
+        painter.setOpacity(1)
 
         # Fixation
-        self.write_at(painter, center, "+")
+        if self.show_fixation:
+            self.write_at(painter, screen, "+")
 
-        return self.frames_per_stim
+        return 1
 
 
-class BreakFrameGenerator(IFrameGenerator):
-    refresh_rate: int
-    break_duration: int
+class BreakFrameGenerator(StimuliFrameGenerator):
 
     def __init__(self, refresh_rate: int, break_duration: OddballStimuli):
-        self.refresh_rate = refresh_rate
-        self.break_duration = break_duration
-
-    # returns how much frames until next call, zero if finished
-    def paint(self, painter: QPainter, screen: QRect, center: QPoint) -> int:
-        assert self.break_duration >= 0
-
-        if self.break_duration == 0:
-            return 0
-
-        # Background
-        painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
-
-        # Fixation
-        self.write_at(painter, center, f"{self.break_duration}")
-
-        self.break_duration -= 1
-        return self.refresh_rate
+        stim_per_second = OddballStimuli((AppliableText(f"{break_duration-i}")
+                                             for i in range(break_duration)))
+        
+        super().__init__(break_duration, stim_per_second, refresh_rate, show_fixation=False)
 
 
 class RealtimeViewingExperiment(QOpenGLWindow):
@@ -102,7 +113,8 @@ class RealtimeViewingExperiment(QOpenGLWindow):
     frame_generator: IFrameGenerator
 
     def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
-                 frames_per_stim: int, amount_of_stims: int, break_duration=10, amount_of_trials=3):
+                 frames_per_stim: int, amount_of_stims: int, break_duration=10, amount_of_trials=3,
+                 use_step=False, show_fixation_cross=True):
         super().__init__(QOpenGLWindow.UpdateBehavior.PartialUpdateBlend)
 
         REFRESH_RATE = 60
@@ -116,16 +128,20 @@ class RealtimeViewingExperiment(QOpenGLWindow):
 
         self.frame_generators = chain.from_iterable(
             islice(iter(lambda: self._new_trial(REFRESH_RATE, break_duration,
-                                                amount_of_stims, stimuli, frames_per_stim),
+                                                amount_of_stims, stimuli, frames_per_stim,
+                                                use_step, show_fixation_cross),
                         None), amount_of_trials))
 
         self.frame_generator = next(self.frame_generators)
 
     def _new_trial(self, refresh_rate: int, break_duration: int,
-                   amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: int):
+                   amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: int,
+                   use_step: bool, show_fixation_cross: bool):
         self.event_trigger.parallel_write_int(Codes.BreakEnd)
         return (BreakFrameGenerator(refresh_rate, break_duration),
-                StimuliFrameGenerator(amount_of_stims, stimuli, frames_per_stim))
+                StimuliFrameGenerator(amount_of_stims, stimuli, 
+                                      frames_per_stim, use_step, 
+                                      show_fixation_cross))
 
     def _apply_format(self):
         format = QSurfaceFormat()
@@ -152,7 +168,7 @@ class RealtimeViewingExperiment(QOpenGLWindow):
 
         self.remaining_to_swap = self.frame_generator.paint(
             # -1 because the current counts!
-            QPainter(self), self.screen, self.center) - 1
+            QPainter(self), self.screen) - 1
 
         if self.remaining_to_swap < 0:
             try:

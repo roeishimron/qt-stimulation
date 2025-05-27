@@ -45,7 +45,7 @@ def run():
             for size in choices(BASE_SIZE_RANGE, k=100))
 
     main_window = ViewExperiment.new_with_constant_frequency(
-        OddballStimuli(height, cycle(inflate_randomley(oddball, 10)),
+        OddballStimuli(cycle(inflate_randomley(oddball, 10)),
                        cycle(inflate_randomley(base, 10)), 8), SoftSerial(), 10, True,
         fixation="", trial_duration=45, background="white")
 

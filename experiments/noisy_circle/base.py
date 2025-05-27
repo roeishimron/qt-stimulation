@@ -31,7 +31,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     COHERENCES = arange(5) + 7
 
     FRAME_RATE = 60
-    STIMULI_DISPLAY_FREQUENCY = 60
+    STIMULI_DISPLAY_FREQUENCY = 20
     assert FRAME_RATE % STIMULI_DISPLAY_FREQUENCY == 0
 
     ODDBALL_MODULATION = 4

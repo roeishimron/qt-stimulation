@@ -35,12 +35,11 @@ def run():
     objects = list(read_images_into_appliable_pixmaps(
         "experiments/faces-data/objects", size))
 
-    stimuli = OddballStimuli(size,
-                             cycle(list(inflate_randomley(faces, 100))),
+    stimuli = OddballStimuli(cycle(list(inflate_randomley(faces, 100))),
                              cycle(list(inflate_randomley(objects, 100))), 3)
 
     main_window = ViewExperiment.new_with_constant_frequency(
-        stimuli, SoftSerial(), 5.88, trial_duration=180)
+        stimuli, SoftSerial(), 6, trial_duration=180)
     main_window.show()
 
     # Run the main Qt loop

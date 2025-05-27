@@ -61,8 +61,7 @@ class FunctionToStimuliIdentificationGenerator(StimuliRuntimeGenerator):
 
         durations = generated[1]
 
-        return (OddballStimuli(self.screen_dimentions[0],
-                               cycle([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
+        return (OddballStimuli(cycle([self.gray, stim_value_mask[0], stim_value_mask[-1], self.gray])),
                 [self.INTERTRIAL_DELAY, durations[0], durations[1], 1])
 
 
@@ -105,8 +104,7 @@ class FunctionToStimuliChoiceGenerator(StimuliRuntimeGenerator):
                                             not self.target_is_left)],
                                         stim_distractor_mask[int(self.target_is_left)])
 
-        return (OddballStimuli(self.screen_dimentions[0],
-                               iter([self.gray, choice_screen, stim_distractor_mask[-1], self.gray])),
+        return (OddballStimuli(iter([self.gray, choice_screen, stim_distractor_mask[-1], self.gray])),
                 [self.INTERTRIAL_DELAY, durations[0], durations[1], 0])
 
 

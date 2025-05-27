@@ -10,6 +10,7 @@ from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliableText, OnShowCaller, Appliable
 from itertools import cycle
 from viewing_experiment import ViewExperiment
+from realtime_experiment import RealtimeViewingExperiment
 from random import choices, choice
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from copy import deepcopy
@@ -26,26 +27,7 @@ def create_random_duplications(words: List[OnShowCaller], recorder: ResponseReco
         words[i].on_show = recorder.record_stimuli_show
     return words
 
-def generate_increasing_durations(alleged_frequency: int) -> List[int]:
-    TRIAL_DURATION = 40
-    amount_of_stimuli = TRIAL_DURATION * alleged_frequency
-    xs = linspace(0,TRIAL_DURATION, amount_of_stimuli)
-    offset = 1
-    transformed = log(xs+offset)
-    
-    #should be the same at the trial end
-    scale = xs[-1]/transformed[-1]
-    print(f"scaling with {scale}")
-
-    transformed *= scale
-
-    duration_in_s = diff(transformed)
-    print(f"from {1/duration_in_s[0]} up to {1/duration_in_s[-1]}")
-
-    return list(duration_in_s * 1000)
-
-
-def run(oddballs: List[Appliable], base: Iterable[Appliable]):
+def run(oddballs: Iterable[Appliable], base: Iterable[Appliable]):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -58,10 +40,8 @@ def run(oddballs: List[Appliable], base: Iterable[Appliable]):
     oddballs = create_random_duplications(list(map(create_on_show_caller, oddballs)), recorder)
     base = map(create_on_show_caller, base)
 
-    main_window = ViewExperiment.new_with_constant_frequency( OddballStimuli(
-        size, cycle(oddballs), cycle(base), 5), SoftSerial(), 20, use_step=False,
-        on_runtime_keypress=lambda e: recorder.record_response() if e.key() == Qt.Key.Key_Space else print("pass"))
-    main_window.show()
+    main_window = RealtimeViewingExperiment(OddballStimuli(cycle(oddballs), cycle(base), 5), SoftSerial(), 3, 10*30, show_fixation_cross=False)
+    main_window.showFullScreen()
 
     # Run the main Qt loop
     app.exec()

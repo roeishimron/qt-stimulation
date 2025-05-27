@@ -3,7 +3,7 @@ from PySide6.QtGui import QPixmap, QFontDatabase, QFont, QPainter
 from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
-                            Slot, QByteArray, QPoint)
+                            Slot, QByteArray, QPoint, QRect, QSize)
 from random import randint
 
 
@@ -13,6 +13,8 @@ DEFAULT_COLOR = "white"
 
 class Appliable:
     def apply_to_label(self, _label: QLabel):
+        pass
+    def draw_at(self, screen: QRect, painter: QPainter):
         pass
 
 
@@ -24,9 +26,10 @@ class AppliablePixmap(Appliable):
 
     def apply_to_label(self, label: QLabel):
         label.setPixmap(self.pixmap)
-    
-    def draw_at(self, p: QPoint, painter: QPainter):
-        painter.drawPixmap(p, self.pixmap)
+
+    def draw_at(self, screen: QRect, painter: QPainter):
+        target = screen.bottomRight() - QPoint(self.pixmap.height(), self.pixmap.width)
+        painter.drawPixmap(target, self.pixmap)
 
 
 class AppliableText(Appliable):
@@ -53,20 +56,16 @@ class AppliableText(Appliable):
         label.setFont(current_font)
         label.setStyleSheet(f'color: {self.color};')
         label.setText(self.text)
-    
-        
-    def draw_at(self, p: QPoint, painter: QPainter):
-        current_font = painter.font()
-        current_font.setPointSize(self.font_size)
-        current_font.setFamily(self.font_family)
-        current_font.setStyle(self.font_style)
 
-        painter.setFont(current_font)
-
+    def draw_at(self, screen: QRect, painter: QPainter):
         painter.setPen(self.color)
         font = painter.font()
+        font.setPixelSize(self.font_size)
+        font.setFamily(self.font_family)
+        font.setStyle(self.font_style)
         painter.setFont(font)
-        painter.drawText(p, self.text)
+        
+        painter.drawText(screen, self.text, Qt.AlignmentFlag.AlignCenter)
 
 
 class OnShowCaller(Appliable):
@@ -80,6 +79,9 @@ class OnShowCaller(Appliable):
     def apply_to_label(self, label: QLabel):
         self.appliable.apply_to_label(label)
         self.on_show()
+
+    def draw_at(self, p: QPoint, painter: QPainter):
+        self.appliable.draw_at(p, painter)
 
 
 class OddballStimuli:
@@ -97,7 +99,6 @@ class OddballStimuli:
             self.remaining_to_oddball = self.oddball_modulation_range[0]
 
     def __init__(self,
-                 size: int,
                  oddball: Iterable[Appliable],
                  base: Iterable[Appliable] = None,
                  oddball_modulation_start: int = 1,
@@ -107,7 +108,6 @@ class OddballStimuli:
         self.oddball = oddball
         self.oddball_modulation_range = (
             oddball_modulation_start, oddball_modulation_end)
-        self.size = size
         self._next_oddball()
 
     def next_stimulation(self) -> Tuple[bool, Appliable]:
@@ -167,8 +167,10 @@ class Animator:
         self.animation = QSequentialAnimationGroup()
 
         for d in self._durations[:-1]:
-            self.animation.addAnimation(self._create_transition(use_step, d, False))
-        self.animation.addAnimation(self._create_transition(use_step, self._durations[-1], True))
+            self.animation.addAnimation(
+                self._create_transition(use_step, d, False))
+        self.animation.addAnimation(self._create_transition(
+            use_step, self._durations[-1], True))
 
         self.animation.finished.connect(on_finish)
 
@@ -193,9 +195,7 @@ class Animator:
     def __init__(self, stimuli: OddballStimuli, display: QLabel,
                  durations: List[int], on_finish: Slot, on_stim_change_to_oddball: Callable,
                  on_stim_change_to_base: Callable, use_step: bool = False):
-        
-        display.setMinimumSize(stimuli.size, stimuli.size)
-        
+
         self.display = display
         self.stimuli = stimuli
 

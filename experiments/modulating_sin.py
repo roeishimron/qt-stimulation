@@ -37,12 +37,12 @@ def run():
 
     size = int(screen_height*3/4)
 
-    base = [generate_sin(size, 10, random()*pi,
+    base = [generate_sin(size, 10, (random()>0.5)*pi,
                          step=True) for _ in range(100)]
     oddballs = [generate_grey(size)]
 
     main_window = ViewExperiment.new(OddballStimuli(
-        size, cycle(oddballs), cycle(base), 2),
+        cycle(oddballs), cycle(base), 2),
         SoftSerial(),
         generate_increasing_durations(10),
         use_step=True, fixation="+",
