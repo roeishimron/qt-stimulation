@@ -23,7 +23,7 @@ class IFrameGenerator():
     def paint(self, painter: QPainter, screen: QRect) -> int:
         pass
 
-    def write_at(self, painter: QPainter, screen: QRect, text: str, font_size=40):
+    def write_at(self, painter: QPainter, screen: QRect, text: str, font_size=50):
         AppliableText(text, font_size, Qt.GlobalColor.gray).draw_at(
             screen, painter)
 
@@ -101,11 +101,16 @@ class CountdownFrameGenerator(StimuliFrameGenerator):
 
 class BreakFrameGenerator(IFrameGenerator):
     in_break: bool
+    event_trigger: SoftSerial
 
-    def __init__(self):
+    def __init__(self, event_trigger):
+        self.event_trigger = event_trigger
         self.in_break = True
 
     def paint(self, painter, screen):
+        # Background
+        painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
+
         self.write_at(painter, screen,
                       "This is a break, press `space` to continue")
         return self.in_break
@@ -114,10 +119,10 @@ class BreakFrameGenerator(IFrameGenerator):
     def end_break(self, event):
         if event.key() == Qt.Key.Key_Space:
             self.in_break = False
+            self.event_trigger.parallel_write_int(Codes.BreakEnd)
 
 
 class RealtimeViewingExperiment(QOpenGLWidget):
-    event_trigger: SoftSerial
     painter: QPainter
     remaining_to_swap: int
 
@@ -131,7 +136,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     frame_generator: IFrameGenerator
 
     def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
-                 frames_per_stim: int, amount_of_stims: int, break_duration=3, amount_of_trials=3,
+                 frames_per_stim: int, amount_of_stims_per_trial: int, break_duration=3, amount_of_trials=3,
                  use_step=False, show_fixation_cross=True):
         super().__init__()
 
@@ -146,17 +151,16 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         self.frame_generators = chain.from_iterable(
             islice(iter(lambda: self._new_trial(REFRESH_RATE, break_duration,
-                                                amount_of_stims, stimuli, frames_per_stim,
-                                                use_step, show_fixation_cross),
+                                                amount_of_stims_per_trial, stimuli, frames_per_stim,
+                                                use_step, show_fixation_cross, event_trigger),
                         None), amount_of_trials))
 
         self.frame_generator = next(self.frame_generators)
 
     def _new_trial(self, refresh_rate: int, break_duration: int,
                    amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: int,
-                   use_step: bool, show_fixation_cross: bool):
-        self.event_trigger.parallel_write_int(Codes.BreakEnd)
-        break_frame_generator = BreakFrameGenerator()
+                   use_step: bool, show_fixation_cross: bool, event_trigger: SoftSerial):
+        break_frame_generator = BreakFrameGenerator(event_trigger)
         self.keyReleaseEvent = break_frame_generator.end_break
         return (break_frame_generator,
                 CountdownFrameGenerator(refresh_rate, break_duration),
