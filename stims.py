@@ -280,9 +280,9 @@ def place_dots_in_frame(figure_size: int, dots: List[Dot], minimum_distance_fact
 
 
 # there must be enough room for all the dots
-# Priority dots are allowed to be without position
+# Priority dots are allowed to be without position, but must have `fill` and `r`
 def fill_with_dots(figure_size: int,
-                   dots_fill: List[NDArray],
+                   dots_fill: List[NDArray], 
                    priority_dots: List[Dot] = [],
                    backdround_value: float = 0,
                    minimum_distance_factor: float = 1) -> NDArray:
