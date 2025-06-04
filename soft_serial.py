@@ -30,8 +30,8 @@ class SoftSerial(Serial):
             if value == Codes.BreakEnd:
                 self.open()
                 self.write(bytes((0x50)))
+                self.flush()
                 self.close()
-                # super().write(value.to_bytes())
         except (PortNotOpenError, SerialException):
             pass
 
