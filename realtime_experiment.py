@@ -144,10 +144,8 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         self._apply_format()
 
-        self.event_trigger = event_trigger
         self.frameSwapped.connect(self.update)
         self.remaining_to_swap = 0
-        self.animating = True
 
         self.frame_generators = chain.from_iterable(
             islice(iter(lambda: self._new_trial(REFRESH_RATE, break_duration,
