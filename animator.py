@@ -38,14 +38,18 @@ class AppliableText(Appliable):
     color: str
     font_family: str
     font_style: QFont.Style
+    bold: bool
 
     def __init__(self, text: str, font_size: int = 50, color: str = DEFAULT_COLOR,
-                 font_family: str = DEFAULT_FONT, font_style: QFont.Style = QFont.Style.StyleNormal):
+                 font_family: str = DEFAULT_FONT, 
+                 font_style: QFont.Style = QFont.Style.StyleNormal,
+                 bold=False):
         self.text = text
         self.font_size = font_size
         self.color = color
         self.font_family = font_family
         self.font_style = font_style
+        self.bold = bold
 
     def apply_to_label(self, label: QLabel):
         current_font = label.font()
@@ -63,6 +67,7 @@ class AppliableText(Appliable):
         font.setPixelSize(self.font_size)
         font.setFamily(self.font_family)
         font.setStyle(self.font_style)
+        font.setBold(self.bold)
         painter.setFont(font)
         
         painter.drawText(screen, self.text, Qt.AlignmentFlag.AlignCenter)
