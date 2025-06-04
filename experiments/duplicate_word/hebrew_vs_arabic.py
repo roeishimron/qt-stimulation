@@ -1,6 +1,5 @@
 from stims import inflate_randomley
 from animator import AppliableText
-from random import choice
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from experiments.duplicate_word.base import run as inner_run
 

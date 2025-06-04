@@ -31,16 +31,22 @@ def run(oddballs: Iterable[Appliable], base: Iterable[Appliable]):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
+
     recorder = ResponseRecorder()
+    # oddballs = create_random_duplications(list(map(create_on_show_caller, oddballs)), recorder)
+    # base = map(create_on_show_caller, base)
 
-    screen_height = app.primaryScreen().geometry().height()
+    SCREEN_REFRESH_RATE = 60 # Hz
+    STIMULI_REFRESH_RATE = 20 # Hz
+    TRIAL_DURATION = 12 # s
+    
+    assert SCREEN_REFRESH_RATE % STIMULI_REFRESH_RATE == 0
 
-    size = int(screen_height*3/4)
-
-    oddballs = create_random_duplications(list(map(create_on_show_caller, oddballs)), recorder)
-    base = map(create_on_show_caller, base)
-
-    main_window = RealtimeViewingExperiment(OddballStimuli(cycle(oddballs), cycle(base), 5), SoftSerial(), 3, 10*30, show_fixation_cross=False)
+    main_window = RealtimeViewingExperiment(OddballStimuli(cycle(oddballs), cycle(base), 5),
+                                             SoftSerial(), 
+                                             int(SCREEN_REFRESH_RATE/STIMULI_REFRESH_RATE), 
+                                             STIMULI_REFRESH_RATE * TRIAL_DURATION, 
+                                             show_fixation_cross=False, use_step=True)
     main_window.showFullScreen()
 
     # Run the main Qt loop
