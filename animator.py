@@ -28,7 +28,7 @@ class AppliablePixmap(Appliable):
         label.setPixmap(self.pixmap)
 
     def draw_at(self, screen: QRect, painter: QPainter):
-        target = screen.center() - QPoint(self.pixmap.height(), self.pixmap.width()) / 2 
+        target = screen.center() - QPoint(self.pixmap.width(), self.pixmap.height()) / 2 
         painter.drawPixmap(target, self.pixmap)
 
 
