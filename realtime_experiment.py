@@ -1,7 +1,7 @@
 
 import sys
 from PySide6.QtOpenGL import QOpenGLWindow, QOpenGLBuffer, QOpenGLPaintDevice
-from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter
+from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter, QKeyEvent
 from PySide6.QtWidgets import QApplication
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import QPoint, QSize, Qt, QRect, Slot
@@ -26,6 +26,9 @@ class IFrameGenerator():
     def write_at(self, painter: QPainter, screen: QRect, text: str, font_size=50):
         AppliableText(text, font_size, Qt.GlobalColor.gray).draw_at(
             screen, painter)
+    
+    def key_pressed(self, e: QKeyEvent):
+        return
 
 
 class StimuliFrameGenerator(IFrameGenerator):
@@ -37,6 +40,8 @@ class StimuliFrameGenerator(IFrameGenerator):
     interstim_opacities: NDArray[float64]
     current_interstim_index: int
     current_stimulation: Appliable
+
+    on_keypress: Callable[[QKeyEvent], None]
 
     show_fixation: bool
 
@@ -115,11 +120,13 @@ class BreakFrameGenerator(IFrameGenerator):
                       "This is a break, press `space` to continue")
         return self.in_break
 
-    @Slot()
     def end_break(self, event):
-        if event.key() == Qt.Key.Key_Space:
+        if self.in_break and event.key() == Qt.Key.Key_Space:
             self.in_break = False
             self.event_trigger.parallel_write_int(Codes.BreakEnd)
+    
+    def key_pressed(self, e):
+        return self.end_break(e)
 
 
 class RealtimeViewingExperiment(QOpenGLWidget):
@@ -173,6 +180,10 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         format.setVersion(3, 2)
         format.setProfile(QSurfaceFormat.CoreProfile)
         self.setFormat(format)
+
+    @Slot()
+    def _key_pressed(self, e):
+        return self.frame_generator.key_pressed(e)
 
     def resizeGL(self, w, h):
         self.bottom_right = QPoint(w, h)
