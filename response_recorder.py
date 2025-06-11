@@ -28,7 +28,7 @@ class ResponseRecorder:
         self.stimuli_times.append(stim)
         self.available_stimuli.append(stim)
 
-    def get_oldest_available(self, current_time: int) -> Stimuli:
+    def get_oldest_available(self, current_time: int) -> Stimuli | None:
         while len(self.available_stimuli) > 0:
             stim = self.available_stimuli.pop(0)
             if current_time - stim.showed_at < self.MAXIMUM_RESPONSE_DELAY and not stim.responded:
@@ -37,7 +37,7 @@ class ResponseRecorder:
 
     def record_response(self):
         now = time_ns()
-
+ 
         stim_responded = self.get_oldest_available(now)
 
         # the update may result an unavailable
@@ -54,7 +54,7 @@ class ResponseRecorder:
     def success_rate(self):
         if len(self.stimuli_times) == 1:
             # nothing with nothing is 1, otherwise 0
-            return int(self.false_pressing == 0)
+            return float(self.false_pressing == 0)
 
         return (len([w for w in self.resopnse_delays if w < self.MAXIMUM_RESPONSE_DELAY])
                 / (len(self.stimuli_times) - 1 + self.false_pressing))
