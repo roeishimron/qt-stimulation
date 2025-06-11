@@ -31,12 +31,12 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     COHERENCES = arange(5) + 7
 
     FRAME_RATE = 60
-    STIMULI_DISPLAY_FREQUENCY = 20
+    STIMULI_DISPLAY_FREQUENCY = 15
     assert FRAME_RATE % STIMULI_DISPLAY_FREQUENCY == 0
 
-    ODDBALL_MODULATION = 4
-    TRIAL_DURATION = 16
-    AMOUNT_OF_EXAMPLES = 30
+    ODDBALL_MODULATION = 5
+    TRIAL_DURATION = 15
+    AMOUNT_OF_EXAMPLES = 15
 
     RADIAL_EASING = 1000
     SPACIAL_FREQUENCY = 2
@@ -55,7 +55,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     # cache for performance
     oriented_gabors = [create_gabor_values(DOT_SIZE, SPACIAL_FREQUENCY, rotation=r,
                                            raidal_easing=RADIAL_EASING)
-                       for r in linspace(0, 2*pi, 1000)]
+                       for r in linspace(0, 2*pi, 360)]
 
     oddballs = [[array_into_pixmap(
         fill_with_dots(int(height), sample(oriented_gabors, 
@@ -75,7 +75,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     oddballs = flatten(oddballs)
 
     realtime_window = RealtimeViewingExperiment(
-        OddballStimuli(height, cycle(oddballs), cycle(base), ODDBALL_MODULATION), SoftSerial(),
+        OddballStimuli(cycle(oddballs), cycle(base), ODDBALL_MODULATION), SoftSerial(),
         int(FRAME_RATE / STIMULI_DISPLAY_FREQUENCY), AMOUNT_OF_DURATIONS)
     realtime_window.showFullScreen()
 

@@ -27,7 +27,17 @@ def create_random_duplications(words: List[OnShowCaller], recorder: ResponseReco
         words[i].on_show = recorder.record_stimuli_show
     return words
 
-def run(oddballs: Iterable[Appliable], base: Iterable[Appliable]):
+
+SCREEN_REFRESH_RATE = 60 # Hz
+STIMULI_REFRESH_RATE = 20 # Hz
+TRIAL_DURATION = 10 # s
+ODDBALL_MODULATION = 5
+
+def run(oddballs: Iterable[Appliable], base: Iterable[Appliable],
+        screen_refresh_rate = SCREEN_REFRESH_RATE,
+        stimuli_refresh_rate = STIMULI_REFRESH_RATE,
+        trial_duration = TRIAL_DURATION,
+        oddball_modulation = ODDBALL_MODULATION):
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -36,16 +46,13 @@ def run(oddballs: Iterable[Appliable], base: Iterable[Appliable]):
     # oddballs = create_random_duplications(list(map(create_on_show_caller, oddballs)), recorder)
     # base = map(create_on_show_caller, base)
 
-    SCREEN_REFRESH_RATE = 60 # Hz
-    STIMULI_REFRESH_RATE = 20 # Hz
-    TRIAL_DURATION = 12 # s
-    
-    assert SCREEN_REFRESH_RATE % STIMULI_REFRESH_RATE == 0
+    assert screen_refresh_rate % stimuli_refresh_rate == 0
 
-    main_window = RealtimeViewingExperiment(OddballStimuli(cycle(oddballs), cycle(base), 5),
+    main_window = RealtimeViewingExperiment(OddballStimuli(cycle(oddballs), 
+                                                           cycle(base), oddball_modulation),
                                              SoftSerial(), 
-                                             int(SCREEN_REFRESH_RATE/STIMULI_REFRESH_RATE), 
-                                             STIMULI_REFRESH_RATE * TRIAL_DURATION, 
+                                             int(screen_refresh_rate/stimuli_refresh_rate), 
+                                             stimuli_refresh_rate * trial_duration, 
                                              show_fixation_cross=False, use_step=True)
     main_window.showFullScreen()
 

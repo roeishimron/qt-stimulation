@@ -1,3 +1,3 @@
-from experiments.duplicate_word.hebrew_vs_arabic import run
+from experiments.faces_vs_objects import run
 
 run()
