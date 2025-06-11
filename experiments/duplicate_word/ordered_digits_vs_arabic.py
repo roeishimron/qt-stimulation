@@ -23,10 +23,14 @@ def run():
     # flipping index
     recorder = ResponseRecorder()
 
-    flipped_index = randint(int(len(DIGITS)/2), len(DIGITS) - 1)
-    DIGITS[flipped_index] = randint(len(DIGITS), len(DIGITS)*2)
+    flipped_index = randint(int(len(DIGITS)/4), int(len(DIGITS)/4*3))
+    DIGITS[flipped_index] = str(randint(len(DIGITS), len(DIGITS)*2))
 
+    base = map(AppliableText, inflate_randomley(list(map(into_arabic, COMMON_HEBREW_WORDS)), 10))
+    oddballs = list(map(create_on_show_caller, map(AppliableText, DIGITS)))
+    print(f"flipping {flipped_index}")
 
-    base = map(AppliableText, inflate_randomley(map(into_arabic, COMMON_HEBREW_WORDS), 10))
-    oddballs = map(AppliableText, DIGITS)
-    return inner_run(oddballs, base)
+    oddballs[flipped_index].on_show = lambda: recorder.record_stimuli_show()
+
+    inner_run(oddballs, base, stimuli_on_keypress=lambda _: recorder.record_response())
+    print(f" succeed {recorder.success_rate()*100}%")

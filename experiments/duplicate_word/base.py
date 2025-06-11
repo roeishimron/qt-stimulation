@@ -37,14 +37,10 @@ def run(oddballs: Iterable[Appliable], base: Iterable[Appliable],
         screen_refresh_rate = SCREEN_REFRESH_RATE,
         stimuli_refresh_rate = STIMULI_REFRESH_RATE,
         trial_duration = TRIAL_DURATION,
-        oddball_modulation = ODDBALL_MODULATION):
+        oddball_modulation = ODDBALL_MODULATION,
+        stimuli_on_keypress=lambda _: None):
     # Create the Qt Application
     app = QApplication(sys.argv)
-
-
-    recorder = ResponseRecorder()
-    # oddballs = create_random_duplications(list(map(create_on_show_caller, oddballs)), recorder)
-    # base = map(create_on_show_caller, base)
 
     assert screen_refresh_rate % stimuli_refresh_rate == 0
 
@@ -53,9 +49,10 @@ def run(oddballs: Iterable[Appliable], base: Iterable[Appliable],
                                              SoftSerial(), 
                                              int(screen_refresh_rate/stimuli_refresh_rate), 
                                              stimuli_refresh_rate * trial_duration, 
-                                             show_fixation_cross=False, use_step=True)
+                                             show_fixation_cross=False, use_step=True,
+                                             amount_of_trials=1, 
+                                             stimuli_on_keypress=stimuli_on_keypress)
     main_window.showFullScreen()
 
     # Run the main Qt loop
     app.exec()
-    print(f"answered with success rate of {recorder.success_rate()}")
