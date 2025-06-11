@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QApplication
 from soft_serial import SoftSerial
 from animator import OddballStimuli, AppliablePixmap
 from itertools import cycle, chain
-from viewing_experiment import ViewExperiment
+from realtime_experiment import RealtimeViewingExperiment
 from typing import List, Generator, Any, Iterable
 from random import shuffle
 from stims import inflate_randomley
@@ -35,12 +35,23 @@ def run():
     objects = list(read_images_into_appliable_pixmaps(
         "experiments/faces-data/objects", size))
 
+    
+    SCREEN_REFRESH_RATE = 60
+    TRIAL_DURATION = 60
+    STIMULI_REFRESH_RATE = 6
+    ODDBALL_MODULATION = 3
+    AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
+    FRAMES_PER_STIM = int(SCREEN_REFRESH_RATE / STIMULI_REFRESH_RATE)
+    assert SCREEN_REFRESH_RATE % STIMULI_REFRESH_RATE == 0
+    assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
+    AMOUNT_OF_ODDBALL = int(AMOUNT_OF_STIMULI / ODDBALL_MODULATION)
+    
     stimuli = OddballStimuli(cycle(list(inflate_randomley(faces, 100))),
-                             cycle(list(inflate_randomley(objects, 100))), 3)
+                             cycle(list(inflate_randomley(objects, 100))), ODDBALL_MODULATION)
+    
 
-    main_window = ViewExperiment.new_with_constant_frequency(
-        stimuli, SoftSerial(), 6, trial_duration=180)
-    main_window.show()
+    main_window = RealtimeViewingExperiment(stimuli, SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI)
+    main_window.showFullScreen()
 
     # Run the main Qt loop
     app.exec()
