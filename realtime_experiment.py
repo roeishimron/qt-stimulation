@@ -47,7 +47,8 @@ class StimuliFrameGenerator(IFrameGenerator):
 
     # The smoothing function accepts relative time and returns the opacity at that time
     def __init__(self, amount_of_stims: int, stimuli: OddballStimuli,
-                 frames_per_stim: int, use_step=False, show_fixation=True):
+                 frames_per_stim: int, use_step=False, show_fixation=True,
+                 on_keypress = lambda _: None):
         self.amount_of_stims = amount_of_stims
         self.stimuli = stimuli
         self.frames_per_stim = frames_per_stim
@@ -61,6 +62,7 @@ class StimuliFrameGenerator(IFrameGenerator):
         self.current_interstim_index = 0
 
         self.show_fixation = show_fixation
+        self.on_keypress = on_keypress
 
     def paint(self, painter: QPainter, screen: QRect) -> int:
 
@@ -93,11 +95,14 @@ class StimuliFrameGenerator(IFrameGenerator):
             self.write_at(painter, screen, "+")
 
         return 1
+    
+    def key_pressed(self, e: QKeyEvent):
+        return self.on_keypress(e)
 
 
 class CountdownFrameGenerator(StimuliFrameGenerator):
 
-    def __init__(self, refresh_rate: int, break_duration: OddballStimuli):
+    def __init__(self, refresh_rate: int, break_duration: int):
         stim_per_second = OddballStimuli((AppliableText(f"{break_duration-i}")
                                           for i in range(break_duration)))
 
@@ -144,7 +149,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
     def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
                  frames_per_stim: int, amount_of_stims_per_trial: int, break_duration=3, amount_of_trials=3,
-                 use_step=False, show_fixation_cross=True):
+                 use_step=False, show_fixation_cross=True, stimuli_on_keypress=lambda _: None):
         super().__init__()
 
         REFRESH_RATE = 60
@@ -157,21 +162,24 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         self.frame_generators = chain.from_iterable(
             islice(iter(lambda: self._new_trial(REFRESH_RATE, break_duration,
                                                 amount_of_stims_per_trial, stimuli, frames_per_stim,
-                                                use_step, show_fixation_cross, event_trigger),
+                                                use_step, show_fixation_cross, event_trigger, stimuli_on_keypress),
                         None), amount_of_trials))
 
         self.frame_generator = next(self.frame_generators)
 
     def _new_trial(self, refresh_rate: int, break_duration: int,
                    amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: int,
-                   use_step: bool, show_fixation_cross: bool, event_trigger: SoftSerial):
+                   use_step: bool, show_fixation_cross: bool, event_trigger: SoftSerial,
+                   stimuli_on_keypress: Callable[[QKeyEvent], None]):
         break_frame_generator = BreakFrameGenerator(event_trigger)
-        self.keyReleaseEvent = break_frame_generator.end_break
+        
+        self.keyReleaseEvent = self._key_pressed
+
         return (break_frame_generator,
                 CountdownFrameGenerator(refresh_rate, break_duration),
                 StimuliFrameGenerator(amount_of_stims, stimuli,
                                       frames_per_stim, use_step,
-                                      show_fixation_cross))
+                                      show_fixation_cross, stimuli_on_keypress))
 
     def _apply_format(self):
         format = QSurfaceFormat()
