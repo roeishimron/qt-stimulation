@@ -85,8 +85,9 @@ class OnShowCaller(Appliable):
         self.appliable.apply_to_label(label)
         self.on_show()
 
-    def draw_at(self, p: QPoint, painter: QPainter):
-        self.appliable.draw_at(p, painter)
+    def draw_at(self ,screen: QRect, painter: QPainter):
+        self.on_show()
+        self.appliable.draw_at(screen, painter)
 
 
 class OddballStimuli:
