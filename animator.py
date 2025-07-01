@@ -73,21 +73,28 @@ class AppliableText(Appliable):
         painter.drawText(screen, self.text, Qt.AlignmentFlag.AlignCenter)
 
 
+# Calls ONLY on the 1st time showing
 class OnShowCaller(Appliable):
     appliable: Appliable
     on_show: Callable[[], None]
+    called: bool
 
     def __init__(self, appliable: Appliable, on_show: Callable[[], None]):
         self.appliable = appliable
         self.on_show = on_show
+        self.called = False
 
     def apply_to_label(self, label: QLabel):
         self.appliable.apply_to_label(label)
-        self.on_show()
+        if not self.called:
+            self.called = True
+            self.on_show()
 
     def draw_at(self ,screen: QRect, painter: QPainter):
-        self.on_show()
         self.appliable.draw_at(screen, painter)
+        if not self.called:
+            self.called = True
+            self.on_show()
 
 
 class OddballStimuli:

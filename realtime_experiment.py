@@ -147,10 +147,18 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     frame_generators: Iterable[IFrameGenerator]
     frame_generator: IFrameGenerator
 
-    def __init__(self, stimuli: OddballStimuli, event_trigger: SoftSerial,
+    def __init__(self, stimuli: OddballStimuli | List[OddballStimuli], event_trigger: SoftSerial,
                  frames_per_stim: int, amount_of_stims_per_trial: int, break_duration=3, amount_of_trials=3,
                  use_step=False, show_fixation_cross=True, stimuli_on_keypress=lambda _: None):
         super().__init__()
+
+        stimulis = []
+        if isinstance(stimuli, List):
+            assert len(stimuli) == amount_of_trials
+            stimulis = stimuli
+        else:
+            stimulis = [stimuli] * amount_of_trials
+        stimulis = iter(stimulis)
 
         REFRESH_RATE = 60
 
@@ -161,7 +169,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         self.frame_generators = chain.from_iterable(
             islice(iter(lambda: self._new_trial(REFRESH_RATE, break_duration,
-                                                amount_of_stims_per_trial, stimuli, frames_per_stim,
+                                                amount_of_stims_per_trial, next(stimulis), frames_per_stim,
                                                 use_step, show_fixation_cross, event_trigger, stimuli_on_keypress),
                         None), amount_of_trials))
 

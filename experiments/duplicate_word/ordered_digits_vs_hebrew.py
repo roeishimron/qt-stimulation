@@ -1,9 +1,13 @@
 from stims import inflate_randomley
-from animator import AppliableText
-from random import choice
-from experiments.words import COMMON_HEBREW_WORDS, into_digits
+from animator import AppliableText, OnShowCaller
+from random import randint
+from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from experiments.duplicate_word.base import run as inner_run
-from experiments.duplicate_word.base import TRIAL_DURATION, STIMULI_REFRESH_RATE, ODDBALL_MODULATION
+from experiments.duplicate_word.base import TRIAL_DURATION, STIMULI_REFRESH_RATE, ODDBALL_MODULATION, AMOUNT_OF_TRIALS
+from response_recorder import ResponseRecorder
+from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import Qt
+
 
 
 AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
@@ -12,7 +16,29 @@ AMOUNT_OF_ODDBALL = int(AMOUNT_OF_STIMULI / ODDBALL_MODULATION)
 
 DIGITS = [str(i) for i in range(AMOUNT_OF_ODDBALL)]
 
+def create_on_show_caller(t: AppliableText) -> OnShowCaller:
+    return OnShowCaller(t, lambda: None)
+
 def run():
-    base = map(AppliableText, inflate_randomley(COMMON_HEBREW_WORDS, 10))
-    oddballs = map(AppliableText, DIGITS)
-    return inner_run(oddballs, base)
+    recorder = ResponseRecorder()
+    base = map(AppliableText, inflate_randomley(list(COMMON_HEBREW_WORDS), 10))
+
+    # TODO: look into the difference between distant and duplicate. The key here is that duplicate CAN be VWFA (and even V1)
+    all_odds = []
+    for _ in range(AMOUNT_OF_TRIALS):
+        oddballs = [OnShowCaller(AppliableText(d), lambda: None) for d in DIGITS]
+        flipped_index = randint(int(len(DIGITS)/4), int(len(DIGITS)/4*3))
+        DIGITS[flipped_index] = str(randint(len(DIGITS), len(DIGITS)*2))
+        oddballs[flipped_index].on_show = lambda: recorder.record_stimuli_show()
+        all_odds.append(oddballs)
+
+
+
+
+    
+    def stimuli_keypress(e: QKeyEvent):
+        if e.key() == Qt.Key.Key_Space:
+            recorder.record_response()
+
+    inner_run(all_odds, base, stimuli_on_keypress=stimuli_keypress)
+    print(f" succeed {recorder.success_rate()*100}%")
