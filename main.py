@@ -1,3 +1,3 @@
-from experiments.duplicate_word.ordered_digits_vs_arabic import run
+from experiments.equations.base import run
 
 run()
