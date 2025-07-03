@@ -30,9 +30,9 @@ def create_random_duplications(words: List[OnShowCaller], recorder: ResponseReco
 
 
 SCREEN_REFRESH_RATE = 60  # Hz
-STIMULI_REFRESH_RATE = 15  # Hz
+STIMULI_REFRESH_RATE = 20  # Hz
 TRIAL_DURATION = 10  # s
-ODDBALL_MODULATION = 3
+ODDBALL_MODULATION = 5
 AMOUNT_OF_TRIALS = 3
 
 
@@ -44,11 +44,11 @@ def run(oddballs: List[List[Appliable] | Appliable], base: Iterable[Appliable],
         stimuli_on_keypress=lambda _: None):
     
     all_odds = []
-    if isinstance(oddballs[0], List):
+    if isinstance(oddballs, List) and isinstance(oddballs[0], List):
         assert AMOUNT_OF_TRIALS == len(oddballs)
         all_odds = oddballs
     else:
-        all_odds = [oddballs] * AMOUNT_OF_TRIALS
+        all_odds = [list(oddballs)] * AMOUNT_OF_TRIALS
 
     # Create the Qt Application
     app = QApplication(sys.argv)

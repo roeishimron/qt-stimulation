@@ -1,3 +1,3 @@
-from experiments.duplicate_word.ordered_digits_vs_hebrew import run
+from experiments.duplicate_word.ordered_digits_vs_hebrew_duplicate import run
 
 run()

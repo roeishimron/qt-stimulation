@@ -7,14 +7,12 @@ from experiments.duplicate_word.base import TRIAL_DURATION, STIMULI_REFRESH_RATE
 from response_recorder import ResponseRecorder
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtCore import Qt
-
-
+from random import shuffle
 
 AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
 assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
 AMOUNT_OF_ODDBALL = int(AMOUNT_OF_STIMULI / ODDBALL_MODULATION)
 
-DIGITS = [str(i) for i in range(AMOUNT_OF_ODDBALL)]
 
 def create_on_show_caller(t: AppliableText) -> OnShowCaller:
     return OnShowCaller(t, lambda: None)
@@ -23,17 +21,14 @@ def run():
     recorder = ResponseRecorder()
     base = map(AppliableText, inflate_randomley(list(COMMON_HEBREW_WORDS), 10))
 
-    # TODO: look into the difference between distant and duplicate. The key here is that duplicate CAN be VWFA (and even V1)
     all_odds = []
     for _ in range(AMOUNT_OF_TRIALS):
-        oddballs = [OnShowCaller(AppliableText(d), lambda: None) for d in DIGITS]
-        flipped_index = randint(int(len(DIGITS)/4), int(len(DIGITS)/4*3))
-        DIGITS[flipped_index] = str(randint(len(DIGITS), len(DIGITS)*2))
+        digits = [str(i) for i in range(AMOUNT_OF_ODDBALL)]
+        flipped_index = randint(int(len(digits)/4), int(len(digits)/4*3))
+        digits[flipped_index] = str(117)
+        oddballs = [OnShowCaller(AppliableText(d), lambda: None) for d in digits]
         oddballs[flipped_index].on_show = lambda: recorder.record_stimuli_show()
         all_odds.append(oddballs)
-
-
-
 
     
     def stimuli_keypress(e: QKeyEvent):
