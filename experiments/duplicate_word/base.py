@@ -31,9 +31,9 @@ def create_random_duplications(words: List[OnShowCaller], recorder: ResponseReco
 
 SCREEN_REFRESH_RATE = 60  # Hz
 STIMULI_REFRESH_RATE = 20  # Hz
-TRIAL_DURATION = 10  # s
+TRIAL_DURATION = 15  # s
 ODDBALL_MODULATION = 5
-AMOUNT_OF_TRIALS = 3
+AMOUNT_OF_TRIALS = 4
 
 
 def run(oddballs: List[List[Appliable] | Appliable], base: Iterable[Appliable],

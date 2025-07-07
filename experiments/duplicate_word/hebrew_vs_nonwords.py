@@ -17,6 +17,6 @@ SCRAMBELED = [scramble_str(w) for w in COMMON_HEBREW_WORDS]
 
 
 def run():
-    oddballs = map(AppliableText, inflate_randomley(COMMON_HEBREW_WORDS, 10))
+    oddballs = list(map(AppliableText, inflate_randomley(COMMON_HEBREW_WORDS, 10)))
     base = map(AppliableText, inflate_randomley(SCRAMBELED, 10))
     return inner_run(oddballs, base)
