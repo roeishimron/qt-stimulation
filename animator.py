@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
-from PySide6.QtGui import QPixmap, QFontDatabase, QFont, QPainter
+from PySide6.QtGui import QPixmap, QFontDatabase, QFont, QPainter, QTransform
 from typing import List, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
@@ -39,17 +39,19 @@ class AppliableText(Appliable):
     font_family: str
     font_style: QFont.Style
     bold: bool
+    horizontal_flip: bool
 
     def __init__(self, text: str, font_size: int = 50, color: str = DEFAULT_COLOR,
                  font_family: str = DEFAULT_FONT, 
                  font_style: QFont.Style = QFont.Style.StyleNormal,
-                 bold=False):
+                 bold=False, horizontal_flip=False):
         self.text = text
         self.font_size = font_size
         self.color = color
         self.font_family = font_family
         self.font_style = font_style
         self.bold = bold
+        self.horizontal_flip = horizontal_flip
 
     def apply_to_label(self, label: QLabel):
         current_font = label.font()
@@ -69,8 +71,11 @@ class AppliableText(Appliable):
         font.setStyle(self.font_style)
         font.setBold(self.bold)
         painter.setFont(font)
-        
+
+        if self.horizontal_flip:
+            painter.setTransform(QTransform(-1,0,0,1,screen.width(),0))
         painter.drawText(screen, self.text, Qt.AlignmentFlag.AlignCenter)
+        painter.setTransform(QTransform(1,0,0,1,0,0), False)
 
 
 # Calls ONLY on the 1st time showing
