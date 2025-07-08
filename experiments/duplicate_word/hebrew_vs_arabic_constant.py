@@ -25,14 +25,15 @@ def run():
 
     all_odds = []
     for _ in range(AMOUNT_OF_TRIALS):
-        words = list(COMMON_HEBREW_WORDS)
-        flipped_index = randint(int(len(words)/4), int(len(words)/4*3))
-        words[flipped_index] = "דחליל"
+        words = list(COMMON_HEBREW_WORDS)[:AMOUNT_OF_ODDBALL]
+        shuffle(words)
+        target_index = randint(int(len(words)/4), int(len(words)/4*3))
+        words[target_index] = "דחליל"
 
         oddballs = [OnShowCaller(AppliableText(w, randint(
-            40, 60), horizontal_flip=False), lambda: None) for w in words]
+            40, 60)), lambda: None) for w in words]
 
-        oddballs[flipped_index].on_show = lambda: recorder.record_stimuli_show()
+        oddballs[target_index].on_show = lambda: recorder.record_stimuli_show()
         all_odds.append(oddballs)
 
     def stimuli_keypress(e: QKeyEvent):
