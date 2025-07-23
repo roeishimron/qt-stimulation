@@ -30,9 +30,9 @@ def create_random_duplications(words: List[OnShowCaller], recorder: ResponseReco
 
 
 SCREEN_REFRESH_RATE = 60  # Hz
-STIMULI_REFRESH_RATE = 20  # Hz
+STIMULI_REFRESH_RATE = 30  # Hz
 TRIAL_DURATION = 15  # s
-ODDBALL_MODULATION = 5
+ODDBALL_MODULATION = 4
 AMOUNT_OF_TRIALS = 4
 
 

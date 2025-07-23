@@ -31,7 +31,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
     COHERENCES = arange(5) + 7
 
     FRAME_RATE = 60
-    STIMULI_DISPLAY_FREQUENCY = 15
+    STIMULI_DISPLAY_FREQUENCY = 60
     assert FRAME_RATE % STIMULI_DISPLAY_FREQUENCY == 0
 
     ODDBALL_MODULATION = 5
@@ -76,7 +76,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[int, int]]]):
 
     realtime_window = RealtimeViewingExperiment(
         OddballStimuli(cycle(oddballs), cycle(base), ODDBALL_MODULATION), SoftSerial(),
-        int(FRAME_RATE / STIMULI_DISPLAY_FREQUENCY), AMOUNT_OF_DURATIONS)
+        int(FRAME_RATE / STIMULI_DISPLAY_FREQUENCY), AMOUNT_OF_DURATIONS, use_step=True)
     realtime_window.showFullScreen()
 
     # Run the main Qt loop

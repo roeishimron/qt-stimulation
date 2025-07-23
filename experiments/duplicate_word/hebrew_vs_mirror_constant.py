@@ -1,19 +1,23 @@
 from stims import inflate_randomley
 from animator import AppliableText, OnShowCaller
-from random import randint
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from experiments.duplicate_word.base import run as inner_run
-from experiments.duplicate_word.base import TRIAL_DURATION, AMOUNT_OF_TRIALS
+from experiments.duplicate_word.base import AMOUNT_OF_TRIALS
 from response_recorder import ResponseRecorder
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtCore import Qt
 from random import shuffle
+from numpy.random import randint, choice
+from numpy import arange, array
 
 STIMULI_REFRESH_RATE = 20
 ODDBALL_MODULATION = 5
+TRIAL_DURATION = 60
 AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
 assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
 AMOUNT_OF_ODDBALL = int(AMOUNT_OF_STIMULI / ODDBALL_MODULATION)
+
+assert AMOUNT_OF_ODDBALL <= len(COMMON_HEBREW_WORDS)
 
 
 def create_on_show_caller(t: AppliableText) -> OnShowCaller:
@@ -29,13 +33,15 @@ def run():
     for _ in range(AMOUNT_OF_TRIALS):
         words = list(COMMON_HEBREW_WORDS)[:AMOUNT_OF_ODDBALL]
         shuffle(words)
-        target_index = randint(int(len(words)/4), int(len(words)/4*3))
-        words[target_index] = "דחליל"
 
         oddballs = [OnShowCaller(AppliableText(w, randint(
             40, 60)), lambda: None) for w in words]
+        
+        target_indices = choice(arange(int(len(words)/2)) + int(len(words)/4), randint(1, 10))
+        for i in target_indices:
+            oddballs[i].appliable.text = "דחליל"
+            oddballs[i].on_show = lambda: recorder.record_stimuli_show()
 
-        oddballs[target_index].on_show = lambda: recorder.record_stimuli_show()
         all_odds.append(oddballs)
 
     def stimuli_keypress(e: QKeyEvent):
