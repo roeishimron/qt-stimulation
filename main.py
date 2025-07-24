@@ -1,3 +1,3 @@
-from experiments.duplicate_word.hebrew_vs_mirror_constant import run
+from experiments.duplicate_word.hebrew import run
 
 run()

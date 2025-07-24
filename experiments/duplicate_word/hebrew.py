@@ -10,14 +10,14 @@ from random import shuffle
 from numpy.random import randint, choice
 from numpy import arange, array
 
-STIMULI_REFRESH_RATE = 20
-ODDBALL_MODULATION = 5
+STIMULI_REFRESH_RATE = 12 # Perhaps this experiment is no-good because at the random-time, we can just ignore all the fast items and the slow-items without missing anything.
+ODDBALL_MODULATION = 1
 TRIAL_DURATION = 60
 AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
 assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
 AMOUNT_OF_ODDBALL = int(AMOUNT_OF_STIMULI / ODDBALL_MODULATION)
-
-assert AMOUNT_OF_ODDBALL <= len(COMMON_HEBREW_WORDS)
+INFLATION = 10
+assert AMOUNT_OF_ODDBALL <= len(COMMON_HEBREW_WORDS) * INFLATION
 
 
 def create_on_show_caller(t: AppliableText) -> OnShowCaller:
@@ -26,20 +26,17 @@ def create_on_show_caller(t: AppliableText) -> OnShowCaller:
 
 def run():
     recorder = ResponseRecorder()
-    base = [AppliableText(t, randint(40, 60), horizontal_flip=True)
-            for t in inflate_randomley(list(COMMON_HEBREW_WORDS), 10)]
-
     all_odds = []
     for _ in range(AMOUNT_OF_TRIALS):
-        words = list(COMMON_HEBREW_WORDS)[:AMOUNT_OF_ODDBALL]
+        words = inflate_randomley(COMMON_HEBREW_WORDS, INFLATION)[:AMOUNT_OF_ODDBALL]
         shuffle(words)
 
         oddballs = [OnShowCaller(AppliableText(w, randint(
             40, 60)), lambda: None) for w in words]
         
-        target_indices = choice(arange(len(words)), 10)
+        target_indices = choice(arange(len(words)-10)+5, 10)
         for i in target_indices:
-            oddballs[i].appliable.text = "דחליל"
+            oddballs[i].appliable.text = "כלב"
             oddballs[i].on_show = lambda: recorder.record_stimuli_show()
 
         all_odds.append(oddballs)
@@ -48,6 +45,6 @@ def run():
         if e.key() == Qt.Key.Key_Space:
             recorder.record_response()
 
-    inner_run(all_odds, base, 60, STIMULI_REFRESH_RATE,
+    inner_run(all_odds, [], 60, STIMULI_REFRESH_RATE,
               TRIAL_DURATION, ODDBALL_MODULATION, stimuli_keypress)
     print(f" succeed {recorder.success_rate()*100}%")
