@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from numpy import cos, sin, pi, linspace, sqrt, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros, where, all, clip
+from numpy import cos, sin, pi, linspace, sqrt, stack, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros, where, all, clip
 from numpy.random import choice, rand
 from numpy.typing import NDArray
 from PySide6.QtGui import QPixmap, QImage, QColor
 from animator import AppliablePixmap
-import sys
 from PySide6.QtGui import QPixmap, QImage
 from animator import AppliablePixmap
 from itertools import chain
@@ -239,39 +238,34 @@ def get_false_margins(radius: int, figure_size: int):
 # Set only dots without position
 
 
+def _radius_into_circle_mask(r: float):
+    xs, ys = mgrid[:2*r, :2*r]
+    return argwhere(square(xs - r) + square(ys - r) < square(r))
+
+
 def place_dots_in_frame(figure_size: int, dots: List[Dot], minimum_distance_factor: float = 1) -> List[Dot]:
 
     available_positions = full((figure_size, figure_size), True)
 
-    margin_cache, circle_mask_cache = {}, {}
+    # caching
+    radii = set((d.r for d in dots))
+    margins = {r: get_false_margins(r, figure_size) for r in radii}
+    circle_masks = {r:  _radius_into_circle_mask(
+        r) for r in [2*r*minimum_distance_factor for r in radii]}
 
     for dot in dots:
         if dot.position.shape[0] == 0:
 
-            margin = None
-            if dot.r in margin_cache:
-                margin = margin_cache[dot.r]
-            else:
-                margin = get_false_margins(dot.r, figure_size)
-                margin_cache[dot.r] = margin
-
-            remaining_position_indices = argwhere(available_positions & margin)
+            remaining_position_indices = argwhere(
+                available_positions & margins[dot.r])
 
             dot.position = remaining_position_indices[choice(
                 len(remaining_position_indices))]
 
         r = 2*dot.r*minimum_distance_factor
         x, y = dot.position[0], dot.position[1]
-        
-        circle_mask = None
-        if r in circle_mask_cache:
-            circle_mask = circle_mask_cache[r]
-        else:
-            xs, ys = mgrid[:2*r, :2*r]
-            circle_mask = argwhere(square(xs - r) + square(ys - r) < square(r))
-            circle_mask_cache[r] = circle_mask
 
-        filler_mask = clip(circle_mask + array([x-r, y-r], dtype=int64),
+        filler_mask = clip(circle_masks[r] + array([x-r, y-r], dtype=int64),
                            0, figure_size-1)
 
         available_positions[filler_mask[:, 0], filler_mask[:, 1]] = False
@@ -279,10 +273,17 @@ def place_dots_in_frame(figure_size: int, dots: List[Dot], minimum_distance_fact
     return dots
 
 
+def _radius_into_mask(r: int):
+    filler_xs, filler_ys = mgrid[:r*2, :r*2]
+    return argwhere(square(filler_xs - r) +
+                    square(filler_ys - r) < square(r))
+
 # there must be enough room for all the dots
 # Priority dots are allowed to be without position, but must have `fill` and `r`
+
+
 def fill_with_dots(figure_size: int,
-                   dots_fill: List[NDArray], 
+                   dots_fill: Iterable[NDArray],
                    priority_dots: List[Dot] = [],
                    backdround_value: float = 0,
                    minimum_distance_factor: float = 1) -> NDArray:
@@ -295,11 +296,11 @@ def fill_with_dots(figure_size: int,
     complete_requirement = place_dots_in_frame(
         figure_size, complete_requirement, minimum_distance_factor)
 
-    for dot in complete_requirement:
-        filler_xs, filler_ys = mgrid[:dot.r*2, :dot.r*2]
-        filler_mask = argwhere(square(filler_xs - dot.r) +
-                               square(filler_ys - dot.r) < square(dot.r))
+    masks = {r: _radius_into_mask(r) for r in set(
+        (d.r for d in complete_requirement))}
 
+    for dot in complete_requirement:
+        filler_mask = masks[dot.r]
         shifted_mask = filler_mask + \
             array([dot.position[0] - dot.r, dot.position[1] - dot.r], dtype=int64)
         canvas[shifted_mask[:, 0], shifted_mask[:, 1]
