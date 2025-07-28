@@ -1,3 +1,3 @@
-from experiments.duplicate_word.hebrew import run
+from experiments.noisy_circle.circular import run
 
 run()
