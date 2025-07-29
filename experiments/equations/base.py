@@ -19,7 +19,7 @@ def create_on_show_caller(t: AppliableText) -> OnShowCaller:
     return OnShowCaller(t, lambda: None)
 
 
-def get_equation(correct: bool, distance_factor = 2):
+def get_equation(correct: bool, distance_factor = 7):
     
     OPERATORS = [("+", add), ("*", multiply)]
     a = randint(0,9)
