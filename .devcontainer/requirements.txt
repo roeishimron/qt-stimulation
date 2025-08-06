@@ -3,3 +3,4 @@ Pillow
 matplotlib
 pyside6
 pyserial
+more-itertools
