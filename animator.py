@@ -5,7 +5,8 @@ from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
                             Slot, QByteArray, QPoint, QRect, QSize)
 from random import randint
-
+from numpy.typing import NDArray
+from numpy import float64
 
 DEFAULT_FONT = "DejaVu Sans"
 DEFAULT_COLOR = "white"
@@ -100,6 +101,33 @@ class OnShowCaller(Appliable):
         if not self.called:
             self.called = True
             self.on_show()
+
+
+class AtRelativeOpacity(Appliable):
+    appliable: Appliable
+    opacity: float64
+
+    def __init__(self, appliable: Appliable, opacity: float64):
+        self.appliable = appliable
+        self.opacity = opacity
+
+    def draw_at(self ,screen: QRect, painter: QPainter):
+        original_opacity = painter.opacity()
+        painter.setOpacity(original_opacity*self.opacity)
+        self.appliable.draw_at(screen, painter)
+        painter.setOpacity(original_opacity)
+
+
+class DrawableConvolve(Appliable):
+    weighted_appliables: List[Appliable]
+
+    def __init__(self, appliables: Tuple[Appliable], weights: NDArray[float64]):
+        self.weighted_appliables  = [AtRelativeOpacity(a,o) for a,o in zip(appliables, weights)]
+
+    def draw_at(self ,screen: QRect, painter: QPainter):
+        for a in self.weighted_appliables:
+            a.draw_at(screen, painter)
+
 
 
 class OddballStimuli:
