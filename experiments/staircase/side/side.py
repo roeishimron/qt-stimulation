@@ -1,4 +1,4 @@
-from experiments.staircase_two_stims.side.base import run as inner_run
+from experiments.staircase.side.base import run as inner_run
 from staircase_experiment import ConstantTimeChoiceGenerator
 
 def run(saveto="logs"):

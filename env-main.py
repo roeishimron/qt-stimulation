@@ -1,18 +1,18 @@
 from pathlib import Path
 import experiments
-import experiments.staircase_two_stims
-import experiments.staircase_two_stims.dots
-import experiments.staircase_two_stims.dots.dots
-import experiments.staircase_two_stims.dots.dots_demo
-import experiments.staircase_two_stims.dots_ratio
-import experiments.staircase_two_stims.orientation_choise
-import experiments.staircase_two_stims.orientation_choise.delta_measure
-import experiments.staircase_two_stims.orientation_choise.uniform_measure
-import experiments.staircase_two_stims.side
-import experiments.staircase_two_stims.side.demo
-import experiments.staircase_two_stims.side.side
-import  experiments.staircase_two_stims.csf_frequencial
-import  experiments.staircase_two_stims.csf_spacial
+import experiments.staircase
+import experiments.staircase.dots
+import experiments.staircase.dots.dots
+import experiments.staircase.dots.dots_demo
+import experiments.staircase.dots_ratio
+import experiments.staircase.orientation_choise
+import experiments.staircase.orientation_choise.delta_measure
+import experiments.staircase.orientation_choise.uniform_measure
+import experiments.staircase.side
+import experiments.staircase.side.demo
+import experiments.staircase.side.side
+import  experiments.staircase.csf_frequencial
+import  experiments.staircase.csf_spacial
 
 print("Subject Name:")
 name = input()
@@ -23,22 +23,22 @@ output_folder = f"/output/{name}_{experiment}_results" # Expected to explicitly 
 Path(output_folder).mkdir(exist_ok=True)
 
 if experiment == "side":
-    experiments.staircase_two_stims.side.side.run(output_folder)
+    experiments.staircase.side.side.run(output_folder)
 elif experiment == "side_demo":
-    experiments.staircase_two_stims.side.demo.run(output_folder)
+    experiments.staircase.side.demo.run(output_folder)
 elif experiment == "numerosity_SOA":
-    experiments.staircase_two_stims.dots.dots.run(output_folder)
+    experiments.staircase.dots.dots.run(output_folder)
 elif experiment == "numerosity_demo":
-    experiments.staircase_two_stims.dots.dots_demo.run(output_folder)
+    experiments.staircase.dots.dots_demo.run(output_folder)
 elif experiment == "numerosity_ratio":
-    experiments.staircase_two_stims.dots_ratio.run(output_folder)
+    experiments.staircase.dots_ratio.run(output_folder)
 elif experiment == "csf_freq":
-    experiments.staircase_two_stims.csf_frequencial.run(output_folder)
+    experiments.staircase.csf_frequencial.run(output_folder)
 elif experiment == "csf_space":
-    experiments.staircase_two_stims.csf_spacial.run(output_folder)
+    experiments.staircase.csf_spacial.run(output_folder)
 elif experiment == "orientation_uniform":
-    experiments.staircase_two_stims.orientation_choise.uniform_measure.run(output_folder)
+    experiments.staircase.orientation_choise.uniform_measure.run(output_folder)
 elif experiment == "orientation_delta":
-    experiments.staircase_two_stims.orientation_choise.delta_measure.run(output_folder)
+    experiments.staircase.orientation_choise.delta_measure.run(output_folder)
 else:
     print("No such experiment!")
