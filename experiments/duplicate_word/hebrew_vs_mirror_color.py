@@ -38,7 +38,7 @@ def run():
         
         target_indices = choice(arange(len(words)), 10)
         for i in target_indices:
-            oddballs[i].appliable.text = "דחליל"
+            oddballs[i].appliable.color = "yellow"
             oddballs[i].on_show = lambda: recorder.record_stimuli_show()
 
         all_odds.append(oddballs)
