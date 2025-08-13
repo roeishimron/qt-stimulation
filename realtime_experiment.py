@@ -2,7 +2,7 @@
 import copy
 import sys
 from PySide6.QtOpenGL import QOpenGLWindow, QOpenGLBuffer, QOpenGLPaintDevice
-from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter, QKeyEvent
+from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import QPoint, QSize, Qt, QRect, Slot
@@ -31,6 +31,10 @@ class IFrameGenerator():
     def key_pressed(self, e: QKeyEvent):
         return
 
+    def mouse_pressed(self, e: QMouseEvent):
+        return
+
+
 
 class StimuliFrameGenerator(IFrameGenerator):
 
@@ -43,6 +47,7 @@ class StimuliFrameGenerator(IFrameGenerator):
     current_stimulation: Tuple[Appliable, uint]
 
     on_keypress: Callable[[QKeyEvent], None]
+    on_mousepress: Callable[[QMouseEvent], None]
 
     show_fixation: bool
     use_step: bool
@@ -50,7 +55,7 @@ class StimuliFrameGenerator(IFrameGenerator):
     # The smoothing function accepts relative time and returns the opacity at that time
     def __init__(self, amount_of_stims: int, stimuli: OddballStimuli,
                  frames_per_stim: List[uint], use_step=False, show_fixation=True,
-                 on_keypress=lambda _: None):
+                 on_keypress=lambda _: None, on_mousepress=lambda _: None):
         self.amount_of_stims = amount_of_stims
         self.stimuli = stimuli
         self.frames_per_stim = frames_per_stim
@@ -60,6 +65,7 @@ class StimuliFrameGenerator(IFrameGenerator):
 
         self.show_fixation = show_fixation
         self.on_keypress = on_keypress
+        self.on_mousepress = on_mousepress
 
     def paint(self, painter: QPainter, screen: QRect) -> int:
 
@@ -96,6 +102,9 @@ class StimuliFrameGenerator(IFrameGenerator):
 
     def key_pressed(self, e: QKeyEvent):
         return self.on_keypress(e)
+    
+    def mouse_pressed(self, e: QMouseEvent):
+        return self.on_mousepress(e)
 
 
 class CountdownFrameGenerator(StimuliFrameGenerator):
@@ -141,7 +150,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
     center: QPoint
     bottom_right: QPoint
-    screen: QRect
+    display: QRect
 
     frame_generators: Iterable[IFrameGenerator]
     frame_generator: IFrameGenerator
@@ -186,6 +195,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         break_frame_generator = BreakFrameGenerator(event_trigger)
 
         self.keyReleaseEvent = self._key_pressed
+        self.mousePressEvent = self._mouse_pressed
 
         return (break_frame_generator,
                 CountdownFrameGenerator(refresh_rate, break_duration),
@@ -202,13 +212,18 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         self.setFormat(format)
 
     @Slot()
-    def _key_pressed(self, e):
+    def _key_pressed(self, e: QKeyEvent):
         return self.frame_generator.key_pressed(e)
+
+    @Slot()
+    def _mouse_pressed(self, e: QMouseEvent):
+        return self.frame_generator.mouse_pressed(e)
+
 
     def resizeGL(self, w, h):
         self.bottom_right = QPoint(w, h)
         self.center = self.bottom_right/2
-        self.screen = QRect(QPoint(0, 0), self.bottom_right)
+        self.display = QRect(QPoint(0, 0), self.bottom_right)
 
     def initializeGL(self):
         print("initialized")
@@ -222,13 +237,14 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         self.remaining_to_swap = self.frame_generator.paint(
             # -1 because the current counts!
-            QPainter(self), self.screen) - 1
+            QPainter(self), self.display) - 1
 
         if self.remaining_to_swap < 0:
             try:
                 self.frame_generator = next(self.frame_generators)
             except StopIteration:
-                return self.close()
+                self.close()
+                return
 
         process_time = time_ns()-startime
         if process_time > 10**9/60:
