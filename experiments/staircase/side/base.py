@@ -39,9 +39,9 @@ def run(meta_generator:
 
     targets = [fill_with_dots(int(height), [], [d]) for d in dots]
     nons = [(create_gabor_values(int(height), 0))]  # this is grey
-    mask = (generate_noise(width, height, 24) for _ in range(20))
+    mask = [generate_noise(width, height, 24) for _ in range(20)]
 
-    generator = meta_generator((height, width), cycle(targets), cycle(nons), cycle(mask))
+    generator = meta_generator((height, width), cycle(targets), cycle(nons), cycle(iter(mask)))
 
     main_window = StaircaseExperiment.new(height, generator,
                                           SoftSerial(),
