@@ -36,13 +36,13 @@ class AppliablePixmap(Appliable):
 class AppliableText(Appliable):
     text: str
     font_size: int
-    color: str
+    color: str | Qt.GlobalColor
     font_family: str
     font_style: QFont.Style
     bold: bool
     horizontal_flip: bool
 
-    def __init__(self, text: str, font_size: int = 50, color: str = DEFAULT_COLOR,
+    def __init__(self, text: str, font_size: int = 50, color: str | Qt.GlobalColor = DEFAULT_COLOR,
                  font_family: str = DEFAULT_FONT, 
                  font_style: QFont.Style = QFont.Style.StyleNormal,
                  bold=False, horizontal_flip=False):
