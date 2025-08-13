@@ -56,8 +56,8 @@ def _create_unrotated_sin_frame(figure_size, frequency, offset, contrast, horizo
 # currently, the frequency is NOT accurate due to the rotation support. It IS accurate for 0,90deg
 
 
-def create_gabor_values(figure_size, frequency=1, offset=0, contrast=1,
-                        step=False, raidal_easing=inf, rotation=0) -> NDArray:
+def create_gabor_values(figure_size: int, frequency: int=1, offset: float=0, contrast: float=1,
+                        step=False, raidal_easing=inf, rotation:float =0) -> NDArray:
     assert figure_size >= 2*frequency
     frame = None
     if rotation % (pi/2) == 0:
@@ -213,13 +213,13 @@ def gabors_around_rec(width: int, height: int, amount_of_dots: int,
 
 def gabors_around_circle(center: Tuple[int, int], radius: int, amount_of_dots: int,
                          dot_size: int, gabor_freq: int, radial_easing: int, flip_one=False,
-                         offset=0, fill_reduction=0) -> List[Dot]:
+                         offset:float = 0, fill_reduction=0) -> List[Dot]:
     angles = linspace(offset, pi*2 + offset, amount_of_dots)
     properties = [circle_at(center, radius, angle) for angle in angles]
 
     flip_index = randint(0, len(angles)-1) if flip_one else -1
 
-    return [Dot(dot_size/2, array(position),
+    return [Dot(int(dot_size/2), array(position),
                 create_gabor_values(dot_size, gabor_freq, raidal_easing=radial_easing,
                                     rotation=rotation+pi/2 if i == flip_index else rotation)-fill_reduction)
             for (i, (rotation, position)) in enumerate(properties)]
