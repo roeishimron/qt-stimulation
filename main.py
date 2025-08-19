@@ -1,3 +1,3 @@
-from experiments.duplicate_word.hebrew_window import run
+from experiments.constant_stimuli.click_on_directions import run
 
 run()
