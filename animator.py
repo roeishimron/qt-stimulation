@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QLabel, QGraphicsOpacityEffect
 from PySide6.QtGui import QPixmap, QFontDatabase, QFont, QPainter, QTransform
-from typing import List, Iterable, Callable, Tuple
+from typing import List, Iterator, Iterable, Callable, Tuple
 from PySide6.QtCore import (Qt, QPropertyAnimation,
                             QSequentialAnimationGroup, QEasingCurve,
                             Slot, QByteArray, QPoint, QRect, QSize)
@@ -131,8 +131,8 @@ class DrawableConvolve(Appliable):
 
 
 class OddballStimuli:
-    base: Iterable[Appliable]
-    oddball: Iterable[Appliable]
+    base: Iterator[Appliable]
+    oddball: Iterator[Appliable]
     oddball_modulation: int
     size: int
 
@@ -146,12 +146,12 @@ class OddballStimuli:
 
     def __init__(self,
                  oddball: Iterable[Appliable],
-                 base: Iterable[Appliable] = None,
+                 base: Iterable[Appliable] = [],
                  oddball_modulation_start: int = 1,
                  oddball_modulation_end: int = 0) -> None:
 
-        self.base = base
-        self.oddball = oddball
+        self.base = iter(base)
+        self.oddball = iter(oddball)
         self.oddball_modulation_range = (
             oddball_modulation_start, oddball_modulation_end)
         self._next_oddball()
@@ -163,7 +163,7 @@ class OddballStimuli:
             return (True, next(self.oddball))
         return (False, next(self.base))
 
-
+# deprecated
 class Animator:
     display: QLabel
     stimuli: OddballStimuli
