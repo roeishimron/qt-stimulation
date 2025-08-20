@@ -132,12 +132,14 @@ class CountdownFrameGenerator(StimuliFrameGenerator):
 class BreakFrameGenerator(IFrameGenerator):
     in_break: bool | None
     event_trigger: SoftSerial
-    on_start: Callable[[], None]
-    on_keypress: Callable[[QKeyEvent], None]
-    on_mousepress: Callable[[QMouseEvent], None]
+    on_start: Callable[[], bool] # returning if the break should start
+    on_keypress: Callable[[QKeyEvent], bool] # returning if should end the break
+    on_mousepress: Callable[[QMouseEvent], bool]
 
-    def __init__(self, event_trigger: SoftSerial, on_start: Callable[[], None],
-                 on_keypress: Callable[[QKeyEvent], None], on_mousepress: Callable[[QMouseEvent], None]):
+    def __init__(self, event_trigger: SoftSerial,
+                 on_start: Callable[[], bool],
+                 on_keypress: Callable[[QKeyEvent], bool],
+                on_mousepress: Callable[[QMouseEvent], bool]):
         self.event_trigger = event_trigger
         self.in_break = None
         self.on_start = on_start
@@ -152,26 +154,30 @@ class BreakFrameGenerator(IFrameGenerator):
 
         if self.in_break == None:
             self.in_break = True
-            self.on_start()
+            if not self.on_start():
+                self.end_break()
 
         return self.in_break
-
-    def end_break(self, event) -> bool:
-        if self.in_break == True and event.key() == Qt.Key.Key_Space:
+    
+    def end_break(self) -> bool:
+        if self.in_break == True:
             self.in_break = False
             self.event_trigger.parallel_write_int(Codes.BreakEnd)
             return True
         return False
 
     def key_pressed(self, e: QKeyEvent):
-        if self.end_break(e):
-            return
-        self.on_keypress(e)
+        if self.on_keypress(e):
+            self.end_break()
+        
 
     def mouse_pressed(self, e: QMouseEvent):
-        return self.on_mousepress(e)
+        if self.on_mousepress(e):
+            self.end_break()
 
 
+def _default_key_should_end_break(e: QKeyEvent) -> bool:
+    return e.key() == Qt.Key.Key_Space
 
 class RealtimeViewingExperiment(QOpenGLWidget):
     painter: QPainter
@@ -189,9 +195,13 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     def __init__(self, stimuli: OddballStimuli | List[OddballStimuli], event_trigger: SoftSerial,
                  frames_per_stim: ArrayLike, amount_of_stims_per_trial: int, pretrial_duration=3, amount_of_trials=3,
                  use_step=False, show_fixation_cross=True,
-                 stimuli_on_keypress=lambda _: None, stimuli_on_mousepress=lambda _: None,
-                 break_on_keypress=lambda _: None, break_on_mousepress=lambda _: None,
-                 on_trial_start= lambda: None, on_break_start=lambda: None):
+                 stimuli_on_keypress=lambda _: None, 
+                 stimuli_on_mousepress=lambda _: None,
+                 break_on_keypress=_default_key_should_end_break, # True if should end break
+                 break_on_mousepress=lambda _: False, # True if should end break
+                 on_trial_start= lambda: None, 
+                 on_break_start=lambda: True # True if should start break
+                 ):
 
         super().__init__()
 
@@ -231,10 +241,10 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                    use_step: bool, show_fixation_cross: bool, event_trigger: SoftSerial,
                    stimuli_on_keypress: Callable[[QKeyEvent], None],
                    stimuli_on_mousepress: Callable[[QMouseEvent], None],
-                   break_on_keypress: Callable[[QKeyEvent], None],
-                   break_on_mousepress: Callable[[QMouseEvent], None],
+                   break_on_keypress: Callable[[QKeyEvent], bool],
+                   break_on_mousepress: Callable[[QMouseEvent], bool],
                    on_trial_start: Callable[[], None],
-                   on_break_start: Callable[[], None],):
+                   on_break_start: Callable[[], bool],):
 
         break_frame_generator = BreakFrameGenerator(
             event_trigger, on_break_start, break_on_keypress, break_on_mousepress)

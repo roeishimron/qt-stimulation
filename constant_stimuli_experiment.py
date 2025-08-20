@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from subprocess import run, Popen
+from subprocess import DEVNULL, Popen
 from typing import Iterator, List, Tuple, Iterable
 from animator import OddballStimuli
 from realtime_experiment import RealtimeViewingExperiment
@@ -69,36 +69,50 @@ class Stimulus(DisplayableStimulus):
 class ConstantStimuli:
     experiment: RealtimeViewingExperiment
     stimuli: Iterator[Stimulus]
-    current_stimulus: Stimulus
+    current_stimulus: Stimulus | None
     current_answer: Answer | None
-    accept_responses: bool
-
-    # TODO: log
 
     def feedback_and_log(self):
-        self.accept_responses = False
         if self.current_answer is not None:
             logger.info(f"Got answer after {self.current_answer.delay / 10**9} s and its {self.current_answer.correct}")
             if self.current_answer.correct == True:
-                Popen(["aplay", "success.wav"]) 
+                Popen(["aplay", "success.wav"], stdout=DEVNULL) 
                 return
-        Popen(["aplay", "fail.wav"]) 
+        Popen(["aplay", "fail.wav"], stdout=DEVNULL) 
 
     def handle_on_trial_response(self, e: QMouseEvent | QKeyEvent):
-        self.current_answer = self.current_stimulus.accept_answer(e)
+        self.try_accept_answer(e)
 
-    def handle_break_start(self):
+    def handle_break_start(self) -> bool:
+        # did'nt receive answer yet, wait
         if self.current_answer is None:
-            return
+            return True
+        
+        # Got answer during the trial, continue
         self.feedback_and_log()
+        return False
 
-    def handle_on_break_response(self, e: QMouseEvent | QKeyEvent):
-        if not self.accept_responses:
-            return
+    def try_accept_answer(self, e: QMouseEvent | QKeyEvent) -> bool:
+        if self.current_stimulus is not None:
+            candidate = self.current_stimulus.accept_answer(e)
+            if candidate is not None:
+                self.current_answer = candidate
+                return True
+        return False
 
-        self.current_answer = self.current_stimulus.accept_answer(e)
-        self.feedback_and_log()
-    
+    def handle_on_break_response(self, e: QMouseEvent | QKeyEvent) -> bool:
+        # This is the first break
+        if self.current_stimulus is None:
+            return True
+        
+        # Got Answer during break, continue
+        if self.try_accept_answer(e):
+            self.feedback_and_log()
+            return True
+
+        # Invalid answer, wait for valid one
+        return False
+        
     def handle_trial_start(self):
         self.current_answer = None
         self.accept_responses = True
@@ -111,6 +125,8 @@ class ConstantStimuli:
                  use_step=True, show_fixation_cross=False) -> None:
         self.current_answer = None
         self.accept_responses = False
+        self.current_stimulus = None
+
         self.stimuli = (Stimulus(s[1]) for s in stimuli)
         self.experiment = RealtimeViewingExperiment([s[0] for s in stimuli],
                                                     event_trigger,
