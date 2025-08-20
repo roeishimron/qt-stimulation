@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from subprocess import run
+from subprocess import run, Popen
 from typing import Iterator, List, Tuple, Iterable
 from animator import OddballStimuli
 from realtime_experiment import RealtimeViewingExperiment
@@ -10,7 +10,9 @@ from time import time_ns
 from soft_serial import SoftSerial
 from enum import Enum, auto
 from numpy import arctan2, abs, pi, arccos, cos, sin, sqrt
+from logging import getLogger
 
+logger = getLogger(__name__)
 
 @dataclass
 class Answer:
@@ -76,10 +78,11 @@ class ConstantStimuli:
     def feedback_and_log(self):
         self.accept_responses = False
         if self.current_answer is not None:
+            logger.info(f"Got answer after {self.current_answer.delay / 10**9} s and its {self.current_answer.correct}")
             if self.current_answer.correct == True:
-                run(["aplay", "success.wav"])  # intentionaly not parallel
+                Popen(["aplay", "success.wav"]) 
                 return
-        run(["aplay", "fail.wav"])  # intentionaly not parallel
+        Popen(["aplay", "fail.wav"]) 
 
     def handle_on_trial_response(self, e: QMouseEvent | QKeyEvent):
         self.current_answer = self.current_stimulus.accept_answer(e)
@@ -90,7 +93,6 @@ class ConstantStimuli:
         self.feedback_and_log()
 
     def handle_on_break_response(self, e: QMouseEvent | QKeyEvent):
-        print("on break response")
         if not self.accept_responses:
             return
 
@@ -138,7 +140,6 @@ class DirectionValidator(ClickableStimulus):
         self.screen_center = screen_center        
     
     def validate_mouse_answer(self, e: QMouseEvent) -> bool:
-        
         centered = QPointF(e.position().x() - self.screen_center.x(),
                            self.screen_center.y() - e.position().y())
         angle_diff = arccos(QPointF.dotProduct(centered, self.target_vector) 
