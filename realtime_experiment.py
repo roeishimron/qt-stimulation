@@ -189,9 +189,14 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     frame_generators: Iterable[IFrameGenerator]
     frame_generator: IFrameGenerator
 
-    def __init__(self, stimuli: OddballStimuli | List[OddballStimuli], event_trigger: SoftSerial,
-                 frames_per_stim: ArrayLike, amount_of_stims_per_trial: int, pretrial_duration=3, amount_of_trials=3,
-                 use_step=False, show_fixation_cross=True,
+    def __init__(self, stimuli: OddballStimuli | List[OddballStimuli], 
+                 event_trigger: SoftSerial,
+                 frames_per_stim: ArrayLike, 
+                 amount_of_stims_per_trial: int, 
+                 pretrial_duration=3, 
+                 amount_of_trials=3,
+                 use_step=False, 
+                 show_fixation_cross=True,
                  stimuli_on_keypress=lambda _: None, 
                  stimuli_on_mousepress=lambda _: None,
                  break_on_keypress=_default_key_should_end_break, # True if should end break
