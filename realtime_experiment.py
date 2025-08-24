@@ -1,6 +1,3 @@
-
-import copy
-import sys
 from PySide6.QtOpenGL import QOpenGLWindow, QOpenGLBuffer, QOpenGLPaintDevice
 from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication
