@@ -1,5 +1,5 @@
-from logging import basicConfig, DEBUG
-from experiments.constant_stimuli.click_on_directions import run
+from experiments.constant_stimuli.easy import run
 
+from logging import basicConfig, DEBUG
 basicConfig(level=DEBUG)
 run()
