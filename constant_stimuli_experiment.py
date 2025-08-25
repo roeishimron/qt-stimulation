@@ -75,12 +75,16 @@ class ConstantStimuli:
     current_answer: Answer | None
 
     def feedback_and_log(self):
-        if self.current_answer is not None:
-            logger.info(f"Got answer after {self.current_answer.delay / 10**9} s and its {self.current_answer.correct}")
-            if self.current_answer.correct == True:
-                Popen(["aplay", "success.wav"], stdout=DEVNULL) 
-                return
-        Popen(["aplay", "fail.wav"], stdout=DEVNULL) 
+        if self.current_answer is None:
+            return
+
+        logger.info(f"Got answer after {self.current_answer.delay / 10**9} s and its {self.current_answer.correct}")
+        if self.current_answer.correct == True:
+            Popen(["aplay", "success.wav"], stdout=DEVNULL) 
+        else:
+            Popen(["aplay", "fail.wav"], stdout=DEVNULL) 
+
+        self.current_answer = None
 
     def handle_on_trial_response(self, e: QMouseEvent | QKeyEvent):
         self.try_accept_answer(e)
@@ -117,7 +121,6 @@ class ConstantStimuli:
         
     def handle_trial_start(self):
         self.current_answer = None
-        self.accept_responses = True
         self.current_stimulus = next(self.stimuli)
         self.current_stimulus.on_display()
         
@@ -126,7 +129,6 @@ class ConstantStimuli:
                  frames_per_stim: ArrayLike, amount_of_stims_per_trial: int, pretrial_duration=0,
                  use_step=True, show_fixation_cross=False) -> None:
         self.current_answer = None
-        self.accept_responses = False
         self.current_stimulus = None
 
         # Adding the empty `Stimulus`, empty `OddballStimuli` and extra trial for extra break
@@ -164,4 +166,4 @@ class DirectionValidator(ClickableStimulus):
         angle_diff = arccos(QPointF.dotProduct(centered, self.target_vector) 
                             / sqrt(QPointF.dotProduct(centered, centered)))
 
-        return abs(angle_diff) < pi/2
+        return abs(angle_diff) < pi/4
