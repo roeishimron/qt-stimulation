@@ -13,13 +13,20 @@ import experiments.staircase.side.demo
 import experiments.staircase.side.side
 import  experiments.staircase.csf_frequencial
 import  experiments.staircase.csf_spacial
+import experiments.constant_stimuli.easy
+import experiments.constant_stimuli.fixed_trials
+import experiments.constant_stimuli.roving_trials
 
+from logging import basicConfig, DEBUG
+from time import time_ns
 print("Subject Name:")
 name = input()
 print("Experiment Name:")
 experiment = input()
 
-output_folder = f"/output/{name}_{experiment}_results" # Expected to explicitly volume the output
+basicConfig(level=DEBUG, filename=f"./output/{name}-{experiment}-{time_ns()//10**9}")
+
+output_folder = f"./output/{name}_{experiment}_results" # Expected to explicitly volume the output
 Path(output_folder).mkdir(exist_ok=True)
 
 if experiment == "side":
@@ -40,5 +47,12 @@ elif experiment == "orientation_uniform":
     experiments.staircase.orientation_choise.uniform_measure.run(output_folder)
 elif experiment == "orientation_delta":
     experiments.staircase.orientation_choise.delta_measure.run(output_folder)
+elif experiment == "motion_coherence_example":
+    experiments.constant_stimuli.easy.run()
+elif experiment == "motion_coherence_fixed":
+    experiments.constant_stimuli.fixed_trials.run()
+elif experiment == "motion_coherence_roving":
+    experiments.constant_stimuli.roving_trials.run()
+
 else:
     print("No such experiment!")
