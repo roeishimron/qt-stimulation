@@ -268,8 +268,7 @@ class StaircaseExperiment:
         success = self.stimuli_generator.accept_response(
             key == Qt.Key.Key_Left)
 
-        print(f"{["wrong", "correct"][int(success)]}!, Difficulty is {self.current_difficulty} with step {
-              self.get_step_size()} and there are {self.remaining_to_stop} reversals left")
+        print(f"{['wrong', 'correct'][int(success)]}!, Difficulty is {self.current_difficulty} with step {self.get_step_size()} and there are {self.remaining_to_stop} reversals left")
 
         self.trial_no += 1
         self.record_to_file(ExperimentState(
