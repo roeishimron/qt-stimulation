@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import chain, cycle
 from subprocess import DEVNULL, Popen
 from typing import Iterator, List, Tuple, Iterable
 from animator import OddballStimuli
@@ -11,6 +12,7 @@ from soft_serial import SoftSerial
 from enum import Enum, auto
 from numpy import arctan2, abs, pi, arccos, cos, sin, sqrt
 from logging import getLogger
+from stims import generate_grey
 
 logger = getLogger(__name__)
 
@@ -127,13 +129,14 @@ class ConstantStimuli:
         self.accept_responses = False
         self.current_stimulus = None
 
-        self.stimuli = (Stimulus(s[1]) for s in stimuli)
-        self.experiment = RealtimeViewingExperiment([s[0] for s in stimuli],
+        # Adding the empty `Stimulus`, empty `OddballStimuli` and extra trial for extra break
+        self.stimuli = chain((Stimulus(s[1]) for s in stimuli), iter([Stimulus(ClickableStimulus())]))
+        self.experiment = RealtimeViewingExperiment([s[0] for s in stimuli] + [OddballStimuli(cycle([generate_grey(1)]))],
                                                     event_trigger,
                                                     frames_per_stim,
                                                     amount_of_stims_per_trial,
                                                     pretrial_duration,
-                                                    len(stimuli),
+                                                    len(stimuli) + 1,
                                                     use_step,
                                                     show_fixation_cross,
                                                     self.handle_on_trial_response,
