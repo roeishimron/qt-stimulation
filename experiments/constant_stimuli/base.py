@@ -62,7 +62,8 @@ def run(coherences, directions):
          for s, d in zip(stimuli, directions)],
         SoftSerial(),
         FRAMES_PER_STIM,
-        AMOUNT_OF_STIMULI)
+        AMOUNT_OF_STIMULI,
+        1)
 
     experiment.run()
     # Run the main Qt loop
