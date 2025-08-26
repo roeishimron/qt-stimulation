@@ -3,5 +3,5 @@ from numpy import linspace, pi
 from numpy.random import choice
 
 def run():
-    inner_run(choice(linspace(0,2*pi,4), AMOUNT_OF_TRIALS))
+    inner_run(choice(linspace(0,2*pi,4,False), AMOUNT_OF_TRIALS))
     
