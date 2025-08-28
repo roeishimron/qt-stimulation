@@ -79,6 +79,7 @@ def _play_feedback(correct: bool):
 class ConstantStimuli:
     experiment: RealtimeViewingExperiment
     stimuli: Iterator[Stimulus]
+    trial_number: int
     current_stimulus: Stimulus | None
     current_answer: Answer | None
 
@@ -87,7 +88,7 @@ class ConstantStimuli:
         if self.current_answer is None:
             return
         correct = self.current_answer.correct
-        message = f"Got answer after {self.current_answer.delay / 10**9} s and its {correct}"
+        message = f"Trial #{self.trial_number} got answer after {self.current_answer.delay / 10**9} s and its {correct}"
         self.current_answer = None
 
         logger.info(message)
@@ -130,6 +131,7 @@ class ConstantStimuli:
         
     def handle_trial_start(self):
         self.current_answer = None
+        self.trial_number += 1
         self.current_stimulus = next(self.stimuli)
         self.current_stimulus.on_display()
         
@@ -139,6 +141,7 @@ class ConstantStimuli:
                  use_step=True, show_fixation_cross=False) -> None:
         self.current_answer = None
         self.current_stimulus = None
+        self.trial_number = 0
 
         # Adding the empty `Stimulus`, empty `OddballStimuli` and extra trial for extra break
         self.stimuli = chain((Stimulus(s[1]) for s in stimuli), iter([Stimulus(ClickableStimulus())]))
