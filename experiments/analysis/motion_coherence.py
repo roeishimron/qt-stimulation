@@ -1,6 +1,7 @@
 from re import search, findall
 from typing import Tuple
-from numpy import fromstring, array2string, array, float64, argsort, log
+from numpy import fromstring, array2string, array, float64, argsort, log, median, inf, exp
+from scipy.optimize import curve_fit
 from numpy.typing import NDArray
 from matplotlib.pyplot import legend, subplots, show
 import glob
@@ -10,12 +11,36 @@ import os
 FOLDER_PATH = 'output'
 LOGFILE = f"{FOLDER_PATH}/roei17-motion_coherence_roving-1756148886"
 
+def weibull(C, alpha, beta):
+    """Weibull psychometric function with 0.75 asymptote."""
+    return 1 - 0.75 * exp(-(C / alpha) ** beta)
+
+def fit_weibull(x, y):
+    """
+    Fit Weibull function to data x and y.
+    
+    Parameters:
+        x : array-like, stimulus intensities
+        y : array-like, proportion correct (0–1)
+    
+    Returns:
+        popt : array, [alpha, beta]
+    """
+    # Initial guess: alpha = median of x, beta = 2
+    p0 = [median(x), 2.0]
+
+    # Boundaries to keep parameters positive
+    bounds = ([0, 0], [inf, inf])
+
+    popt, _ = curve_fit(weibull, x, y, p0=p0, bounds=bounds)
+    return popt
+
 
 def analyze_latest():
     list_of_files = glob.glob(os.path.join(FOLDER_PATH, '*'))
     latest_file = max(list_of_files, key=os.path.getctime)
 
-    subject_search = search(r"^(.*)-motion_coherence", latest_file)
+    subject_search = search(rf"^{FOLDER_PATH}/(.*)-motion_coherence", latest_file)
     assert subject_search is not None
 
     analyze_subject(subject_search.group(1))
@@ -50,16 +75,17 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
 
 
 def analyze_subject(subject_name: str):
-    list_of_files = glob.glob(os.path.join(FOLDER_PATH, f'{subject_name}-*'))
-    kinds = [search(r"(fixed|roving)", filename).group(1)
-             for filename in list_of_files]
-    times = [int(search(r"(\d*)$", filename).group(1))
-             for filename in list_of_files]
-    ordered = times[0] < times[1]
+    print(f"Analysing {subject_name}")
+    list_of_files = array(glob.glob(os.path.join(FOLDER_PATH, f'{subject_name}-*')))
+    kinds = array([search(r"(fixed|roving)", filename).group(1)
+             for filename in list_of_files])
+    times = array([int(search(r"(\d*)$", filename).group(1))
+             for filename in list_of_files])
+    
+    time_sorting_indices = argsort(times)
 
-    if not ordered:
-        list_of_files.reverse()
-        kinds.reverse()
+    list_of_files = list_of_files[time_sorting_indices]
+    kinds = kinds[time_sorting_indices]
 
     assert len(list_of_files) > 0
     _, ax = subplots(label=f"analysis of {subject_name}")
@@ -74,4 +100,4 @@ def analyze_subject(subject_name: str):
 
 
 if __name__ == "__main__":
-    analyze_subject("10461")
+    analyze_subject("roeis")
