@@ -14,7 +14,6 @@ def analyze_latest(latest=True):
     latest_file = max(list_of_files, key=os.path.getctime)
 
     text = open(latest_file if latest else LOGFILE, "r").read().replace("\n","")
-    print(text)
     coherences = search(r"\[(.*)\] and direction", text)
     success = findall(r"(True|False)", text)
 
@@ -36,8 +35,6 @@ def analyze_latest(latest=True):
     coherences, successes = zip(*averages.items())
     coherences_and_successes = sort(array([coherences, successes]))
 
-
-    print(averages)
 
     _, ax = subplots()
     ax.semilogx(coherences_and_successes[0], coherences_and_successes[1])
