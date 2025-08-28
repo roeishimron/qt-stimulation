@@ -22,14 +22,14 @@ logging_filename = None
 
 def main():
 
-    from logging import basicConfig, DEBUG
+    from logging import basicConfig, INFO
     print("Subject Name:")
     name = input()
     print("Experiment Name:")
     experiment = input()
 
     logging_filename = f"./output/{name}-{experiment}-{time_ns()//10**9}"
-    basicConfig(level=DEBUG, filename=logging_filename)
+    basicConfig(level=INFO, filename=logging_filename)
 
     output_folder = f"./output/{name}_{experiment}_results" # Expected to explicitly volume the output
     # Path(output_folder).mkdir(exist_ok=True)
