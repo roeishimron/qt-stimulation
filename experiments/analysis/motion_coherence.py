@@ -90,10 +90,16 @@ def analyze_subject(subject_name: str):
     assert len(list_of_files) > 0
     _, ax = subplots(label=f"analysis of {subject_name}")
 
+    threasholds = {}
+
     for filename, kind in zip(list_of_files, kinds):
         coherences, successes = text_into_coherences_and_successes(
             open(filename).read().replace("\n", ""))
+        threasholds[kind], _ = fit_weibull(coherences, successes)
         ax.semilogx(coherences, successes, label=f"{kind}")
+        ax.vlines(threasholds[kind], 0.25, 1, colors=["red", "purple"][kind=="fixed"])
+
+    print(f"ratio is {threasholds["roving"]/threasholds["fixed"]}")
 
     legend()
     show()
