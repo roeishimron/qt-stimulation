@@ -156,20 +156,18 @@ class BreakFrameGenerator(IFrameGenerator):
 
         return self.in_break
     
-    def end_break(self) -> bool:
+    def end_break(self):
         if self.in_break == True:
             self.in_break = False
             self.event_trigger.parallel_write_int(Codes.BreakEnd)
-            return True
-        return False
 
     def key_pressed(self, e: QKeyEvent):
-        if self.on_keypress(e):
+        if self.in_break and self.on_keypress(e):
             self.end_break()
         
 
     def mouse_pressed(self, e: QMouseEvent):
-        if self.on_mousepress(e):
+        if self.in_break and self.on_mousepress(e):
             self.end_break()
 
 
