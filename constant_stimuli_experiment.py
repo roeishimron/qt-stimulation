@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from itertools import chain, cycle
 from subprocess import DEVNULL, Popen
+from threading import Thread
 from typing import Iterator, List, Tuple, Iterable
 from animator import OddballStimuli
 from realtime_experiment import RealtimeViewingExperiment
@@ -68,23 +69,31 @@ class Stimulus(DisplayableStimulus):
         return None
 
 
+def _play_feedback(correct: bool):
+    if correct:
+        Popen(["aplay", "success.wav"], stdout=DEVNULL)
+    else:
+        Popen(["aplay", "fail.wav"], stdout=DEVNULL)
+
+
 class ConstantStimuli:
     experiment: RealtimeViewingExperiment
     stimuli: Iterator[Stimulus]
     current_stimulus: Stimulus | None
     current_answer: Answer | None
 
+
     def feedback_and_log(self):
         if self.current_answer is None:
             return
-
-        logger.info(f"Got answer after {self.current_answer.delay / 10**9} s and its {self.current_answer.correct}")
-        if self.current_answer.correct == True:
-            Popen(["aplay", "success.wav"], stdout=DEVNULL) 
-        else:
-            Popen(["aplay", "fail.wav"], stdout=DEVNULL) 
-
+        correct = self.current_answer.correct
+        message = f"Got answer after {self.current_answer.delay / 10**9} s and its {correct}"
         self.current_answer = None
+
+        logger.info(message)
+        t = Thread(target=_play_feedback, args=[correct])
+        t.start()
+
 
     def handle_on_trial_response(self, e: QMouseEvent | QKeyEvent):
         self.try_accept_answer(e)
