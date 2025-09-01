@@ -1,6 +1,6 @@
 from re import search, findall
 from typing import Tuple
-from numpy import fromstring, array2string, array, float64, argsort, log, median, inf, exp
+from numpy import fromstring, array2string, array, float64, argsort, linspace, log, median, inf, exp, sqrt, square
 from scipy.optimize import curve_fit
 from numpy.typing import NDArray
 from matplotlib.pyplot import legend, subplots, show
@@ -14,6 +14,7 @@ LOGFILE = f"{FOLDER_PATH}/roei17-motion_coherence_roving-1756148886"
 def weibull(C, alpha, beta):
     """Weibull psychometric function with 0.75 asymptote."""
     return 1 - 0.75 * exp(-(C / alpha) ** beta)
+
 
 def fit_weibull(x, y):
     """
@@ -33,7 +34,10 @@ def fit_weibull(x, y):
     bounds = ([0, 0], [inf, inf])
 
     popt, _ = curve_fit(weibull, x, y, p0=p0, bounds=bounds)
-    return popt
+
+    evalutaed = 1 - 0.75 * exp(-(x / popt[0]) ** popt[1])
+    distance = sqrt(sum(square(evalutaed - y)))
+    return popt, distance
 
 
 def analyze_latest():
@@ -90,13 +94,20 @@ def analyze_subject(subject_name: str):
     assert len(relevant_files) > 0
     _, ax = subplots(label=f"analysis of {subject_name}")
 
+    colors = ("b", "g", "r")
+
     threasholds = {}
 
-    for filename, kind in zip(relevant_files, kinds):
+    for filename, kind, color in zip(relevant_files, kinds, colors):
         coherences, successes = text_into_coherences_and_successes(
             open(filename).read().replace("\n", ""))
-        threasholds[kind], _ = fit_weibull(coherences, successes)
-        ax.semilogx(coherences, successes, label=f"{kind}")
+        (threasholds[kind], slope), distance = fit_weibull(coherences, successes)
+
+        xs = linspace(coherences[0], coherences[-1], 100)
+        fitted = 1 - 0.75 * exp(-(xs / threasholds[kind]) ** slope)
+
+        ax.semilogx(xs, fitted,f"{color}- -", label=f"{kind}-fit (distance = {distance:.2f})")
+        ax.semilogx(coherences, successes, f"{color}-", label=f"{kind}")
         ax.vlines(threasholds[kind], 0.25, 1, colors=["red", "purple"][kind=="fixed"])
 
     print(f"ratio is {threasholds["roving"]/threasholds["fixed"]}")
