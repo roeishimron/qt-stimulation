@@ -13,3 +13,4 @@
     qtwayland5
     culmus texlive-lang-arabic
     alsa-utils
+    scipy
