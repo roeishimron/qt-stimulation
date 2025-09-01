@@ -77,22 +77,22 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
 def analyze_subject(subject_name: str):
     print(f"Analysing {subject_name}")
     list_of_files = array(glob.glob(os.path.join(FOLDER_PATH, f'{subject_name}-*')))
-    kinds = array([search(r"(fixed|roving)", filename).group(1)
-             for filename in list_of_files])
+    relevant_files = [filename for filename in list_of_files if search(r"(fixed|roving)", filename) is not None]
+    kinds = array([search(r"(fixed|roving)", filename).group(1) for filename in relevant_files])
     times = array([int(search(r"(\d*)$", filename).group(1))
-             for filename in list_of_files])
+             for filename in relevant_files])
     
     time_sorting_indices = argsort(times)
 
-    list_of_files = list_of_files[time_sorting_indices]
+    relevant_files = relevant_files[time_sorting_indices]
     kinds = kinds[time_sorting_indices]
 
-    assert len(list_of_files) > 0
+    assert len(relevant_files) > 0
     _, ax = subplots(label=f"analysis of {subject_name}")
 
     threasholds = {}
 
-    for filename, kind in zip(list_of_files, kinds):
+    for filename, kind in zip(relevant_files, kinds):
         coherences, successes = text_into_coherences_and_successes(
             open(filename).read().replace("\n", ""))
         threasholds[kind], _ = fit_weibull(coherences, successes)
