@@ -101,6 +101,7 @@ def _simulate_moving_dots(
     direction_proportions: np.ndarray,
     motion_velocity: int,
     mean_lifetime: int,
+    noise_cycle_time: int,
     stimulus_radius: float,
     center: complex
 ) -> List[List[Dot]]:
@@ -117,7 +118,7 @@ def _simulate_moving_dots(
     num_noise_dots = num_dots - len(dot_properties)
     for _ in range(num_noise_dots):
         velocity = motion_velocity * np.exp(1j * (np.random.rand() * 2 * np.pi))
-        dot_properties.append((velocity, False, 0))
+        dot_properties.append((velocity, False, noise_cycle_time))
     np.random.shuffle(dot_properties)
 
     dots: List[Dot] = []
@@ -165,7 +166,8 @@ def generate_moving_dots(
     duration: int,
     direction_proportions: np.ndarray,
     motion_velocity: int,
-    mean_lifetime: int
+    mean_lifetime: int,
+    noise_cycle_time: int = 0
 ) -> List[List[Dot]]:
     """
     Generates frames of moving dots for a Random Dot Kinematogram (RDK).
@@ -178,7 +180,9 @@ def generate_moving_dots(
             raise ValueError("The sum of proportions cannot be greater than 1.")
         cycle_times = direction_proportions[:, 2]
         if np.any(cycle_times % 2 != 0):
-            raise ValueError("cycle_time must be an even number for a 50% duty cycle.")
+            raise ValueError("cycle_time for coherent dots must be an even number.")
+    if noise_cycle_time < 0 or (noise_cycle_time != 0 and noise_cycle_time % 2 != 0):
+        raise ValueError("noise_cycle_time must be a non-negative, even number.")
 
     stimulus_radius = stimulus_size_px / 2.0
     center = (stimulus_size_px / 2.0) + 1j * (stimulus_size_px / 2.0)
@@ -190,6 +194,7 @@ def generate_moving_dots(
         direction_proportions=direction_proportions,
         motion_velocity=motion_velocity,
         mean_lifetime=mean_lifetime,
+        noise_cycle_time=noise_cycle_time,
         stimulus_radius=stimulus_radius,
         center=center
     )
@@ -215,6 +220,7 @@ PARAMS = {
     "duration": 50,
     "motion_velocity": 2,
     "mean_lifetime": 60,
+    "noise_cycle_time": 0,
 }
 
 def test_dots_stay_in_bounds():
@@ -264,6 +270,7 @@ def test_visibility_with_zero_cycle_time():
     """4. If the cycle_time is 0, all dots are always visible."""
     num_dots = PARAMS["num_dots"]
     direction_props = np.array([[0, 0.5, 0], [np.pi, 0.5, 0]])
+    # This test implicitly uses noise_cycle_time=0 as well
     frames = generate_moving_dots(direction_proportions=direction_props, **PARAMS)
     for i, frame in enumerate(frames):
         moving_dots_in_frame = [dot for dot in frame if dot.color == -1]
@@ -298,7 +305,6 @@ def test_spatial_distribution_is_unbiased(test_id, direction_props):
     
     center_of_mass = np.mean(all_positions)
     
-    # Use a tolerance equal to the dot's radius
     tolerance = params["dot_radius"]
     assert np.isclose(center_of_mass, true_center, atol=tolerance), \
         f"Center of mass {center_of_mass} is biased for case '{test_id}'"
