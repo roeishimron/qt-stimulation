@@ -42,9 +42,10 @@ def run(coherences, directions):
     VELOCITY = 12
     MEAN_LIFETIME = AMOUNT_OF_STIMULI // 2
 
-    trials = [generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS, c,
+    trials = [generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
                                    size, AMOUNT_OF_STIMULI,
-                                   d, VELOCITY, MEAN_LIFETIME) for c, d in zip(coherences, directions)]
+                                   array([[d, c, 0]]), VELOCITY, MEAN_LIFETIME) 
+                for c, d in zip(coherences, directions)]
 
     stimuli = [OddballStimuli((array_into_pixmap(
                                 fill_with_dots(size, [], 
