@@ -1,14 +1,17 @@
+from ast import arg
 from re import search, findall
 from typing import Tuple
 from numpy import fromstring, array2string, array, float64, argsort, linspace, log, median, inf, exp, sqrt, square
 from scipy.optimize import curve_fit
 from numpy.typing import NDArray
 from matplotlib.pyplot import legend, subplots, show
+import matplotlib.ticker as mticker
 import glob
 import os
 
-
-FOLDER_PATH = "C:/Users/mayaz/Lab2025/qt-stimulation-master/output"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FOLDER_PATH = os.path.join(SCRIPT_DIR, "..", "..", "output")  # adjust levels as needed
+# FOLDER_PATH = 'output'
 LOGFILE = f"{FOLDER_PATH}/roei17-motion_coherence_roving-1756148886"
 
 def weibull(C, alpha, beta):
@@ -35,9 +38,27 @@ def fit_weibull(x, y):
 
     popt, _ = curve_fit(weibull, x, y, p0=p0, bounds=bounds)
 
-    evalutaed = 1 - 0.75 * exp(-(x / popt[0]) ** popt[1])
-    distance = sqrt(sum(square(evalutaed - y)))
-    return popt, distance
+    # Old calculation 
+        # evalutaed = 1 - 0.75 * exp(-(x / popt[0]) ** popt[1])
+        # distance = sqrt(sum(square(evalutaed - y)))
+        # return popt, distance
+    
+    # Weibull values
+    y_hat = weibull(x, *popt)
+
+    # distance from samples to mean
+    ss_tot = sum((y - y.mean())**2)
+
+    # distance from samples to their weibull values
+    ss_res = sum((y - y_hat)**2)
+
+    # the Explained variance
+    ss_reg = ss_tot - ss_res
+
+    #R²
+    r_squared = 1 - ss_res/ss_tot
+
+    return popt, r_squared
 
 
 def analyze_latest():
@@ -81,6 +102,7 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
 def analyze_subject(subject_name: str):
     print(f"Analysing {subject_name}")
     list_of_files = array(glob.glob(os.path.join(FOLDER_PATH, f'{subject_name}-*')))
+    print(list_of_files)
     relevant_files = [filename for filename in list_of_files if search(r"(fixed|roving)", filename) is not None]
     kinds = array([search(r"(fixed|roving)", filename).group(1) for filename in relevant_files])
     times = array([int(search(r"(\d*)$", filename).group(1))
@@ -88,30 +110,63 @@ def analyze_subject(subject_name: str):
     
     time_sorting_indices = argsort(times)
 
-    relevant_files = relevant_files[time_sorting_indices]
+    relevant_files = array(relevant_files)[time_sorting_indices]
     kinds = kinds[time_sorting_indices]
 
     assert len(relevant_files) > 0
     _, ax = subplots(label=f"analysis of {subject_name}")
 
-    colors = ("b", "g", "r")
+    colors = ("g", "r", "b")
 
     threasholds = {}
 
     for filename, kind, color in zip(relevant_files, kinds, colors):
         coherences, successes = text_into_coherences_and_successes(
             open(filename).read().replace("\n", ""))
-        (threasholds[kind], slope), distance = fit_weibull(coherences, successes)
+        # (threasholds[kind], slope), distance = fit_weibull(coherences, successes)
+        (threasholds[kind], slope), r2 = fit_weibull(coherences, successes)
 
         xs = linspace(coherences[0], coherences[-1], 100)
         fitted = 1 - 0.75 * exp(-(xs / threasholds[kind]) ** slope)
 
-        ax.semilogx(xs, fitted,f"{color}- -", label=f"{kind}-fit (distance = {distance:.2f})")
-        ax.semilogx(coherences, successes, f"{color}-", label=f"{kind}")
-        ax.vlines(threasholds[kind], 0.25, 1, colors=["red", "purple"][kind=="fixed"])
+        # ax.semilogx(xs, fitted,f"{color}- -", label=f"{kind}-fit (distance = {distance:.2f})")
+        # ax.semilogx(coherences, successes, f"{color}-", label=f"{kind}")
+        # ax.vlines(threasholds[kind], 0.25, 1, colors=["red", "purple"][kind=="fixed"])
+        
+        if(kind == "fixed"):
+            # ax.semilogx(xs, fitted, "g--", label=f"{kind}-fit (distance = {distance:.2f})")
+            ax.semilogx(xs, fitted, "g--", label=f"{kind}-fit (R²={r2:.2f})")
 
-    print(f"ratio is {threasholds["roving"]/threasholds["fixed"]}")
+            ax.semilogx(coherences, successes, "go", label=f"{kind}")
+            ax.vlines(threasholds[kind], 0.25, 1, colors="g")
+            
+            ax.text(threasholds[kind]* 0.93, 0.25, f"{threasholds[kind]*100:.0f}%",
+            ha="center", color='g', fontsize=7)
+        else:
+            # ax.semilogx(xs, fitted, "r--", label=f"{kind}-fit (distance = {distance:.2f})")
+            ax.semilogx(xs, fitted, "r--", label=f"{kind}-fit (R²={r2:.2f})")
+            ax.semilogx(coherences, successes, "ro", label=f"{kind}")
+            ax.vlines(threasholds[kind], 0.25, 1, colors="r")
+            
+            ax.text(threasholds[kind]* 1.07, 0.25, f"{threasholds[kind]*100:.0f}%",
+            ha="center", color='r', fontsize=7)
 
+    print(f"roving {threasholds["roving"]},fixed {threasholds["fixed"]}, fixed/roving {threasholds["fixed"]/threasholds["roving"]}")
+
+
+    
+    #Axis labels
+    ax.set_xlabel("Coherence level")
+    ax.set_ylabel("Proportion correct")
+
+    ticks = [0.1, 0.2, 0.3, 0.4, 0.5,0.6,0.7,0.8,0.9]
+    ax.set_xticks(ticks)    
+    ax.tick_params(axis='x', labelsize=7)
+
+    # Then format as percentages
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}%"))
+
+    
     legend()
     show()
 
