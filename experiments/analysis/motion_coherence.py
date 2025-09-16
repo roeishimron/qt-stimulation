@@ -9,6 +9,12 @@ from matplotlib.pyplot import legend, subplots, show
 import matplotlib.ticker as mticker
 import glob
 import os
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gmean, norm
+from itertools import combinations
+from numpy import sqrt
+
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FOLDER_PATH = os.path.join(SCRIPT_DIR, "..", "..", "output")  # adjust levels as needed
@@ -102,7 +108,7 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
 
 def analyze_coherence_and_learning_coefficients(fixed_first, roving_first):
     ratios_f1_r2 = [f1 / r2 for f1, r2 in fixed_first]
-    ratios_r1_f2 = [f2 / r1 for r1, f2 in fixed_first]
+    ratios_r1_f2 = [f2 / r1 for r1, f2 in roving_first]
     #geometric average of fi1/ri2
     a_times_b = gmean(ratios_f1_r2)
     a_divided_b = gmean(ratios_r1_f2)
@@ -244,4 +250,67 @@ if __name__ == "__main__":
 
     print(f"roving first: amount of subjects is {len(roving_first)}, subjects are {subjects_roving_first} "
           f"and the thresholds are - {roving_first}")
+    analyze_coherence_and_learning_coefficients(fixed_first,roving_first)
 
+
+def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
+    """
+    Compute all combinations of given subset_size from fixed_first and roving_first,
+    calculate alpha and beta for each pairing, and plot scatter + histograms with normal fit.
+    """
+    # Generate all subsets
+    fixed_subsets = list(combinations(fixed_first, subset_size))
+    roving_subsets = list(combinations(roving_first, subset_size))
+
+    alphas, betas = [], []
+
+    # Compute alpha/beta for all pairings
+    for f_sub in fixed_subsets:
+        for r_sub in roving_subsets:
+            ratios_f1_r2 = [f1 / r2 for f1, r2 in f_sub]
+            ratios_r1_f2 = [f2 / r1 for r1, f2 in r_sub]
+
+            a_times_b = gmean(ratios_f1_r2)
+            a_divided_b = gmean(ratios_r1_f2)
+            alpha = sqrt(a_times_b * a_divided_b)
+            beta = a_times_b / alpha
+
+            alphas.append(alpha)
+            betas.append(beta)
+
+    alphas = np.array(alphas)
+    betas = np.array(betas)
+
+    # Scatter plot
+    plt.figure(figsize=(8,6))
+    plt.scatter(np.arange(len(alphas)), alphas, color='skyblue', label='Alpha', s=80)
+    plt.scatter(np.arange(len(betas)), betas, color='salmon', label='Beta', s=80)
+    plt.title(f"All Combinations ({subset_size} of {len(fixed_first)}) Alpha and Beta")
+    plt.xlabel("Iteration")
+    plt.ylabel("Value")
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.legend()
+    plt.show()
+
+    # Histograms with normal fit
+    plt.figure(figsize=(10,4))
+
+    for i, (data, color, name) in enumerate(zip([alphas, betas], ['skyblue', 'salmon'], ['Alpha', 'Beta']), 1):
+        plt.subplot(1, 2, i)
+        plt.hist(data, bins='auto', density=True, color=color, edgecolor='black', alpha=0.6)
+        mu, std = norm.fit(data)
+        x = np.linspace(min(data), max(data), 100)
+        plt.plot(x, norm.pdf(x, mu, std), 'r--', label=f'Normal fit: μ={mu:.2f}, σ={std:.2f}')
+        plt.title(f"{name} Distribution with Normal Fit")
+        plt.xlabel(name)
+        plt.ylabel("Probability")
+        plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+# Example usage:
+plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4)
+plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=3)
+plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=2)
