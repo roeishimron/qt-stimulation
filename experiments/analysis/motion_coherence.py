@@ -8,7 +8,7 @@ import glob
 import os
 
 
-FOLDER_PATH = 'output'
+FOLDER_PATH = "C:/Users/mayaz/Lab2025/qt-stimulation-master/output"
 LOGFILE = f"{FOLDER_PATH}/roei17-motion_coherence_roving-1756148886"
 
 def weibull(C, alpha, beta):
@@ -115,6 +115,66 @@ def analyze_subject(subject_name: str):
     legend()
     show()
 
+def parse_data(files: list[str]):
+    per_subject: dict[str, dict[str, tuple[int, str]]] = {}
+    for path in files:
+        base = os.path.basename(path)
+
+        m_subj = search(r"^(.*?)-motion_coherence", base)
+        m_kind = search(r"(fixed|roving)", base)
+        m_time = search(r"(\d+)$", base)
+        if not (m_subj and m_kind and m_time):
+            continue
+
+        subj = m_subj.group(1)
+        kind = m_kind.group(1)    # fixed or roving
+        tstamp = int(m_time.group(1))   # time stamp
+
+        per_subject.setdefault(subj, {})
+        per_subject[subj][kind] = (tstamp, path)
+
+    fixed_first: list[tuple[float, float]] = []
+    roving_first: list[tuple[float, float]] = []
+    subjects_fixed_first: list[str] = []
+    subjects_roving_first: list[str] = []
+
+    def _alpha_from_file(fp: str) -> float:  # get alpha for a single file
+        text = open(fp, "r", encoding="utf-8", errors="ignore").read().replace("\n", "")
+        x, y = text_into_coherences_and_successes(text)
+        (alpha, beta), _dist = fit_weibull(x, y)
+        return float(alpha)
+
+    for subj, pair in per_subject.items():
+        if "fixed" not in pair or "roving" not in pair:
+            continue
+
+        t_fixed, file_fixed = pair["fixed"]
+        t_roving, file_roving = pair["roving"]
+
+        fixed_is_first = t_fixed < t_roving
+
+        alpha_fixed = _alpha_from_file(file_fixed)
+        alpha_roving = _alpha_from_file(file_roving)
+
+        if fixed_is_first:
+            fixed_first.append((alpha_fixed, alpha_roving))   # (first=fixed, second=roving)
+            subjects_fixed_first.append(subj)
+        else:
+            roving_first.append((alpha_roving, alpha_fixed))  # (first=roving, second=fixed)
+            subjects_roving_first.append(subj)
+
+    return fixed_first, roving_first, subjects_fixed_first, subjects_roving_first
 
 if __name__ == "__main__":
-    analyze_subject("roeis")
+    # analyze_subject("roeis")
+
+    results = parse_data(glob.glob(os.path.join(FOLDER_PATH, '*')))
+    fixed_first, roving_first = results[0], results[1]
+    subjects_fixed_first, subjects_roving_first = results[2], results[3]
+
+    print(f"fixed first: amount of subjects is {len(fixed_first)}, subjects are {subjects_fixed_first},"
+          f" and the thresholds are - {fixed_first}")
+
+    print(f"roving first: amount of subjects is {len(roving_first)}, subjects are {subjects_roving_first} "
+          f"and the thresholds are - {roving_first}")
+
