@@ -3,8 +3,9 @@ from re import search, findall
 from typing import Tuple
 from numpy import fromstring, array2string, array, float64, argsort, linspace, log, median, inf, exp, sqrt, square
 from scipy.optimize import curve_fit
+from scipy.stats import gmean
 from numpy.typing import NDArray
-from matplotlib.pyplot import legend, subplots, show
+from matplotlib.pyplot import legend, subplots, show 
 import matplotlib.ticker as mticker
 import glob
 import os
@@ -99,6 +100,18 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
     return coherences, successes
 
 
+def analyze_coherence_and_learning_coefficients(fixed_first, roving_first):
+    ratios_f1_r2 = [f1 / r2 for f1, r2 in fixed_first]
+    ratios_r1_f2 = [f2 / r1 for r1, f2 in fixed_first]
+    #geometric average of fi1/ri2
+    a_times_b = gmean(ratios_f1_r2)
+    a_divided_b = gmean(ratios_r1_f2)
+    alpha_squred = a_times_b*a_divided_b
+    alpha = sqrt(alpha_squred)
+    betha = a_times_b / alpha
+    print("alpha" , alpha , "betha" , betha)
+
+
 def analyze_subject(subject_name: str):
     print(f"Analysing {subject_name}")
     list_of_files = array(glob.glob(os.path.join(FOLDER_PATH, f'{subject_name}-*')))
@@ -152,7 +165,6 @@ def analyze_subject(subject_name: str):
             ha="center", color='r', fontsize=7)
 
     print(f"roving {threasholds["roving"]},fixed {threasholds["fixed"]}, fixed/roving {threasholds["fixed"]/threasholds["roving"]}")
-
 
     
     #Axis labels
