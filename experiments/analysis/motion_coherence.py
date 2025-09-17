@@ -308,9 +308,3 @@ def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
 
     plt.tight_layout()
     plt.show()
-
-
-# Example usage:
-plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4)
-plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=3)
-plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=2)
