@@ -73,7 +73,10 @@ def analyze_latest():
     latest_file = max(list_of_files, key=os.path.getctime)
 
     subject_search = search(rf"^{FOLDER_PATH}/(.*)-motion_coherence", latest_file)
-    assert subject_search is not None
+    
+    if subject_search is None:
+        print(f"No subject info founf at {FOLDER_PATH}")
+        return
 
     analyze_subject(subject_search.group(1))
 
