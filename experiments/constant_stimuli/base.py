@@ -14,7 +14,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 
-def run(coherences, directions):
+def run(coherences, directions, trial_duration=1):
     
     assert len(coherences) == len(directions)
 
@@ -28,23 +28,23 @@ def run(coherences, directions):
     size = int(screen_height * 5 / 6)
 
     SCREEN_REFRESH_RATE = 60
-    TRIAL_DURATION = 1
+
     STIMULI_REFRESH_RATE = 60
     ODDBALL_MODULATION = 1
 
-    AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
+    amount_of_stimuli = trial_duration * STIMULI_REFRESH_RATE
     FRAMES_PER_STIM = int(SCREEN_REFRESH_RATE / STIMULI_REFRESH_RATE)
     assert SCREEN_REFRESH_RATE % STIMULI_REFRESH_RATE == 0
-    assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
+    assert amount_of_stimuli % ODDBALL_MODULATION == 0
 
     DOT_RADIUS = 20
     AMOUNT_OF_DOTS = 50
     VELOCITY = 12
-    MEAN_LIFETIME = AMOUNT_OF_STIMULI // 2
+    mean_lifetime = amount_of_stimuli // 2
 
     trials = [generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
-                                   size, AMOUNT_OF_STIMULI,
-                                   array([[d, c, 0]]), VELOCITY, MEAN_LIFETIME) 
+                                   size, amount_of_stimuli,
+                                   array([[d, c, 0]]), VELOCITY, mean_lifetime) 
                 for c, d in zip(coherences, directions)]
 
     stimuli = [OddballStimuli((array_into_pixmap(
@@ -63,11 +63,12 @@ def run(coherences, directions):
          for s, d in zip(stimuli, directions)],
         SoftSerial(),
         FRAMES_PER_STIM,
-        AMOUNT_OF_STIMULI,
+        amount_of_stimuli,
         1)
 
     experiment.run()
     # Run the main Qt loop
     app.exec()
+    app.shutdown()
 
     analyze_latest()
