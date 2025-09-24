@@ -5,3 +5,4 @@ pyside6
 pyserial
 more-itertools
 scipy
+pytest
