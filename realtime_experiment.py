@@ -12,7 +12,7 @@ from viewing_experiment import ViewExperiment
 from random import random, sample
 from numpy import array, pi, arange, square, average, inf, linspace, float64, cos, sin, ones, uint, interp
 from numpy.typing import ArrayLike, NDArray
-from typing import Callable, Tuple, Iterable, List
+from typing import Callable, Tuple, Iterable, List, Iterator
 
 from time import time_ns
 
@@ -132,11 +132,13 @@ class BreakFrameGenerator(IFrameGenerator):
     on_start: Callable[[], bool] # returning if the break should start
     on_keypress: Callable[[QKeyEvent], bool] # returning if should end the break
     on_mousepress: Callable[[QMouseEvent], bool]
+    stimuli: Iterator[Appliable]
 
     def __init__(self, event_trigger: SoftSerial,
                  on_start: Callable[[], bool],
                  on_keypress: Callable[[QKeyEvent], bool],
-                on_mousepress: Callable[[QMouseEvent], bool]):
+                on_mousepress: Callable[[QMouseEvent], bool],
+                stimuli: Iterator[Appliable]):
         self.event_trigger = event_trigger
         self.in_break = None
         self.on_start = on_start
@@ -146,8 +148,9 @@ class BreakFrameGenerator(IFrameGenerator):
     def paint(self, painter, screen):
         # Background
         painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
-        self.write_at(painter, screen,
-                      "This is a break, press `space` to continue")
+
+        stimulus = next(self.stimuli, AppliableText("This is a break, press `space` to continue", 50, Qt.GlobalColor.gray))
+        stimulus.draw_at(screen, painter)
 
         if self.in_break == None:
             self.in_break = True
@@ -174,6 +177,14 @@ class BreakFrameGenerator(IFrameGenerator):
 def _default_key_should_end_break(e: QKeyEvent) -> bool:
     return e.key() == Qt.Key.Key_Space
 
+class DefaultBreakFrameGenerator(BreakFrameGenerator):
+    def __init__(self, event_trigger: SoftSerial,
+                 on_start: Callable[[], bool],
+                 on_keypress: Callable[[QKeyEvent], bool],
+                on_mousepress: Callable[[QMouseEvent], bool]):
+        super().__init__(event_trigger, on_start, on_keypress, on_mousepress, cycle(()))
+    
+
 class RealtimeViewingExperiment(QOpenGLWidget):
     painter: QPainter
     remaining_to_swap: int
@@ -184,7 +195,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     bottom_right: QPoint
     display: QRect
 
-    frame_generators: Iterable[IFrameGenerator]
+    frame_generators: Iterator[IFrameGenerator]
     frame_generator: IFrameGenerator
 
     def __init__(self, stimuli: OddballStimuli | List[OddballStimuli], 
@@ -200,7 +211,8 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                  break_on_keypress=_default_key_should_end_break, # True if should end break
                  break_on_mousepress=lambda _: False, # True if should end break
                  on_trial_start= lambda: None, 
-                 on_break_start=lambda: True # True if should start break
+                 on_break_start=lambda: True, # True if should start break
+                 break_stimuli: Iterator[Iterator[Appliable]] = cycle(iter(()))
                  ):
 
         super().__init__()
@@ -231,7 +243,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                              use_step, show_fixation_cross, event_trigger,
                              stimuli_on_keypress, stimuli_on_mousepress,
                              break_on_keypress, break_on_mousepress,
-                             on_trial_start, on_break_start)
+                             on_trial_start, on_break_start, break_stimuli)
              for current_frames_per_stim in frames_per_stim))
 
         self.frame_generator = next(self.frame_generators)
@@ -244,10 +256,11 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                    break_on_keypress: Callable[[QKeyEvent], bool],
                    break_on_mousepress: Callable[[QMouseEvent], bool],
                    on_trial_start: Callable[[], None],
-                   on_break_start: Callable[[], bool],):
+                   on_break_start: Callable[[], bool],
+                   break_stimuli: Iterator[Iterator[Appliable]]):
 
         break_frame_generator = BreakFrameGenerator(
-            event_trigger, on_break_start, break_on_keypress, break_on_mousepress)
+            event_trigger, on_break_start, break_on_keypress, break_on_mousepress, next(break_stimuli))
 
         self.keyReleaseEvent = self._key_pressed
         self.mousePressEvent = self._mouse_pressed
