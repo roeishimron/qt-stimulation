@@ -54,7 +54,7 @@ class StimuliFrameGenerator(IFrameGenerator):
                  frames_per_stim: List[uint], use_step=False, show_fixation=True,
                  on_keypress=lambda _: None, on_mousepress=lambda _: None,
                  on_start=lambda: None):
-        
+
         self.amount_of_stims = amount_of_stims
         self.stimuli = stimuli
         self.frames_per_stim = frames_per_stim
@@ -87,7 +87,7 @@ class StimuliFrameGenerator(IFrameGenerator):
             self.amount_of_stims -= 1
             self.current_stimulation = (self.stimuli.next_stimulation()[
                                         1], self.frames_per_stim.pop(0))
-        
+
         if self.current_stimulation is None:
             print("Reached unreachable!")
             return 0
@@ -118,27 +118,40 @@ class StimuliFrameGenerator(IFrameGenerator):
 
 class CountdownFrameGenerator(StimuliFrameGenerator):
 
-    def __init__(self, refresh_rate: int, countdown_duration: int):
+    def __init__(self, countdown_duration: int):
         stim_per_second = OddballStimuli((AppliableText(f"{countdown_duration-i}")
                                           for i in range(countdown_duration)))
 
-        super().__init__(countdown_duration, stim_per_second, list(ones(countdown_duration, dtype=uint) * refresh_rate
-                                                               ), show_fixation=False)
+        super().__init__(countdown_duration, stim_per_second, list(ones(countdown_duration, dtype=uint) * REFRESH_RATE
+                                                                   ), show_fixation=False)
+
+
+class ConstantFrameGenerator(StimuliFrameGenerator):
+
+    def __init__(self, duration: int, stimulus: Appliable):
+        stim_per_second = OddballStimuli(repeat(stimulus, duration))
+
+        super().__init__(duration, stim_per_second, list(
+            ones(duration, dtype=uint) * REFRESH_RATE), show_fixation=False)
 
 
 class BreakFrameGenerator(IFrameGenerator):
     in_break: bool | None
     event_trigger: SoftSerial
-    on_start: Callable[[], bool] # returning if the break should start
-    on_keypress: Callable[[QKeyEvent], bool] # returning if should end the break
+
+    # returning if the break should start
+    on_start: Callable[[], bool]
+
+    # returning if should end the break
+    on_keypress: Callable[[QKeyEvent], bool]
     on_mousepress: Callable[[QMouseEvent], bool]
     stimuli: Iterator[Appliable]
 
     def __init__(self, event_trigger: SoftSerial,
                  on_start: Callable[[], bool],
                  on_keypress: Callable[[QKeyEvent], bool],
-                on_mousepress: Callable[[QMouseEvent], bool],
-                stimuli: Iterator[Appliable]):
+                 on_mousepress: Callable[[QMouseEvent], bool],
+                 stimuli: Iterator[Appliable]):
         self.event_trigger = event_trigger
         self.in_break = None
         self.on_start = on_start
@@ -150,7 +163,8 @@ class BreakFrameGenerator(IFrameGenerator):
         # Background
         painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
 
-        stimulus = next(self.stimuli, AppliableText("This is a break, press `space` to continue", 50, Qt.GlobalColor.gray))
+        stimulus = next(self.stimuli, AppliableText(
+            "This is a break, press `space` to continue", 50, Qt.GlobalColor.gray))
         stimulus.draw_at(screen, painter)
 
         if self.in_break == None:
@@ -159,7 +173,7 @@ class BreakFrameGenerator(IFrameGenerator):
                 self.end_break()
 
         return self.in_break
-    
+
     def end_break(self):
         if self.in_break == True:
             self.in_break = False
@@ -168,7 +182,6 @@ class BreakFrameGenerator(IFrameGenerator):
     def key_pressed(self, e: QKeyEvent):
         if self.in_break and self.on_keypress(e):
             self.end_break()
-        
 
     def mouse_pressed(self, e: QMouseEvent):
         if self.in_break and self.on_mousepress(e):
@@ -178,13 +191,7 @@ class BreakFrameGenerator(IFrameGenerator):
 def _default_key_should_end_break(e: QKeyEvent) -> bool:
     return e.key() == Qt.Key.Key_Space
 
-class DefaultBreakFrameGenerator(BreakFrameGenerator):
-    def __init__(self, event_trigger: SoftSerial,
-                 on_start: Callable[[], bool],
-                 on_keypress: Callable[[QKeyEvent], bool],
-                on_mousepress: Callable[[QMouseEvent], bool]):
-        super().__init__(event_trigger, on_start, on_keypress, on_mousepress, cycle(()))
-    
+REFRESH_RATE = 60
 
 class RealtimeViewingExperiment(QOpenGLWidget):
     painter: QPainter
@@ -199,21 +206,23 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     frame_generators: Iterator[IFrameGenerator]
     frame_generator: IFrameGenerator
 
-    def __init__(self, stimuli: OddballStimuli | List[OddballStimuli], 
+    def __init__(self, stimuli: OddballStimuli | List[OddballStimuli],
                  event_trigger: SoftSerial,
-                 frames_per_stim: ArrayLike, 
-                 amount_of_stims_per_trial: int, 
-                 pretrial_duration=3, 
+                 frames_per_stim: ArrayLike,
+                 amount_of_stims_per_trial: int,
+                 pretrial_duration=3,
                  amount_of_trials=3,
-                 use_step=False, 
+                 use_step=False,
                  show_fixation_cross=True,
-                 stimuli_on_keypress=lambda _: None, 
+                 stimuli_on_keypress=lambda _: None,
                  stimuli_on_mousepress=lambda _: None,
-                 break_on_keypress=_default_key_should_end_break, # True if should end break
-                 break_on_mousepress=lambda _: False, # True if should end break
-                 on_trial_start= lambda: None, 
-                 on_break_start=lambda: True, # True if should start break
-                 break_stimuli: Iterator[Iterator[Appliable]] = iter(lambda: iter(()), None)
+                 break_on_keypress=_default_key_should_end_break,  # True if should end break
+                 break_on_mousepress=lambda _: False,  # True if should end break
+                 on_trial_start=lambda: None,
+                 on_break_start=lambda: True,  # True if should start break
+                 break_stimuli: Iterator[Iterator[Appliable]] = iter(
+                     lambda: iter(()), None),
+                 countdown_frame_generator: Iterator[IFrameGenerator] | None = None
                  ):
 
         super().__init__()
@@ -230,7 +239,10 @@ class RealtimeViewingExperiment(QOpenGLWidget):
             stimulis = [stimuli] * amount_of_trials
         stimulis = iter(stimulis)
 
-        REFRESH_RATE = 60
+
+        if countdown_frame_generator is None:
+            countdown_frame_generator = iter(
+                lambda: CountdownFrameGenerator(pretrial_duration), None)
 
         self._apply_format()
 
@@ -238,7 +250,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         self.remaining_to_swap = 0
 
         self.frame_generators = chain.from_iterable(
-            (self._new_trial(REFRESH_RATE, pretrial_duration,
+            (self._new_trial(countdown_frame_generator,
                              amount_of_stims_per_trial,
                              next(stimulis), list(current_frames_per_stim),
                              use_step, show_fixation_cross, event_trigger,
@@ -249,7 +261,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         self.frame_generator = next(self.frame_generators)
 
-    def _new_trial(self, refresh_rate: int, pretrial_duration: int,
+    def _new_trial(self, countdown_frame_generator: Iterator[IFrameGenerator],
                    amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: List[uint],
                    use_step: bool, show_fixation_cross: bool, event_trigger: SoftSerial,
                    stimuli_on_keypress: Callable[[QKeyEvent], None],
@@ -267,7 +279,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         self.mousePressEvent = self._mouse_pressed
 
         return (break_frame_generator,
-                CountdownFrameGenerator(refresh_rate, pretrial_duration),
+                next(countdown_frame_generator),
                 StimuliFrameGenerator(amount_of_stims, stimuli,
                                       frames_per_stim, use_step,
                                       show_fixation_cross, stimuli_on_keypress,
