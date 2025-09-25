@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Tuple
 import pytest
 
 # ==============================================================================
@@ -168,7 +168,7 @@ def generate_moving_dots(
     motion_velocity: int,
     mean_lifetime: int,
     noise_cycle_time: int = 0
-) -> List[List[Dot]]:
+) -> Tuple[List[List[Dot]], List[Dot]]:
     """
     Generates frames of moving dots for a Random Dot Kinematogram (RDK).
     """
@@ -206,7 +206,7 @@ def generate_moving_dots(
     
     final_frames = [frame + markers for frame in moving_dot_frames]
                 
-    return final_frames
+    return final_frames, markers
 
 # ==============================================================================
 # ## Test Suite
@@ -226,7 +226,7 @@ PARAMS = {
 def test_dots_stay_in_bounds():
     """1. For every frame, all dots are inside the circle."""
     direction_props = np.array([[0, 1.0, 10]])
-    frames = generate_moving_dots(direction_proportions=direction_props, **PARAMS)
+    frames = generate_moving_dots(direction_proportions=direction_props, **PARAMS)[0]
     stimulus_radius = PARAMS["stimulus_size_px"] / 2.0
     center = (PARAMS["stimulus_size_px"] / 2.0) * (1 + 1j)
     for i, frame in enumerate(frames):
@@ -239,7 +239,7 @@ def test_dots_are_always_moving():
     """2. All dots move."""
     params = PARAMS.copy()
     direction_props = np.array([[np.pi / 4, 1.0, 0]])
-    frames = generate_moving_dots(direction_proportions=direction_props, **params)
+    frames = generate_moving_dots(direction_proportions=direction_props, **params)[0]
     for i in range(params["duration"] - 1):
         frame_t0 = [d for d in frames[i] if d.color == -1]
         frame_t1 = [d for d in frames[i+1] if d.color == -1]
@@ -256,7 +256,7 @@ def test_jumps_only_on_cycle_end():
     params["mean_lifetime"] = 30
     cycle_time = 12
     direction_props = np.array([[0, 1.0, cycle_time]])
-    frames = generate_moving_dots(direction_proportions=direction_props, **params)
+    frames = generate_moving_dots(direction_proportions=direction_props, **params)[0]
     for i in range(params["duration"] - 1):
         frame_t0 = [d for d in frames[i] if d.color == -1]
         positions_t1 = {d.position for d in frames[i+1] if d.color == -1}
@@ -271,7 +271,7 @@ def test_visibility_with_zero_cycle_time():
     num_dots = PARAMS["num_dots"]
     direction_props = np.array([[0, 0.5, 0], [np.pi, 0.5, 0]])
     # This test implicitly uses noise_cycle_time=0 as well
-    frames = generate_moving_dots(direction_proportions=direction_props, **PARAMS)
+    frames = generate_moving_dots(direction_proportions=direction_props, **PARAMS)[0]
     for i, frame in enumerate(frames):
         moving_dots_in_frame = [dot for dot in frame if dot.color == -1]
         assert len(moving_dots_in_frame) == num_dots, f"Expected {num_dots} visible dots in frame {i}, but found {len(moving_dots_in_frame)}"
@@ -292,7 +292,7 @@ def test_spatial_distribution_is_unbiased(test_id, direction_props):
     frames = generate_moving_dots(
         direction_proportions=direction_props,
         **params
-    )
+    )[0]
 
     true_center = (params["stimulus_size_px"] / 2.0) * (1 + 1j)
     

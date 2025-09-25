@@ -41,7 +41,7 @@ def run():
 
     trial = generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
                                    size, AMOUNT_OF_STIMULI,
-                                   array([[0, 0.33, 2], [pi/2, 0.33, 4]]), VELOCITY, MEAN_LIFETIME, 6)
+                                   array([[0, 0.33, 2], [pi/2, 0.33, 4]]), VELOCITY, MEAN_LIFETIME, 6)[0]
 
     frames = [array_into_pixmap(
                                 fill_with_dots(size, [], 
