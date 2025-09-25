@@ -1,3 +1,4 @@
+from itertools import cycle
 from experiments.constant_stimuli.dots_generator import generate_moving_dots
 import sys
 from PySide6.QtCore import QPointF
@@ -42,10 +43,21 @@ def run(coherences, directions, trial_duration=1):
     VELOCITY = 12
     mean_lifetime = amount_of_stimuli // 2
 
-    trials = [generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
+    trials_data = [generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
                                    size, amount_of_stimuli,
-                                   array([[d, c, 0]]), VELOCITY, mean_lifetime) 
+                                   array([[d, c, 0]]), VELOCITY, mean_lifetime)
                 for c, d in zip(coherences, directions)]
+
+    trials = [d[0] for d in trials_data]
+    direction_hints = [d[1] for d in trials_data]
+
+    direction_hint_iterators = [cycle([array_into_pixmap(
+                                fill_with_dots(size, [], 
+                                               [Dot(int(d.r), 
+                                                    array([d.x, d.y], dtype=int),
+                                                    d.color * ones((2*d.r, 2*d.r))) for d in h],
+                                              0, 0))])
+                for h in direction_hints]
 
     stimuli = [OddballStimuli((array_into_pixmap(
                                 fill_with_dots(size, [], 
@@ -64,7 +76,7 @@ def run(coherences, directions, trial_duration=1):
         SoftSerial(),
         FRAMES_PER_STIM,
         amount_of_stimuli,
-        1)
+        1, True, False, iter([iter(())] + direction_hint_iterators))
 
     experiment.run()
     # Run the main Qt loop
