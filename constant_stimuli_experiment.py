@@ -3,8 +3,8 @@ from itertools import chain, cycle
 from subprocess import DEVNULL, Popen
 from threading import Thread
 from typing import Iterator, List, Tuple, Iterable
-from animator import OddballStimuli
-from realtime_experiment import RealtimeViewingExperiment
+from animator import Appliable, AppliableText, OddballStimuli
+from realtime_experiment import RealtimeViewingExperiment, ConstantFrameGenerator
 from PySide6.QtGui import QMouseEvent, QKeyEvent
 from PySide6.QtCore import QPointF
 from numpy.typing import ArrayLike
@@ -16,6 +16,7 @@ from logging import getLogger
 from stims import generate_grey
 
 logger = getLogger(__name__)
+
 
 @dataclass
 class Answer:
@@ -56,16 +57,16 @@ class Stimulus(DisplayableStimulus):
             print("Accepted answer without on_display!")
             return None
 
-        result : bool | None = None
+        result: bool | None = None
 
         if isinstance(self.stimulus, ClickableStimulus) and isinstance(e, QMouseEvent):
             result = self.stimulus.validate_mouse_answer(e)
         if isinstance(self.stimulus, KeypressableStimulus) and isinstance(e, QKeyEvent):
             result = self.stimulus.validate_key_answer(e)
-        
+
         if result is not None:
             return Answer(result, time_ns() - self.display_time)
-        
+
         return None
 
 
@@ -83,7 +84,6 @@ class ConstantStimuli:
     current_stimulus: Stimulus | None
     current_answer: Answer | None
 
-
     def feedback_and_log(self):
         if self.current_answer is None:
             return
@@ -95,7 +95,6 @@ class ConstantStimuli:
         t = Thread(target=_play_feedback, args=[correct])
         t.start()
 
-
     def handle_on_trial_response(self, e: QMouseEvent | QKeyEvent):
         self.try_accept_answer(e)
 
@@ -103,7 +102,7 @@ class ConstantStimuli:
         # did'nt receive answer yet, wait
         if self.current_answer is None:
             return True
-        
+
         # Got answer during the trial, continue
         self.feedback_and_log()
         return False
@@ -120,7 +119,7 @@ class ConstantStimuli:
         # This is the first break
         if self.current_stimulus is None:
             return True
-        
+
         # Got Answer during break, continue
         if self.try_accept_answer(e):
             self.feedback_and_log()
@@ -128,23 +127,23 @@ class ConstantStimuli:
 
         # Invalid answer, wait for valid one
         return False
-        
+
     def handle_trial_start(self):
         self.current_answer = None
         self.trial_number += 1
         self.current_stimulus = next(self.stimuli)
         self.current_stimulus.on_display()
-        
 
     def __init__(self, stimuli: List[Tuple[OddballStimuli, ClickableStimulus | KeypressableStimulus]], event_trigger: SoftSerial,
                  frames_per_stim: ArrayLike, amount_of_stims_per_trial: int, pretrial_duration=0,
-                 use_step=True, show_fixation_cross=False) -> None:
+                 use_step=True, show_fixation_cross=False, break_stimuli: Iterator[Iterator[Appliable]] = iter(lambda: iter(()), None)) -> None:
         self.current_answer = None
         self.current_stimulus = None
         self.trial_number = 0
 
         # Adding the empty `Stimulus`, empty `OddballStimuli` and extra trial for extra break
-        self.stimuli = chain((Stimulus(s[1]) for s in stimuli), iter([Stimulus(ClickableStimulus())]))
+        self.stimuli = chain((Stimulus(s[1]) for s in stimuli), iter(
+            [Stimulus(ClickableStimulus())]))
         self.experiment = RealtimeViewingExperiment([s[0] for s in stimuli] + [OddballStimuli(cycle([generate_grey(1)]))],
                                                     event_trigger,
                                                     frames_per_stim,
@@ -158,24 +157,26 @@ class ConstantStimuli:
                                                     self.handle_on_break_response,
                                                     self.handle_on_break_response,
                                                     self.handle_trial_start,
-                                                    self.handle_break_start)
-        
+                                                    self.handle_break_start,
+                                                    break_stimuli,
+                                                    iter(lambda: ConstantFrameGenerator(pretrial_duration, AppliableText("+")), None))
 
     def run(self):
         self.experiment.showFullScreen()
 
+
 class DirectionValidator(ClickableStimulus):
-    target_vector : QPointF
+    target_vector: QPointF
     screen_center: QPointF
- 
-    def __init__(self, target_angle : float, screen_center: QPointF) -> None:
-        self.target_vector  = QPointF(cos(target_angle), sin(target_angle))
-        self.screen_center = screen_center        
-    
+
+    def __init__(self, target_angle: float, screen_center: QPointF) -> None:
+        self.target_vector = QPointF(cos(target_angle), sin(target_angle))
+        self.screen_center = screen_center
+
     def validate_mouse_answer(self, e: QMouseEvent) -> bool:
         centered = QPointF(e.position().x() - self.screen_center.x(),
                            self.screen_center.y() - e.position().y())
-        angle_diff = arccos(QPointF.dotProduct(centered, self.target_vector) 
+        angle_diff = arccos(QPointF.dotProduct(centered, self.target_vector)
                             / sqrt(QPointF.dotProduct(centered, centered)))
 
         return abs(angle_diff) < pi/4
