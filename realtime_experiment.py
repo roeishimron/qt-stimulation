@@ -144,6 +144,7 @@ class BreakFrameGenerator(IFrameGenerator):
         self.on_start = on_start
         self.on_keypress = on_keypress
         self.on_mousepress = on_mousepress
+        self.stimuli = stimuli
 
     def paint(self, painter, screen):
         # Background
@@ -212,7 +213,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                  break_on_mousepress=lambda _: False, # True if should end break
                  on_trial_start= lambda: None, 
                  on_break_start=lambda: True, # True if should start break
-                 break_stimuli: Iterator[Iterator[Appliable]] = cycle(iter(()))
+                 break_stimuli: Iterator[Iterator[Appliable]] = iter(lambda: iter(()), None)
                  ):
 
         super().__init__()
