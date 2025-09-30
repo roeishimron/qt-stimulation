@@ -75,7 +75,7 @@ def analyze_latest():
     subject_search = search(rf"^{FOLDER_PATH}/(.*)-motion_coherence", latest_file)
     
     if subject_search is None:
-        print(f"No subject info founf at {FOLDER_PATH}")
+        print(f"No subject info found at {FOLDER_PATH}")
         return
 
     analyze_subject(subject_search.group(1))
