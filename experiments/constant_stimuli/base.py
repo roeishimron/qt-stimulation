@@ -1,4 +1,5 @@
 from itertools import cycle
+from typing import Any, Callable, Generator
 from experiments.constant_stimuli.dots_generator import generate_moving_dots
 import sys
 from PySide6.QtCore import QPointF
@@ -10,20 +11,38 @@ from constant_stimuli_experiment import ConstantStimuli, DirectionValidator
 from numpy.random import random, uniform
 from numpy import pi, deg2rad, array2string, array, ones
 from experiments.analysis.motion_coherence import analyze_latest
+from PySide6.QtCore import Slot
 
 from logging import getLogger
 logger = getLogger(__name__)
 
 
+class PersistantApp():
+    _app: QApplication
+    _on_window_close: Generator[bool, Any, None]
+
+    def __init__(self, on_window_close: Generator[bool, Any, None]) -> None:
+        self._on_window_close = on_window_close
+        self._app = QApplication()
+        self._app.setQuitOnLastWindowClosed(False)
+        self._app.lastWindowClosed.connect(self._window_closed)
+    
+    @Slot()
+    def _window_closed(self):
+        if not next(self._on_window_close):
+            self._app.quit() # Causes segfault for some reason, probably poor PySide6 resource management.
+    
+    def exec(self):
+        self._window_closed()
+        self._app.exec()
+        
+
 def run(coherences, directions, trial_duration=1):
     
     assert len(coherences) == len(directions)
 
-    # Create the Qt Application
-    app = QApplication(sys.argv)
-
-    screen_height = app.primaryScreen().geometry().height()
-    screen_width = app.primaryScreen().geometry().width()
+    screen_height = QApplication.primaryScreen().geometry().height()
+    screen_width = QApplication.primaryScreen().geometry().width()
     screen_center = QPointF(screen_width/2, screen_height/2)
 
     size = int(screen_height * 5 / 6)
@@ -79,8 +98,5 @@ def run(coherences, directions, trial_duration=1):
         1, True, False, iter([iter(())] + direction_hint_iterators))
 
     experiment.run()
-    # Run the main Qt loop
-    app.exec()
-    app.shutdown()
 
     analyze_latest()
