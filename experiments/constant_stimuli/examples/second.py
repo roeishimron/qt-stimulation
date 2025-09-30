@@ -3,6 +3,6 @@ from numpy.random import random
 from numpy import pi
 
 def run():
-    coherences = [0.7, 0.6, 0.5, 0.4, 0.3]
+    coherences = [0.8] * 5
     directions = random(len(coherences)) * 2 * pi
-    inner_run(coherences, directions, 2)
+    inner_run(coherences, directions)
