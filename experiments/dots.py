@@ -1,3 +1,4 @@
+from itertools import cycle
 from experiments.constant_stimuli.dots_generator import generate_moving_dots
 import sys
 from PySide6.QtCore import QPointF
@@ -53,7 +54,7 @@ def run():
 
 
     experiment = RealtimeViewingExperiment(
-        OddballStimuli(frames), SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI, use_step=True
+        OddballStimuli((cycle(frames))), SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI, use_step=True
     )
 
     experiment.showFullScreen()
