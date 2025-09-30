@@ -11,8 +11,8 @@ from numpy.typing import ArrayLike
 from time import time_ns
 from soft_serial import SoftSerial
 from enum import Enum, auto
-from numpy import arctan2, abs, pi, arccos, cos, sin, sqrt
-from logging import getLogger
+from numpy import arctan2, abs, atan2, pi, arccos, cos, sin, sqrt
+from logging import getLogger, info
 from stims import generate_grey
 
 logger = getLogger(__name__)
@@ -178,5 +178,7 @@ class DirectionValidator(ClickableStimulus):
                            self.screen_center.y() - e.position().y())
         angle_diff = arccos(QPointF.dotProduct(centered, self.target_vector)
                             / sqrt(QPointF.dotProduct(centered, centered)))
+        
+        info(f"DirectionValidator: clicked {atan2(centered.y(), centered.x())}, was {atan2(self.target_vector.y(), self.target_vector.x())}")
 
         return abs(angle_diff) < pi/4

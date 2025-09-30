@@ -83,8 +83,11 @@ def analyze_latest():
 
 # returns
 def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
-    coherences = search(r"\[(.*)\] and direction", text)
-    success = findall(r"(True|False)", text)
+    coherences = search(r"^INFO:experiments.constant_stimuli.base:starting with coherences.*\[(.*)\] and direction", text)
+    success = findall(r"\nINFO:constant_stimuli_experiment:Trial \#\d+ got answer after \d\.\d+ s and its (True|False)", text)
+    clicked_directions = findall(r"\nINFO:root:DirectionValidator: clicked (\-?\d\.\d+), was (\-?\d\.\d+)", text)
+    if clicked_directions is not None:
+        clicked_directions, actual_directions = zip(*clicked_directions)
 
     assert coherences is not None
 
@@ -244,16 +247,7 @@ def parse_data(files: list[str]):
 if __name__ == "__main__":
     # analyze_subject("roeis")
 
-    results = parse_data(glob.glob(os.path.join(FOLDER_PATH, '*')))
-    fixed_first, roving_first = results[0], results[1]
-    subjects_fixed_first, subjects_roving_first = results[2], results[3]
-
-    print(f"fixed first: amount of subjects is {len(fixed_first)}, subjects are {subjects_fixed_first},"
-          f" and the thresholds are - {fixed_first}")
-
-    print(f"roving first: amount of subjects is {len(roving_first)}, subjects are {subjects_roving_first} "
-          f"and the thresholds are - {roving_first}")
-    analyze_coherence_and_learning_coefficients(fixed_first,roving_first)
+    text_into_coherences_and_successes(open("output/latest").read())
 
 
 def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
