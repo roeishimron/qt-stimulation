@@ -1,13 +1,15 @@
-FROM python:3-bullseye
-COPY .devcontainer/requirements.txt /tmp/requirements.txt
-COPY .devcontainer/apt-requirements.txt /tmp/apt-requirements.txt
+FROM python:3.13
 
-RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
-RUN apt-get update && apt-get install -y pulseaudio
-RUN pip install -r /tmp/requirements.txt
+COPY .devcontainer/requirements.txt /etc/requirements.txt
+COPY .devcontainer/apt-requirements.txt /etc/apt-requirements.txt
 
-ENV DISPLAY=unix:0 PULSE_SERVER=unix:/mnt/wslg/PulseServer
+RUN apt-get update && apt-get install -y `cat /etc/apt-requirements.txt`
 
-COPY . /home
+RUN pip install --upgrade pip
+RUN pip install -r /etc/requirements.txt
 
-CMD cd home && python env-main.py
+ENV DISPLAY=:0
+
+COPY . /app
+WORKDIR /app
+ENTRYPOINT ["python", "env_main.py"] 
