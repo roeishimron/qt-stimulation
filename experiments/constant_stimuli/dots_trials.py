@@ -1,5 +1,4 @@
 from itertools import chain
-from experiments.constant_stimuli.base import PersistantApp
 from experiments.constant_stimuli.examples.first import run as first_example_run
 from experiments.constant_stimuli.examples.second import run as second_example_run
 from experiments.constant_stimuli.examples.third import run as third_example_run
@@ -11,7 +10,7 @@ from time import time_ns
 from logging import basicConfig, INFO
 
 
-def _inner_run(subject_name: str = "test"):
+def run(subject_name: str = "test"):
     examples = ((f"example-{i}", f) for i, f in enumerate(
         [first_example_run, second_example_run, third_example_run]))
     
@@ -30,9 +29,5 @@ def _inner_run(subject_name: str = "test"):
             logging_filename = f"./output/{subject_name}-{experiment_name}-{time_ns()//10**9}"
             basicConfig(level=INFO, filename=logging_filename, force=True)
             experiment()
-            yield True
-    yield False
 
-def run(subject_name: str = "test"):
-    PersistantApp(_inner_run(subject_name)).exec()
 

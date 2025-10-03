@@ -2,7 +2,7 @@ from itertools import cycle
 from typing import Any, Callable, Generator
 from experiments.constant_stimuli.dots_generator import generate_moving_dots
 import sys
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QPointF, QCoreApplication
 from PySide6.QtWidgets import QApplication
 from soft_serial import SoftSerial
 from animator import OddballStimuli
@@ -14,32 +14,14 @@ from experiments.analysis.motion_coherence import analyze_latest
 from PySide6.QtCore import Slot
 
 from logging import getLogger
-logger = getLogger(__name__)
-
-
-class PersistantApp():
-    _app: QApplication
-    _on_window_close: Generator[bool, Any, None]
-
-    def __init__(self, on_window_close: Generator[bool, Any, None]) -> None:
-        self._on_window_close = on_window_close
-        self._app = QApplication()
-        self._app.setQuitOnLastWindowClosed(False)
-        self._app.lastWindowClosed.connect(self._window_closed)
-    
-    @Slot()
-    def _window_closed(self):
-        if not next(self._on_window_close):
-            self._app.quit() # Causes segfault for some reason, probably poor PySide6 resource management.
-    
-    def exec(self):
-        self._window_closed()
-        self._app.exec()
-        
+logger = getLogger(__name__)  
 
 def run(coherences, directions, trial_duration=1):
     
     assert len(coherences) == len(directions)
+
+    existing = QCoreApplication.instance()
+    app = existing if existing is not None else QApplication()
 
     screen_height = QApplication.primaryScreen().geometry().height()
     screen_width = QApplication.primaryScreen().geometry().width()
@@ -98,5 +80,6 @@ def run(coherences, directions, trial_duration=1):
         1, True, False, iter([iter(())] + direction_hint_iterators))
 
     experiment.run()
+    app.exec()
 
     analyze_latest()
