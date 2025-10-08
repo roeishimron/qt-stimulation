@@ -1,5 +1,5 @@
 from PySide6.QtOpenGL import QOpenGLWindow, QOpenGLBuffer, QOpenGLPaintDevice
-from PySide6.QtGui import QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter, QKeyEvent, QMouseEvent
+from PySide6.QtGui import QCloseEvent, QSurfaceFormat, QOpenGLContext, QColor, QImage, QPixmap, QOpenGLFunctions, QSurface, QPainter, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import QPoint, QSize, Qt, QRect, Slot
@@ -194,7 +194,6 @@ def _default_key_should_end_break(e: QKeyEvent) -> bool:
 REFRESH_RATE = 60
 
 class RealtimeViewingExperiment(QOpenGLWidget):
-    painter: QPainter
     remaining_to_swap: int
 
     remaining_trials: int
@@ -226,6 +225,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                  ):
 
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
         # Error here means that the `amount_of_stims_per_trial` is not compatible with the `frames_per_stim`'s shape
         frames_per_stim = list(
@@ -326,6 +326,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                 self.frame_generator = next(self.frame_generators)
             except StopIteration:
                 self.close()
+                self.makeCurrent()
                 return
 
         process_time = time_ns()-startime

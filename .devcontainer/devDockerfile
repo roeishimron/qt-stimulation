@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/python:3
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.13-trixie
 COPY requirements.txt /tmp/requirements.txt
 COPY apt-requirements.txt /tmp/apt-requirements.txt
 
