@@ -1,7 +1,10 @@
 from dataclasses import dataclass
+from logging import getLogger
 from typing import List
 from time import time_ns
+from PySide6.QtGui import QMouseEvent, QKeyEvent
 
+logger = getLogger(__name__)
 
 @dataclass
 class Stimuli:
@@ -58,3 +61,17 @@ class ResponseRecorder:
 
         return (len([w for w in self.resopnse_delays if w < self.MAXIMUM_RESPONSE_DELAY])
                 / (len(self.stimuli_times) - 1 + self.false_pressing))
+
+
+class KeyRecorder:
+    _experiment_start: int
+    
+    def __init__(self) -> None:
+        self._experiment_start = 0
+
+    def experiment_start(self):
+        self._experiment_start = time_ns()
+    
+    def record_key_response(self, e: QKeyEvent):
+        logger.info(f"clicked {e.key()} at {time_ns() - self._experiment_start}ns")
+    

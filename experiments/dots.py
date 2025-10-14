@@ -3,6 +3,7 @@ from experiments.constant_stimuli.dots_generator import generate_moving_dots
 import sys
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QApplication
+from response_recorder import KeyRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli
 from stims import fill_with_dots, array_into_pixmap, Dot
@@ -17,7 +18,7 @@ logger = getLogger(__name__)
 
 
 def run():
-    
+
     # Create the Qt Application
     app = QApplication(sys.argv)
 
@@ -41,20 +42,22 @@ def run():
     MEAN_LIFETIME = AMOUNT_OF_STIMULI // 2
 
     trial = generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
-                                   size, AMOUNT_OF_STIMULI,
-                                   array([[0, 0.33, 2], [pi/2, 0.33, 4]]), VELOCITY, MEAN_LIFETIME, 6)[0]
+                                 size, AMOUNT_OF_STIMULI,
+                                 array([[0, 0.33, 2], [pi/2, 0.33, 4]]), VELOCITY, MEAN_LIFETIME, 6)[0]
 
     frames = [array_into_pixmap(
-                                fill_with_dots(size, [], 
-                                               [Dot(int(d.r), 
-                                                    array([d.x, d.y], dtype=int),
-                                                    d.color * ones((2*d.r, 2*d.r))) for d in f],
-                                              0, 0))
-                for f in trial]
+        fill_with_dots(size, [],
+                       [Dot(int(d.r),
+                            array([d.x, d.y],
+                                  dtype=int),
+                            d.color * ones((2*d.r, 2*d.r))) for d in f],
+                       0, 0))
+              for f in trial]
 
-
+    recorder = KeyRecorder()
     experiment = RealtimeViewingExperiment(
-        OddballStimuli((cycle(frames))), SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI, use_step=True
+        OddballStimuli((cycle(frames))), SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI, use_step=True,
+        on_trial_start=recorder.experiment_start, stimuli_on_keypress=recorder.record_key_response
     )
 
     experiment.showFullScreen()
