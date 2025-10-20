@@ -2,10 +2,12 @@ import pandas as pd
 import matplotlib.ticker as mticker
 import glob
 import os
+from scipy.stats import combine_pvalues
+from scipy.optimize import curve_fit
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from scipy.stats import gmean, norm
+from scipy.stats import gmean, norm, f_oneway
 from collections import defaultdict
 import re
 from scipy.stats import ttest_rel, ttest_1samp
@@ -446,15 +448,18 @@ def _unpack_group_tuple(v):
     raise ValueError(f"Unexpected group tuple length: {len(v)}")
 
 
-def plot_population_psychometric(files, by_age=False, verbose=False, use_subject_baseline=False,
-                                 norm_mode="ratio"):
+def plot_population_psychometric(
+    files,
+    by_age=False,
+    verbose=False,
+    use_subject_baseline=False,
+    norm_mode="ratio",
+    fit_normalized=True,         # <— True: fit scaled Weibull to normalized means
+):
     if use_subject_baseline:
         subj_groups = normalize_by_subject_baseline(files, by_age=by_age, verbose=verbose, mode=norm_mode)
-
-        # aggregate subject-normalized values into (C, mean, SEM, Nsubs)
         agg = defaultdict(lambda: defaultdict(list))
         for (group, kind, subj), (C, p_norm, n) in subj_groups.items():
-            # skip subjects with too few valid points or extreme normalization
             if len(C) == 0 or np.any(~np.isfinite(p_norm)) or np.nanmax(np.abs(p_norm)) > 5:
                 if verbose:
                     print(f"[skip] {subj}-{kind} invalid normalization; skipped")
@@ -464,22 +469,62 @@ def plot_population_psychometric(files, by_age=False, verbose=False, use_subject
 
         groups = {}
         for key, d in agg.items():
-            xs = sorted(d.keys())
-            C = np.array(xs, float)
-            vals = [np.array(d[x], float) for x in xs]
+            xs = np.array(sorted(d.keys()), float)
+            vals = [np.array(d[c], float) for c in xs]
             mean = np.array([v.mean() for v in vals], float)
             sem  = np.array([v.std(ddof=1) / np.sqrt(len(v)) if len(v) > 1 else np.nan for v in vals], float)
             nsubs = np.array([len(v) for v in vals], int)
-            groups[key] = (C, mean, sem, nsubs)
+            groups[key] = (xs, mean, sem, nsubs)
 
         if verbose:
             present = sorted({(g, k) for (g, k, _) in subj_groups.keys()})
             print("[subject-normalized] have keys:", present)
-
     else:
         groups = _pool_counts(files, by_age=by_age)
 
-    # --- plotting ---
+    def _log_grid(C):
+        return np.logspace(np.log10(max(1e-6, float(np.min(C)))), np.log10(float(np.max(C))), 400)
+
+    def _fit_plot_raw(ax, C, p, n, color, label, linestyle='-'):
+        (a, b), r2 = fit_weibull(C, p)  # <-- use linear C
+        if verbose:
+            ax.set_title(ax.get_title() + f"\nα={a:.4f}, β={b:.3f}, R²={r2:.3f}")
+        xg = _log_grid(C)
+        ax.semilogx(xg, weibull(xg, a, b), linestyle, color=color,
+                    label=f"{label} fit (α={a:.3f}, β={b:.2f}, R²={r2:.2f})")
+        se = np.sqrt(p * (1 - p) / np.clip(n, 1, None))
+        ax.errorbar(C, p, yerr=se, fmt='o', color=color, capsize=3, alpha=0.9)
+        ax.set_ylabel("Proportion correct")
+        ax.set_ylim(0, 1.02)
+
+    def _fit_plot_norm(ax, C, m, sem, color, label, linestyle='-'):
+        ax.errorbar(C, m, yerr=sem, fmt='o', color=color, capsize=3, alpha=0.9)
+        if not fit_normalized or len(C) < 2 or not np.all(np.isfinite(m)):
+            return
+
+        # Fit s * weibull(C; a,b)
+        from scipy.optimize import curve_fit
+
+        def model(x, a, b, s):
+            return s * weibull(x, a, b)
+
+        # sensible starts: a ~ median(C), b ~ 2, s ~ median(m)
+        a0 = float(np.median(C))
+        b0 = 2.0
+        s0 = float(np.nanmedian(m))
+        # bounds: a>0, b>0, s>0 (very loose)
+        bounds = ([1e-6, 1e-3, 1e-6], [1e2,  10.0,  10.0])
+
+        try:
+            popt, _ = curve_fit(model, C, m, p0=[a0, b0, s0], bounds=bounds, maxfev=10000)
+            a, b, s = popt
+            xg = _log_grid(C)
+            ax.semilogx(xg, model(xg, a, b, s), linestyle, color=color,
+                        label=f"{label} fit (s·Weibull) α={a:.3f}, β={b:.2f}, s={s:.2f}")
+        except Exception as e:
+            if verbose:
+                print(f"[norm-fit warn] {label}: {e}")
+
     if not by_age:
         keys = [('all', 'fixed'), ('all', 'roving')]
         titles = ["All – Fixed", "All – Roving"]
@@ -487,81 +532,65 @@ def plot_population_psychometric(files, by_age=False, verbose=False, use_subject
         fig, axs = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
 
         for ax, key, title in zip(axs, keys, titles):
-            if key not in groups:
-                ax.set_title(f"{title}\n(no data)")
-                continue
-
-            if use_subject_baseline:
-                C, m, sem, nsubs = groups[key]
-                ax.errorbar(C, m, yerr=sem, fmt='o', color=colors[key[1]], capsize=3, alpha=0.9)
-                ax.set_ylabel("Relative success" + (" (p / baseline)" if norm_mode == "ratio" else " (p − baseline)"))
-                ax.set_ylim(0.5, 1.5 if norm_mode == "ratio" else (-0.5, 0.5))
-            else:
-                C, p, n = groups[key]
-                (a, b), r2 = fit_weibull(C, p)
-                if verbose:
-                    grp, kind = key
-                    print(f"[FIT] {grp}-{kind}: α={a:.4f}, β={b:.3f}, R²={r2:.3f}, points={len(C)}, total={int(n.sum())}")
-                xg = np.linspace(max(1e-6, C.min()), C.max(), 400)
-                ax.semilogx(xg, weibull(xg, a, b), '-', color=colors[key[1]])
-                se = np.sqrt(p * (1 - p) / n)
-                ax.errorbar(C, p, yerr=se, fmt='o', color=colors[key[1]], capsize=3, alpha=0.8)
-                ax.set_ylabel("Proportion correct")
-                ax.set_ylim(0, 1.02)
-
             ax.set_title(title)
             ax.set_xlabel("Coherence")
             ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x * 100:.0f}%"))
-            ax.legend()
+            if key not in groups:
+                ax.text(0.5, 0.5, "no data", ha="center", va="center", transform=ax.transAxes)
+                continue
 
-        plt.tight_layout()
-        plt.show()
-
-    else:
-        fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
-        for ax, kind in zip(axs, ['fixed', 'roving']):
-            for group, label, ls, col in [('A', 'Adults', '-', 'tab:blue'),
-                                          ('C', 'Children', '--', 'tab:orange')]:
-                key = (group, kind)
-                if key not in groups:
-                    continue
-
-                if use_subject_baseline:
-                    C, m, sem, nsubs = groups[key]
-                    ax.errorbar(C, m, yerr=sem, fmt='o', color=col, capsize=3, alpha=0.9,
-                                label=f"{label} (normalized, n={np.nanmean(nsubs):.0f})")
-                else:
-                    C, p, n = groups[key]
-                    (a, b), r2 = fit_weibull(C, p)
-                    xg = np.linspace(max(1e-6, C.min()), C.max(), 400)
-                    ax.semilogx(xg, weibull(xg, a, b), ls, color=col,
-                                label=f"{label} fit (α={a:.3f}, β={b:.2f}, R²={r2:.2f})")
-                    se = np.sqrt(p * (1 - p) / n)
-                    ax.errorbar(C, p, yerr=se, fmt='o', color=col, capsize=3, alpha=0.8)
-
-            ax.set_title(kind.capitalize())
-            ax.set_xlabel("Coherence")
+            color = colors[key[1]]
             if use_subject_baseline:
+                C, m, sem, nsubs = groups[key]
+                _fit_plot_norm(ax, C, m, sem, color, key[1])
+                ax.set_ylabel("Relative success" + (" (p / baseline)" if norm_mode == "ratio" else " (p − baseline)"))
                 if norm_mode == "ratio":
-                    ax.set_ylabel("Relative success (p / baseline)")
-                    ax.set_ylim(0.5, 1.5)
-                else:  # "diff"
-                    ax.set_ylabel("Δ success (p − baseline)")
-                    lo = np.nanmin([np.nanmin(m - sem) for _, m, sem, _ in groups.values() if len(m) > 0])
-                    hi = np.nanmax([np.nanmax(m + sem) for _, m, sem, _ in groups.values() if len(m) > 0])
+                    ax.set_ylim(0.5, max(1.5, float(np.nanmax(m + sem)) + 0.05))
+                else:
+                    lo = float(np.nanmin(m - sem)) if np.isfinite(m - sem).any() else -0.5
+                    hi = float(np.nanmax(m + sem)) if np.isfinite(m + sem).any() else 0.5
                     pad = 0.05 * (hi - lo if hi > lo else 0.1)
                     ax.set_ylim(lo - pad, hi + pad)
             else:
-                ax.set_ylabel("Proportion correct")
-                ax.set_ylim(0, 1.02)
+                C, p, n = groups[key]
+                _fit_plot_raw(ax, C, p, n, color, key[1])
 
-            ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x * 100:.0f}%"))
             ax.legend()
 
         plt.tight_layout()
         plt.show()
+        return
 
+    # by_age == True
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
+    for ax, kind in zip(axs, ['fixed', 'roving']):
+        for group, label, ls, col in [('A', 'Adults', '-', 'tab:blue'),
+                                      ('C', 'Children', '--', 'tab:orange')]:
+            key = (group, kind)
+            if key not in groups:
+                continue
+            if use_subject_baseline:
+                C, m, sem, nsubs = groups[key]
+                _fit_plot_norm(ax, C, m, sem, col, label, linestyle=ls)
+            else:
+                C, p, n = groups[key]
+                _fit_plot_raw(ax, C, p, n, col, label, linestyle=ls)
 
+        ax.set_title(kind.capitalize())
+        ax.set_xlabel("Coherence")
+        if use_subject_baseline:
+            if norm_mode == "ratio":
+                ax.set_ylabel("Relative success (p / baseline)")
+            else:
+                ax.set_ylabel("Δ success (p − baseline)")
+        else:
+            ax.set_ylabel("Proportion correct")
+            ax.set_ylim(0, 1.02)
+        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x * 100:.0f}%"))
+        ax.legend()
+
+    plt.tight_layout()
+    plt.show()
 
 def _normalize_direction(tok: str):
     """Map a token to 'vertical' | 'horizontal' | None."""
@@ -891,6 +920,7 @@ def analyze_lowest_success_by_direction(
 
     centers = (np.arange(nbins) * bin_width_deg) % 360.0
 
+    # -------- compute per-bin t-tests across files ----------
     t_stats = np.full(nbins, np.nan, dtype=float)
     p_vals  = np.full(nbins, np.nan, dtype=float)
 
@@ -926,6 +956,7 @@ def analyze_lowest_success_by_direction(
 
     # Optional plot
     if show_plot:
+        import matplotlib.pyplot as plt
 
         # Polar bar plot (convert to radians; p as height, bar alpha by trial count)
         theta = np.deg2rad(centers)
@@ -936,6 +967,7 @@ def analyze_lowest_success_by_direction(
         fig = plt.figure(figsize=(6, 6))
         ax = fig.add_subplot(111, projection='polar')
         width = np.deg2rad(bin_width_deg) * np.ones_like(theta)
+        # Use default matplotlib colors; no explicit color setting
         bars = ax.bar(theta, height, width=width, bottom=0.0, align='center', edgecolor='black')
         top_k = top_k  # mark the single worst bin
         min_trials = 10  # ignore bins with very few trials
@@ -970,11 +1002,131 @@ def analyze_lowest_success_by_direction(
                 ax.text(th, min(0.98, ri + 0.10), f"{centers[i]:.0f}°\n{p[i]:.2f}",
                         ha="center", va="bottom", fontsize=9)
 
+        # set per-bin alpha
+        for b, a in zip(bars, alpha):
+            b.set_alpha(float(a))
         ax.set_title(f"Success rate by direction (bin={bin_width_deg}°)"
                      + (f" – {condition_filter}" if condition_filter else ""), va='bottom')
         ax.set_theta_zero_location("E")  # 0° to the right
         ax.set_theta_direction(-1)  # clockwise
         ax.set_rmax(1.0)
+        plt.tight_layout()
+        plt.show()
+
+
+
+def perform_anova(
+        files,
+        bin_width_deg: float = 30.0,
+        verbose: bool = False,
+        condition_filter: str | None = "roving",
+        show_plot: bool = True,
+        min_trials_per_bin: int = 10,
+):
+
+    axes_deg = np.arange(0, 180, 30)
+    n_axes = len(axes_deg)
+    all_subjects, Fvals, pvals = [], [], []
+    axis_means = defaultdict(list)
+
+    for fp in files:
+        base = os.path.basename(fp)
+        if condition_filter and (condition_filter.lower() not in base.lower()):
+            continue
+
+        text = open(fp, "r", encoding="utf-8", errors="ignore").read()
+        ang_deg, succ = _parse_trials_angles_success(text)
+        if ang_deg.size == 0:
+            continue
+
+        ang_mod = ang_deg % 360.0
+        subj_means = []
+
+        for a in axes_deg:
+            # directions for this axis (two symmetric directions)
+            d1 = (ang_mod >= a - bin_width_deg/2) & (ang_mod < a + bin_width_deg/2)
+            d2 = (ang_mod >= (a + 180 - bin_width_deg/2)) & (ang_mod < (a + 180 + bin_width_deg/2))
+            mask = d1 | d2
+            if mask.sum() >= min_trials_per_bin:
+                subj_means.append(np.mean(succ[mask]))
+            else:
+                subj_means.append(np.nan)
+
+        subj_means = np.array(subj_means)
+        valid = np.isfinite(subj_means)
+        if valid.sum() < 2:
+            continue
+
+        groups = [succ[((ang_mod >= a - bin_width_deg/2) & (ang_mod < a + bin_width_deg/2)) |
+                       ((ang_mod >= (a + 180 - bin_width_deg/2)) & (ang_mod < (a + 180 + bin_width_deg/2)))]
+                  for a in axes_deg]
+
+        # filter empty groups
+        groups = [g for g in groups if len(g) >= min_trials_per_bin]
+        if len(groups) < 2:
+            continue
+
+        F, p = f_oneway(*groups)
+        all_subjects.append(base)
+        Fvals.append(F)
+        pvals.append(p)
+        for i, val in enumerate(subj_means):
+            if np.isfinite(val):
+                axis_means[i].append(val)
+
+    if not all_subjects:
+        print("No usable roving files with sufficient data for axis ANOVA.")
+        return
+    print(f"Axis-ANOVA across {len(all_subjects)} of roving trials, with minimum {min_trials_per_bin} trials per axis.\n")
+
+    if verbose:
+        print("Subject\t\t\tF\tp-value\tSignificant?")
+        for s, F, p in zip(all_subjects, Fvals, pvals):
+            sig = "*" if (p < 0.05) else ""
+            print(f"{s:40s}\t{F:5.3f}\t{p:7.4f}\t{sig}")
+
+    # Combine p-values across subjects (Fisher & Stouffer)
+    valid_mask = np.isfinite(pvals) & (np.array(pvals) > 0)
+    if np.any(valid_mask):
+        stat_fish, p_fish = combine_pvalues(np.array(pvals)[valid_mask], method="fisher")
+        stat_stouf, p_stouf = combine_pvalues(np.array(pvals)[valid_mask], method="stouffer")
+        if p_fish < 0.05:
+            print(f"First ANOVA method p-value : {p_fish} => Significant effect across subjects.")
+        else:
+            print(f"First ANOVA method p-value : {p_fish} => No Significant effect across subjects.")
+
+        if p_stouf < 0.05:
+            print(f"Second ANOVA method p-value : {p_stouf} => Significant effect across subjects.\n")
+        else:
+            print(f"Second ANOVA method p-value : {p_stouf} => No Significant effect across subjects.\n")
+
+        if verbose:
+            print("\n[Population-level axis effect]")
+            print(f"  Fisher's method:   χ² = {stat_fish:.2f}  p = {p_fish:.3g}")
+            print(f"  Stouffer's method: Z  = {stat_stouf:.2f}  p = {p_stouf:.3g}")
+
+    elif verbose:
+        print("\n[Population-level axis effect]")
+        print("  No valid p-values for combination.")
+
+
+    # Compute population mean success per axis
+    mean_axis = np.array([np.nanmean(axis_means[i]) for i in range(n_axes)])
+    sem_axis  = np.array([np.nanstd(axis_means[i], ddof=1)/np.sqrt(len(axis_means[i]))
+                          if len(axis_means[i]) > 1 else np.nan for i in range(n_axes)])
+
+    if verbose:
+        print("\nMean success per axis:")
+        for a, m in zip(axes_deg, mean_axis):
+            print(f"  Axis {a:3.0f}°–{a+180:3.0f}°:  {m:.3f}")
+
+    if show_plot:
+        plt.figure(figsize=(7, 5))
+        plt.errorbar(axes_deg, mean_axis, yerr=sem_axis, fmt='o-', capsize=4)
+        plt.xticks(axes_deg, [f"{a:.0f}°–{a+180:.0f}°" for a in axes_deg])
+        plt.xlabel("Axis (degrees)")
+        plt.ylabel("Mean success")
+        plt.title("Population mean success across symmetry axes\n(Roving trials)")
         plt.tight_layout()
         plt.show()
 
@@ -994,7 +1146,6 @@ def _extract_trials(fp: str):
     S = np.array([s == "True" for s in succ_tokens], dtype=bool)
 
     try:
-        # reuse your robust parser that maps to 'vertical'/'horizontal'
         C2, D_tokens, S2 = _parse_trials_with_direction(txt, debug=False)
         # lengths may differ; we clip to min length below anyway
         D = np.array(D_tokens, dtype=object)
@@ -1362,15 +1513,15 @@ if __name__ == "__main__":
     files = glob.glob(os.path.join(FOLDER_PATH, "*"))
     debug_inventory(files)
 
-    fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=True)
-    print("fixed_first: ", len(fixed_first))
-    print("roving_first:", len(roving_first))
-    print("frf_triples: ", len(frf_triples))
-    print("rfr_triples: ", len(rfr_triples))
-
-    print(analyze_subjects(fixed_first, roving_first, frf_triples, rfr_triples))
-    fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=False)
-
+    # fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=True)
+    # print("fixed_first: ", len(fixed_first))
+    # print("roving_first:", len(roving_first))
+    # print("frf_triples: ", len(frf_triples))
+    # print("rfr_triples: ", len(rfr_triples))
+    #
+    # print(analyze_subjects(fixed_first, roving_first, frf_triples, rfr_triples))
+    # fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=False)
+    #
 
     # plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=5)
 
@@ -1404,7 +1555,7 @@ if __name__ == "__main__":
     # plot_alpha_beta_distributions_by_age(fixed_first_A, roving_first_A,
     #                                      fixed_first_C, roving_first_C,
     #                                      normalize_subject=True, norm_mode="ratio", combine="group_ratio")
-
+    #
     # plot_population_psychometric(files, by_age=False, verbose=False, use_subject_baseline=True)
     # plot_population_psychometric(files, by_age=False, verbose=False, use_subject_baseline=False)
 
@@ -1414,7 +1565,10 @@ if __name__ == "__main__":
     # analyze_lowest_success_by_direction(files, bin_width_deg=15, top_k=8, condition_filter=None, show_plot=True)
     # analyze_lowest_success_by_direction(files, bin_width_deg=5, top_k=3, condition_filter="fixed")
     # analyze_lowest_success_by_direction(files, bin_width_deg=22.5, top_k=3, condition_filter="roving")
-    analyze_lowest_success_by_direction(files, bin_width_deg=22.5, top_k=4, condition_filter="fixed")
+    perform_anova(files, bin_width_deg=20, condition_filter="roving")
+    # perform_anova(files, condition_filter="roving", min_trials_per_bin=15)
+    # perform_anova(files, condition_filter="roving", min_trials_per_bin=20)
+
 
     #
     # run_prev_trial_effect(files)
