@@ -1,15 +1,15 @@
 import pandas as pd
-import math
 import matplotlib.ticker as mticker
 import glob
 import os
+from scipy.stats import combine_pvalues
+from scipy.optimize import curve_fit
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from scipy.stats import gmean, norm
+from scipy.stats import gmean, norm, f_oneway
 from collections import defaultdict
 import re
-from re import findall
 from scipy.stats import ttest_rel, ttest_1samp
 from scipy.optimize import minimize
 from analysis_three import (fit_weibull, weibull, text_into_coherences_and_successes,
@@ -18,7 +18,6 @@ from analysis_three import (fit_weibull, weibull, text_into_coherences_and_succe
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# FOLDER_PATH = os.path.join(SCRIPT_DIR, "..", "..", "output")  # adjust levels as needed
 FOLDER_PATH = "C:/Users/mayaz/Lab2025/qt-stimulation-master/output"
 LOGFILE = f"{FOLDER_PATH}/roei17-motion_coherence_roving-1756148886"
 SUBJECT_KIND_TS = re.compile(
@@ -35,7 +34,7 @@ def parse_constant_stimuli_log_new(path: str):
     coh_match = re.search(r"coherences \[(.*?)\]", " ".join(lines))
     dir_match = re.search(r"directions \[(.*?)\]", " ".join(lines))
     coherences = np.fromstring(coh_match.group(1), sep=" ") if coh_match else np.array([])
-    directions = np.fromstring(dir_match.group(1), sep=" ") if dir_match else np.array([])
+    # directions = np.fromstring(dir_match.group(1), sep=" ") if dir_match else np.array([])
 
     # Extract trial info
     trial_data = []
@@ -108,28 +107,6 @@ def distributions_from_pairs(
     norm_mode="ratio",          # "ratio" (default) or "diff"
     combine="pair_ratio"        # "pair_ratio" (old) or "group_ratio" (recommended with normalize=True)
 ):
-    """
-    pairs_FF: array-like shape (nF, 2) -> columns (F1, R2)
-    pairs_RF: array-like shape (nR, 2) -> columns (R1, F2)
-
-    If normalize=True:
-      - For each FF subject: baseline_FF = gmean([F1, R2]) and we transform
-          F1' = F1 / baseline_FF   ,  R2' = R2 / baseline_FF
-        (or difference if norm_mode == "diff")
-      - For each RF subject: baseline_RF = gmean([R1, F2]) and we transform
-          R1' = R1 / baseline_RF   ,  F2' = F2 / baseline_RF
-
-    combine:
-      - "pair_ratio": old behavior: for each bootstrap sample compute
-           alpha  = gmean(F1_s / R1_s)
-           betaR  = gmean(F2_s / F1_s)
-           betaF  = gmean(R2_s / R1_s)
-        (OK for raw thresholds, **not** recommended with normalize=True)
-      - "group_ratio": recommended with normalize=True:
-           alpha  = gmean(F1_s) / gmean(R1_s)
-           betaR  = gmean(F2_s) / gmean(F1_s)
-           betaF  = gmean(R2_s) / gmean(R1_s)
-    """
 
     FF = np.asarray(pairs_FF, dtype=float)  # (nF, 2) -> F1, R2
     RF = np.asarray(pairs_RF, dtype=float)  # (nR, 2) -> R1, F2
@@ -153,6 +130,7 @@ def distributions_from_pairs(
             R2 = R2 - bFF
             R1 = R1 - bRF
             F2 = F2 - bRF
+
         else:  # "ratio"
             # safeguard against zero/negatives
             eps = 1e-12
@@ -172,13 +150,10 @@ def distributions_from_pairs(
     R2_s = R2[idxF]
 
     if combine == "group_ratio" and normalize:
-        # recommended when normalized
         alphas = np.array([gmean(F1_s[i]) / gmean(R1_s[i])   for i in range(num_samples)])
         betas_R = np.array([gmean(F2_s[i]) / gmean(F1_s[i])  for i in range(num_samples)])
         betas_F = np.array([gmean(R2_s[i]) / gmean(R1_s[i])  for i in range(num_samples)])
     else:
-        # original behavior (pairwise ratios then gmean)
-        # OK for raw thresholds; if used with normalized data, interpretation includes baseline ratios.
         alphas = np.exp(np.mean(np.log(np.clip(F1_s / R1_s, 1e-12, None)), axis=1))
         betas_R = np.exp(np.mean(np.log(np.clip(F2_s / F1_s, 1e-12, None)), axis=1))
         betas_F = np.exp(np.mean(np.log(np.clip(R2_s / R1_s, 1e-12, None)), axis=1))
@@ -361,12 +336,6 @@ def plot_alpha_beta_distributions_by_age(
 
 
 def _pool_counts(files, by_age=False, verbose=False, max_rows=20):
-    """
-    Pool raw trials across all sessions into counts per coherence.
-    Returns: dict key -> (C, p_hat, n).
-    Added (optional): verbose printing of coverage and counts.
-    """
-
     buckets = defaultdict(lambda: defaultdict(lambda: [0, 0]))  # key -> coherence -> [k, n]
     sessions = defaultdict(set)  # key -> {file paths} (to count unique sessions)
 
@@ -457,7 +426,6 @@ def _pool_counts(files, by_age=False, verbose=False, max_rows=20):
     return out
 
 def _unpack_group_tuple(v):
-    """Accept (C, m, sem) or (C, m, sem, nsubs) and return a 4-tuple."""
     if len(v) == 4:
         return v
     if len(v) == 3:
@@ -480,22 +448,18 @@ def _unpack_group_tuple(v):
     raise ValueError(f"Unexpected group tuple length: {len(v)}")
 
 
-def plot_population_psychometric(files, by_age=False, verbose=False, use_subject_baseline=False,
-                                 norm_mode="ratio"):
-    """
-    Aggregate psychometric data (pooled or subject-normalized) and plot Weibull fits.
-    Handles both old and new log formats.
-    """
-    from collections import defaultdict
-
-    # --- get data ---
+def plot_population_psychometric(
+    files,
+    by_age=False,
+    verbose=False,
+    use_subject_baseline=False,
+    norm_mode="ratio",
+    fit_normalized=True,         # <— True: fit scaled Weibull to normalized means
+):
     if use_subject_baseline:
         subj_groups = normalize_by_subject_baseline(files, by_age=by_age, verbose=verbose, mode=norm_mode)
-
-        # aggregate subject-normalized values into (C, mean, SEM, Nsubs)
         agg = defaultdict(lambda: defaultdict(list))
         for (group, kind, subj), (C, p_norm, n) in subj_groups.items():
-            # skip subjects with too few valid points or extreme normalization
             if len(C) == 0 or np.any(~np.isfinite(p_norm)) or np.nanmax(np.abs(p_norm)) > 5:
                 if verbose:
                     print(f"[skip] {subj}-{kind} invalid normalization; skipped")
@@ -505,22 +469,62 @@ def plot_population_psychometric(files, by_age=False, verbose=False, use_subject
 
         groups = {}
         for key, d in agg.items():
-            xs = sorted(d.keys())
-            C = np.array(xs, float)
-            vals = [np.array(d[x], float) for x in xs]
+            xs = np.array(sorted(d.keys()), float)
+            vals = [np.array(d[c], float) for c in xs]
             mean = np.array([v.mean() for v in vals], float)
             sem  = np.array([v.std(ddof=1) / np.sqrt(len(v)) if len(v) > 1 else np.nan for v in vals], float)
             nsubs = np.array([len(v) for v in vals], int)
-            groups[key] = (C, mean, sem, nsubs)
+            groups[key] = (xs, mean, sem, nsubs)
 
         if verbose:
             present = sorted({(g, k) for (g, k, _) in subj_groups.keys()})
             print("[subject-normalized] have keys:", present)
-
     else:
         groups = _pool_counts(files, by_age=by_age)
 
-    # --- plotting ---
+    def _log_grid(C):
+        return np.logspace(np.log10(max(1e-6, float(np.min(C)))), np.log10(float(np.max(C))), 400)
+
+    def _fit_plot_raw(ax, C, p, n, color, label, linestyle='-'):
+        (a, b), r2 = fit_weibull(C, p)  # <-- use linear C
+        if verbose:
+            ax.set_title(ax.get_title() + f"\nα={a:.4f}, β={b:.3f}, R²={r2:.3f}")
+        xg = _log_grid(C)
+        ax.semilogx(xg, weibull(xg, a, b), linestyle, color=color,
+                    label=f"{label} fit (α={a:.3f}, β={b:.2f}, R²={r2:.2f})")
+        se = np.sqrt(p * (1 - p) / np.clip(n, 1, None))
+        ax.errorbar(C, p, yerr=se, fmt='o', color=color, capsize=3, alpha=0.9)
+        ax.set_ylabel("Proportion correct")
+        ax.set_ylim(0, 1.02)
+
+    def _fit_plot_norm(ax, C, m, sem, color, label, linestyle='-'):
+        ax.errorbar(C, m, yerr=sem, fmt='o', color=color, capsize=3, alpha=0.9)
+        if not fit_normalized or len(C) < 2 or not np.all(np.isfinite(m)):
+            return
+
+        # Fit s * weibull(C; a,b)
+        from scipy.optimize import curve_fit
+
+        def model(x, a, b, s):
+            return s * weibull(x, a, b)
+
+        # sensible starts: a ~ median(C), b ~ 2, s ~ median(m)
+        a0 = float(np.median(C))
+        b0 = 2.0
+        s0 = float(np.nanmedian(m))
+        # bounds: a>0, b>0, s>0 (very loose)
+        bounds = ([1e-6, 1e-3, 1e-6], [1e2,  10.0,  10.0])
+
+        try:
+            popt, _ = curve_fit(model, C, m, p0=[a0, b0, s0], bounds=bounds, maxfev=10000)
+            a, b, s = popt
+            xg = _log_grid(C)
+            ax.semilogx(xg, model(xg, a, b, s), linestyle, color=color,
+                        label=f"{label} fit (s·Weibull) α={a:.3f}, β={b:.2f}, s={s:.2f}")
+        except Exception as e:
+            if verbose:
+                print(f"[norm-fit warn] {label}: {e}")
+
     if not by_age:
         keys = [('all', 'fixed'), ('all', 'roving')]
         titles = ["All – Fixed", "All – Roving"]
@@ -528,81 +532,65 @@ def plot_population_psychometric(files, by_age=False, verbose=False, use_subject
         fig, axs = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
 
         for ax, key, title in zip(axs, keys, titles):
-            if key not in groups:
-                ax.set_title(f"{title}\n(no data)")
-                continue
-
-            if use_subject_baseline:
-                C, m, sem, nsubs = groups[key]
-                ax.errorbar(C, m, yerr=sem, fmt='o', color=colors[key[1]], capsize=3, alpha=0.9)
-                ax.set_ylabel("Relative success" + (" (p / baseline)" if norm_mode == "ratio" else " (p − baseline)"))
-                ax.set_ylim(0.5, 1.5 if norm_mode == "ratio" else (-0.5, 0.5))
-            else:
-                C, p, n = groups[key]
-                (a, b), r2 = fit_weibull(C, p)
-                if verbose:
-                    grp, kind = key
-                    print(f"[FIT] {grp}-{kind}: α={a:.4f}, β={b:.3f}, R²={r2:.3f}, points={len(C)}, total={int(n.sum())}")
-                xg = np.linspace(max(1e-6, C.min()), C.max(), 400)
-                ax.semilogx(xg, weibull(xg, a, b), '-', color=colors[key[1]])
-                se = np.sqrt(p * (1 - p) / n)
-                ax.errorbar(C, p, yerr=se, fmt='o', color=colors[key[1]], capsize=3, alpha=0.8)
-                ax.set_ylabel("Proportion correct")
-                ax.set_ylim(0, 1.02)
-
             ax.set_title(title)
             ax.set_xlabel("Coherence")
             ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x * 100:.0f}%"))
-            ax.legend()
+            if key not in groups:
+                ax.text(0.5, 0.5, "no data", ha="center", va="center", transform=ax.transAxes)
+                continue
 
-        plt.tight_layout()
-        plt.show()
-
-    else:
-        fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
-        for ax, kind in zip(axs, ['fixed', 'roving']):
-            for group, label, ls, col in [('A', 'Adults', '-', 'tab:blue'),
-                                          ('C', 'Children', '--', 'tab:orange')]:
-                key = (group, kind)
-                if key not in groups:
-                    continue
-
-                if use_subject_baseline:
-                    C, m, sem, nsubs = groups[key]
-                    ax.errorbar(C, m, yerr=sem, fmt='o', color=col, capsize=3, alpha=0.9,
-                                label=f"{label} (normalized, n={np.nanmean(nsubs):.0f})")
-                else:
-                    C, p, n = groups[key]
-                    (a, b), r2 = fit_weibull(C, p)
-                    xg = np.linspace(max(1e-6, C.min()), C.max(), 400)
-                    ax.semilogx(xg, weibull(xg, a, b), ls, color=col,
-                                label=f"{label} fit (α={a:.3f}, β={b:.2f}, R²={r2:.2f})")
-                    se = np.sqrt(p * (1 - p) / n)
-                    ax.errorbar(C, p, yerr=se, fmt='o', color=col, capsize=3, alpha=0.8)
-
-            ax.set_title(kind.capitalize())
-            ax.set_xlabel("Coherence")
+            color = colors[key[1]]
             if use_subject_baseline:
+                C, m, sem, nsubs = groups[key]
+                _fit_plot_norm(ax, C, m, sem, color, key[1])
+                ax.set_ylabel("Relative success" + (" (p / baseline)" if norm_mode == "ratio" else " (p − baseline)"))
                 if norm_mode == "ratio":
-                    ax.set_ylabel("Relative success (p / baseline)")
-                    ax.set_ylim(0.5, 1.5)
-                else:  # "diff"
-                    ax.set_ylabel("Δ success (p − baseline)")
-                    lo = np.nanmin([np.nanmin(m - sem) for _, m, sem, _ in groups.values() if len(m) > 0])
-                    hi = np.nanmax([np.nanmax(m + sem) for _, m, sem, _ in groups.values() if len(m) > 0])
+                    ax.set_ylim(0.5, max(1.5, float(np.nanmax(m + sem)) + 0.05))
+                else:
+                    lo = float(np.nanmin(m - sem)) if np.isfinite(m - sem).any() else -0.5
+                    hi = float(np.nanmax(m + sem)) if np.isfinite(m + sem).any() else 0.5
                     pad = 0.05 * (hi - lo if hi > lo else 0.1)
                     ax.set_ylim(lo - pad, hi + pad)
             else:
-                ax.set_ylabel("Proportion correct")
-                ax.set_ylim(0, 1.02)
+                C, p, n = groups[key]
+                _fit_plot_raw(ax, C, p, n, color, key[1])
 
-            ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x * 100:.0f}%"))
             ax.legend()
 
         plt.tight_layout()
         plt.show()
+        return
 
+    # by_age == True
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
+    for ax, kind in zip(axs, ['fixed', 'roving']):
+        for group, label, ls, col in [('A', 'Adults', '-', 'tab:blue'),
+                                      ('C', 'Children', '--', 'tab:orange')]:
+            key = (group, kind)
+            if key not in groups:
+                continue
+            if use_subject_baseline:
+                C, m, sem, nsubs = groups[key]
+                _fit_plot_norm(ax, C, m, sem, col, label, linestyle=ls)
+            else:
+                C, p, n = groups[key]
+                _fit_plot_raw(ax, C, p, n, col, label, linestyle=ls)
 
+        ax.set_title(kind.capitalize())
+        ax.set_xlabel("Coherence")
+        if use_subject_baseline:
+            if norm_mode == "ratio":
+                ax.set_ylabel("Relative success (p / baseline)")
+            else:
+                ax.set_ylabel("Δ success (p − baseline)")
+        else:
+            ax.set_ylabel("Proportion correct")
+            ax.set_ylim(0, 1.02)
+        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x * 100:.0f}%"))
+        ax.legend()
+
+    plt.tight_layout()
+    plt.show()
 
 def _normalize_direction(tok: str):
     """Map a token to 'vertical' | 'horizontal' | None."""
@@ -626,13 +614,6 @@ def _normalize_direction(tok: str):
 
 
 def _parse_trials_with_direction(raw_text: str, debug: bool = False):
-    """
-    Extract per-trial (coherence, direction, success) robustly.
-    - Coherences: list immediately before 'and direction(s)'
-    - Directions: numeric radians between 'and direction(s)' and next 'INFO:' block
-    - Successes: all True/False tokens
-    Returns aligned arrays: (coherences_raw, directions_norm, successes_raw)
-    """
     t = raw_text.replace("\r", "").replace("\n", " ")
 
     # 1) coherences (list before 'and direction(s)')
@@ -771,7 +752,6 @@ def analyze_fixed_orientation(files, show_plot=True, by_coherence=True, add_weib
                     label=f"{d} data (n={int(n.sum())})"
                 )
 
-                # --- NEW: Weibull fit & overlay ---
                 if add_weibull_fit and (len(C) >= 2):
                     (a, b), r2 = fit_weibull(C, p)
                     xg = np.linspace(max(1e-6, C.min()), C.max(), 400)
@@ -791,12 +771,7 @@ def analyze_fixed_orientation(files, show_plot=True, by_coherence=True, add_weib
 
 
 def _to_degrees_from_any(tokens: list[str]) -> list[float]:
-    """
-    Convert a mixed list of numeric strings (rad/deg) and words into degrees [0,360).
-    - Detects radians if all numeric values are <= ~2π+eps; otherwise assumes degrees.
-    - Maps words: right=0, up=90, left=180, down=270; horizontal={0,180}, vertical={90,270}
-    Returns a list of floats (degrees).
-    """
+
     degs = []
     numeric_vals = []
     word_to_deg = {
@@ -811,7 +786,6 @@ def _to_degrees_from_any(tokens: list[str]) -> list[float]:
         if s in word_to_deg:
             degs.append(word_to_deg[s] % 360.0)
             continue
-        # numeric?
         try:
             numeric_vals.append(float(s))
             degs.append(None)  # placeholder to fill later
@@ -835,10 +809,7 @@ def _to_degrees_from_any(tokens: list[str]) -> list[float]:
 
 
 def _extract_angles_degrees_block(text: str) -> list[float]:
-    """
-    Try to pull a compact block of direction tokens right after 'and direction(s)', up to the
-    next 'INFO:' (or similar) marker. Returns a list of floats in degrees.
-    """
+
     t = text.replace("\r", " ").replace("\n", " ")
     m_start = re.search(r"and\s*directions?", t, flags=re.IGNORECASE)
     if not m_start:
@@ -855,13 +826,7 @@ def _extract_angles_degrees_block(text: str) -> list[float]:
 
 
 def _parse_trials_angles_success(raw_text: str):
-    """
-    Per-trial parse:
-      - Coherences: the list before 'and direction(s)'
-      - Directions: degrees parsed from compact block after 'and direction(s)'
-      - Successes: all True/False tokens
-    Returns aligned arrays (angle_deg, success) with length T = min(#coh, #dir, #succ).
-    """
+
     t = raw_text.replace("\r", " ").replace("\n", " ")
 
     mC = re.search(r"\[\s*(.*?)\s*\]\s*and\s*directions?", t, flags=re.IGNORECASE | re.DOTALL)
@@ -1049,17 +1014,125 @@ def analyze_lowest_success_by_direction(
         plt.show()
 
 
-# ---------- Trial-history helpers ----------
+
+def perform_anova(
+        files,
+        bin_width_deg: float = 30.0,
+        verbose: bool = False,
+        condition_filter: str | None = "roving",
+        show_plot: bool = True,
+        min_trials_per_bin: int = 10,
+):
+
+    axes_deg = np.arange(0, 180, 30)
+    n_axes = len(axes_deg)
+    all_subjects, Fvals, pvals = [], [], []
+    axis_means = defaultdict(list)
+
+    for fp in files:
+        base = os.path.basename(fp)
+        if condition_filter and (condition_filter.lower() not in base.lower()):
+            continue
+
+        text = open(fp, "r", encoding="utf-8", errors="ignore").read()
+        ang_deg, succ = _parse_trials_angles_success(text)
+        if ang_deg.size == 0:
+            continue
+
+        ang_mod = ang_deg % 360.0
+        subj_means = []
+
+        for a in axes_deg:
+            # directions for this axis (two symmetric directions)
+            d1 = (ang_mod >= a - bin_width_deg/2) & (ang_mod < a + bin_width_deg/2)
+            d2 = (ang_mod >= (a + 180 - bin_width_deg/2)) & (ang_mod < (a + 180 + bin_width_deg/2))
+            mask = d1 | d2
+            if mask.sum() >= min_trials_per_bin:
+                subj_means.append(np.mean(succ[mask]))
+            else:
+                subj_means.append(np.nan)
+
+        subj_means = np.array(subj_means)
+        valid = np.isfinite(subj_means)
+        if valid.sum() < 2:
+            continue
+
+        groups = [succ[((ang_mod >= a - bin_width_deg/2) & (ang_mod < a + bin_width_deg/2)) |
+                       ((ang_mod >= (a + 180 - bin_width_deg/2)) & (ang_mod < (a + 180 + bin_width_deg/2)))]
+                  for a in axes_deg]
+
+        # filter empty groups
+        groups = [g for g in groups if len(g) >= min_trials_per_bin]
+        if len(groups) < 2:
+            continue
+
+        F, p = f_oneway(*groups)
+        all_subjects.append(base)
+        Fvals.append(F)
+        pvals.append(p)
+        for i, val in enumerate(subj_means):
+            if np.isfinite(val):
+                axis_means[i].append(val)
+
+    if not all_subjects:
+        print("No usable roving files with sufficient data for axis ANOVA.")
+        return
+    print(f"Axis-ANOVA across {len(all_subjects)} of roving trials, with minimum {min_trials_per_bin} trials per axis.\n")
+
+    if verbose:
+        print("Subject\t\t\tF\tp-value\tSignificant?")
+        for s, F, p in zip(all_subjects, Fvals, pvals):
+            sig = "*" if (p < 0.05) else ""
+            print(f"{s:40s}\t{F:5.3f}\t{p:7.4f}\t{sig}")
+
+    # Combine p-values across subjects (Fisher & Stouffer)
+    valid_mask = np.isfinite(pvals) & (np.array(pvals) > 0)
+    if np.any(valid_mask):
+        stat_fish, p_fish = combine_pvalues(np.array(pvals)[valid_mask], method="fisher")
+        stat_stouf, p_stouf = combine_pvalues(np.array(pvals)[valid_mask], method="stouffer")
+        if p_fish < 0.05:
+            print(f"First ANOVA method p-value : {p_fish} => Significant effect across subjects.")
+        else:
+            print(f"First ANOVA method p-value : {p_fish} => No Significant effect across subjects.")
+
+        if p_stouf < 0.05:
+            print(f"Second ANOVA method p-value : {p_stouf} => Significant effect across subjects.\n")
+        else:
+            print(f"Second ANOVA method p-value : {p_stouf} => No Significant effect across subjects.\n")
+
+        if verbose:
+            print("\n[Population-level axis effect]")
+            print(f"  Fisher's method:   χ² = {stat_fish:.2f}  p = {p_fish:.3g}")
+            print(f"  Stouffer's method: Z  = {stat_stouf:.2f}  p = {p_stouf:.3g}")
+
+    elif verbose:
+        print("\n[Population-level axis effect]")
+        print("  No valid p-values for combination.")
+
+
+    # Compute population mean success per axis
+    mean_axis = np.array([np.nanmean(axis_means[i]) for i in range(n_axes)])
+    sem_axis  = np.array([np.nanstd(axis_means[i], ddof=1)/np.sqrt(len(axis_means[i]))
+                          if len(axis_means[i]) > 1 else np.nan for i in range(n_axes)])
+
+    if verbose:
+        print("\nMean success per axis:")
+        for a, m in zip(axes_deg, mean_axis):
+            print(f"  Axis {a:3.0f}°–{a+180:3.0f}°:  {m:.3f}")
+
+    if show_plot:
+        plt.figure(figsize=(7, 5))
+        plt.errorbar(axes_deg, mean_axis, yerr=sem_axis, fmt='o-', capsize=4)
+        plt.xticks(axes_deg, [f"{a:.0f}°–{a+180:.0f}°" for a in axes_deg])
+        plt.xlabel("Axis (degrees)")
+        plt.ylabel("Mean success")
+        plt.title("Population mean success across symmetry axes\n(Roving trials)")
+        plt.tight_layout()
+        plt.show()
 
 def _extract_trials(fp: str):
-    """
-    Return per-trial arrays for one session:
-        C : coherence (float, shape [T])
-        S : success (0/1, shape [T])
-        D : optional direction token ('vertical'/'horizontal'/None), shape [T]
-    Robust to your log format.
-    """
     txt = open(fp, "r", encoding="utf-8", errors="ignore").read().replace("\n", " ")
+
     # coherences (raw, not averaged)
     mC = re.search(r"\[\s*(.*?)\s*\]\s*and\s*directions?", txt, flags=re.IGNORECASE | re.DOTALL)
     if not mC:
@@ -1067,12 +1140,12 @@ def _extract_trials(fp: str):
     if not mC:
         return np.array([]), np.array([], dtype=int), np.array([], dtype=object)
     C = np.fromstring(mC.group(1), dtype=float, sep=" ")
+
     # successes
     succ_tokens = re.findall(r"\b(True|False)\b", txt)
     S = np.array([s == "True" for s in succ_tokens], dtype=bool)
-    # directions (optional)
+
     try:
-        # reuse your robust parser that maps to 'vertical'/'horizontal'
         C2, D_tokens, S2 = _parse_trials_with_direction(txt, debug=False)
         # lengths may differ; we clip to min length below anyway
         D = np.array(D_tokens, dtype=object)
@@ -1090,12 +1163,7 @@ def _extract_trials(fp: str):
 
 
 def build_trial_table(files, condition_filter: str | None = None):
-    """
-    Build a trial-level 'table' as a dict of numpy arrays (no pandas needed).
-    Columns:
-      'coh', 'succ', 'prev_succ', 'cond', 'subject', 'file_idx', 'trial_idx', 'dir'
-    Only trials with a defined prev_succ (i.e., from the 2nd trial onward) are kept.
-    """
+
     rows = []
     for i, fp in enumerate(files):
         base = strip_bidi(os.path.basename(fp))
@@ -1137,11 +1205,7 @@ def build_trial_table(files, condition_filter: str | None = None):
 
 
 def _logit_ll_and_grad_hess(beta, X, y):
-    """
-    Negative log-likelihood, gradient, and Hessian for logistic regression.
-    X: (N, p) with intercept included
-    y: {0,1}
-    """
+
     z = X @ beta
     # numerically stable sigmoid
     p = 1.0 / (1.0 + np.exp(-np.clip(z, -30, 30)))
@@ -1157,10 +1221,7 @@ def _logit_ll_and_grad_hess(beta, X, y):
 
 
 def _fit_logistic(X, y, maxiter=200):
-    """
-    Newton-CG using our explicit gradient/Hessian.
-    Returns beta, cov, success_flag
-    """
+
     p = X.shape[1]
     beta0 = np.zeros(p)
 
@@ -1189,10 +1250,7 @@ def _fit_logistic(X, y, maxiter=200):
 
 
 def logistic_prev_effect(tbl, by="all"):
-    """
-    Fit: success ~ 1 + coherence + prev_success
-    Returns dict with coef table and prints a summary.
-    """
+
     mask = np.ones_like(tbl["succ"], dtype=bool)
     if by in ("fixed", "roving"):
         mask &= (tbl["cond"] == by)
@@ -1226,10 +1284,6 @@ def logistic_prev_effect(tbl, by="all"):
 
 
 def psychometric_by_prev(tbl, by="all", use_weighted=True):
-    """
-    Build pooled (k,n) per coherence separately for trials with prev_success=1 vs 0,
-    fit Weibull to the two curves, and plot them.
-    """
     mask = np.ones_like(tbl["succ"], dtype=bool)
     if by in ("fixed", "roving"):
         mask &= (tbl["cond"] == by)
@@ -1378,135 +1432,6 @@ def plot_prev_effect(
 
     return (ax, table) if return_table else ax
 
-def analyze_pairwise_bins(
-        files,
-        bin_width_deg: float = 30.0,
-        condition_filter: str | None = None,   # 'fixed' | 'roving' | None
-        min_trials_per_bin: int = 1,
-        show_plot: bool = True
-):
-    """
-    Bin trials (centered bins) and compare each θ/θ+180° pair's success rate
-    to the horizontal baseline (0° & 180°), using a two-proportion z-test.
-
-    Prints a sorted table by delta vs. horizontal and optionally plots a bar chart.
-    """
-
-    # -------- collect angles & successes (reuse your parser) --------
-    all_angles, all_success = [], []
-    for fp in files:
-        base = os.path.basename(fp)
-        if condition_filter and condition_filter not in base:
-            continue
-        txt = open(fp, "r", encoding="utf-8", errors="ignore").read()
-        ang_deg, succ = _parse_trials_angles_success(txt)
-        if ang_deg.size == 0:
-            continue
-        all_angles.append(ang_deg)
-        all_success.append(succ)
-
-    if not all_angles:
-        print("No trials with parsable directions found.")
-        return
-
-    A = np.concatenate(all_angles)
-    S = np.concatenate(all_success)
-
-    # -------- binning centered on axes (same convention you used) --------
-    nbins = int(round(360.0 / bin_width_deg))
-    half = bin_width_deg / 2.0
-    A_mod = (A % 360.0)
-    idx = np.floor(((A_mod + half) % 360.0) / bin_width_deg).astype(int)
-    idx = np.clip(idx, 0, nbins - 1)
-
-    # per-bin counts
-    k = np.zeros(nbins, dtype=int)
-    n = np.zeros(nbins, dtype=int)
-    for b in range(nbins):
-        m = (idx == b)
-        n[b] = int(m.sum())
-        if n[b] > 0:
-            k[b] = int(S[m].sum())
-    p = np.divide(k, n, out=np.full_like(k, np.nan, dtype=float), where=(n > 0))
-
-    centers = (np.arange(nbins) * bin_width_deg) % 360.0  # 0, 30, 60, ...
-
-    # -------- build θ / θ+180° pairs (orientation pairs) --------
-    # Keep each orientation once (θ in [0, 180) step bin_width)
-    bases = np.arange(0.0, 180.0, bin_width_deg)
-    rows = []
-    # find index of a center value
-    center_to_idx = {float(c): i for i, c in enumerate(centers)}
-
-
-    # horizontal baseline = pair at 0° and 180°
-    i0 = center_to_idx.get(0.0, None)
-    i180 = center_to_idx.get((0.0 + 180.0) % 360.0, None)
-    if i0 is None or i180 is None or (n[i0] < min_trials_per_bin) or (n[i180] < min_trials_per_bin):
-        print("Horizontal baseline bins missing or underpowered.")
-        return
-
-    k_h = k[i0] + k[i180]
-    n_h = n[i0] + n[i180]
-    p_h = k_h / n_h if n_h > 0 else np.nan
-
-    for base in bases:
-        i = center_to_idx.get(float(base), None)
-        j = center_to_idx.get(float((base + 180.0) % 360.0), None)
-        if i is None or j is None:
-            continue
-        if (n[i] < min_trials_per_bin) or (n[j] < min_trials_per_bin):
-            continue
-
-        k_pair = k[i] + k[j]
-        n_pair = n[i] + n[j]
-        p_pair = k_pair / n_pair if n_pair > 0 else np.nan
-
-        delta = p_pair - p_h
-
-        rows.append({
-            "orientation_center_deg": float(base),   # represents θ/θ+180
-            "pair_centers_deg": (float(base), float((base + 180.0) % 360.0)),
-            "k_pair": int(k_pair), "n_pair": int(n_pair), "p_pair": float(p_pair),
-            "k_horiz": int(k_h), "n_horiz": int(n_h), "p_horiz": float(p_h),
-            "delta_vs_horiz": float(delta),
-        })
-
-    if not rows:
-        print("No orientation pairs with sufficient data.")
-        return
-
-    # sort by improvement over horizontal
-    rows.sort(key=lambda r: r["delta_vs_horiz"], reverse=True)
-
-    print("\n[orientation pairs vs horizontal]")
-    print(" θ(deg) | pair(θ,θ+180) |  k_pair / n_pair  p_pair |  p_horiz |  Δ(pair-horiz)   z       p")
-    for r in rows:
-        θ = r["orientation_center_deg"]
-        a, b = r["pair_centers_deg"]
-        print(f"{θ:6.1f} | ({a:4.0f},{b:4.0f})   |  {r['k_pair']:5d}/{r['n_pair']:5d}   {r['p_pair']:.3f} |"
-              f"  {r['p_horiz']:.3f} |   {r['delta_vs_horiz']:+.3f}  ")
-
-    # -------- optional plot --------
-    if show_plot:
-        x = [r["orientation_center_deg"] for r in rows]
-        y = [r["p_pair"] for r in rows]
-        deltas = [r["delta_vs_horiz"] for r in rows]
-
-        fig, ax = plt.subplots(figsize=(7, 4.5))
-        ax.bar(x, y, width=bin_width_deg * 0.8, edgecolor="black", alpha=0.85)
-        ax.axhline(p_h, linestyle="--", linewidth=1.5, label=f"horizontal (p={p_h:.3f})", color="red")
-        for xi, di in zip(x, deltas):
-            ax.text(xi, 0.02 + max(0, y[x.index(xi)] - 0.02), f"Δ={di:+.2f}", ha="center", va="bottom", fontsize=9, rotation=0)
-        ax.set_xlabel("Orientation center θ (deg)  [pair = θ & θ+180°]")
-        ax.set_ylabel("Weighted success rate of pair")
-        ax.set_title(f"Pairwise orientation success (bin={int(bin_width_deg)}°"
-                     + (f", {condition_filter}" if condition_filter else "") + ")")
-        ax.set_xticks(list(bases))
-        ax.set_ylim(0, 1.0)
-        ax.legend()
-        plt.tight_layout()
-        plt.show()
 
 def compare_first_second_half(files, by_age=False, show_plot=True, verbose=False):
     tbl = build_trial_table(files)
@@ -1587,60 +1512,64 @@ def compare_first_second_half(files, by_age=False, show_plot=True, verbose=False
 if __name__ == "__main__":
     files = glob.glob(os.path.join(FOLDER_PATH, "*"))
     debug_inventory(files)
-    fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=False)
-    files = glob.glob(os.path.join(FOLDER_PATH, "*"))
-    print("Total files found:", len(files))
-    for f in files[:5]:
-        print("-", os.path.basename(f))
 
-    mismatched = [f for f in files if not SUBJECT_KIND_TS.match(os.path.basename(f))]
-    print("Files NOT matched by pattern:", mismatched)
-
-    plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=5)
-    (
-       fixed_first, roving_first, frf_triples, rfr_triples,
-       fixed_first_A, roving_first_A, frf_triples_A, rfr_triples_A,
-       fixed_first_C, roving_first_C, frf_triples_C, rfr_triples_C
-    ) = parse_data_with_age(files, strict=False)
-
-    print("Adults  (F->R):", len(fixed_first_A))
-    print("Adults  (R->F):", len(roving_first_A))
-    print("Children(F->R):", len(fixed_first_C))
-    print("Children(R->F):", len(roving_first_C))
-
-    print("[ADULTS]")
-    analyze_subjects(fixed_first_A, roving_first_A, frf_triples_A, rfr_triples_A)
-    print("[CHILDREN]")
-    analyze_subjects(fixed_first_C, roving_first_C, frf_triples_C, rfr_triples_C)
-
-    plot_alpha_beta_distributions_by_age(
-       fixed_first_A, roving_first_A,
-       fixed_first_C, roving_first_C,
-       subset_size=5,
-      num_samples=2000 )
-
-
-    plot_alpha_beta_distributions(fixed_first, roving_first,
-                                  normalize_subject=True, norm_mode="ratio", combine="group_ratio")
-
-    # By age:
-    plot_alpha_beta_distributions_by_age(fixed_first_A, roving_first_A,
-                                         fixed_first_C, roving_first_C,
-                                         normalize_subject=True, norm_mode="ratio", combine="group_ratio")
-
-    plot_population_psychometric(files, by_age=False, verbose=True, use_subject_baseline=True)
-    analyze_fixed_orientation(files, show_plot=True, by_coherence=True, add_weibull_fit=True)
-
-    # Subject-normalized (ratio)
-    plot_population_psychometric(files, by_age=True, use_subject_baseline=True, norm_mode="ratio")
-
-    # Subject-normalized (difference)
-    plot_population_psychometric(files, by_age=True, use_subject_baseline=True, norm_mode="diff")
+    # fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=True)
+    # print("fixed_first: ", len(fixed_first))
+    # print("roving_first:", len(roving_first))
+    # print("frf_triples: ", len(frf_triples))
+    # print("rfr_triples: ", len(rfr_triples))
     #
+    # print(analyze_subjects(fixed_first, roving_first, frf_triples, rfr_triples))
+    # fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=False)
+    #
+
+    # plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=5)
+
+    # (
+    #    fixed_first, roving_first, frf_triples, rfr_triples,
+    #    fixed_first_A, roving_first_A, frf_triples_A, rfr_triples_A,
+    #    fixed_first_C, roving_first_C, frf_triples_C, rfr_triples_C
+    # ) = parse_data_with_age(files, strict=False)
+    #
+    # print("Adults  (F->R):", len(fixed_first_A))
+    # print("Adults  (R->F):", len(roving_first_A))
+    # print("Children(F->R):", len(fixed_first_C))
+    # print("Children(R->F):", len(roving_first_C))
+    #
+    # print("[ADULTS]")
+    # analyze_subjects(fixed_first_A, roving_first_A, frf_triples_A, rfr_triples_A)
+    # print("[CHILDREN]")
+    # analyze_subjects(fixed_first_C, roving_first_C, frf_triples_C, rfr_triples_C)
+    #
+    # plot_alpha_beta_distributions_by_age(
+    #    fixed_first_A, roving_first_A,
+    #    fixed_first_C, roving_first_C,
+    #    subset_size=5,
+    #   num_samples=2000 )
+    #
+    #
+    # plot_alpha_beta_distributions(fixed_first, roving_first,
+    #                               normalize_subject=True, norm_mode="ratio", combine="group_ratio")
+    #
+    # # By age:
+    # plot_alpha_beta_distributions_by_age(fixed_first_A, roving_first_A,
+    #                                      fixed_first_C, roving_first_C,
+    #                                      normalize_subject=True, norm_mode="ratio", combine="group_ratio")
+    #
+    # plot_population_psychometric(files, by_age=False, verbose=False, use_subject_baseline=True)
+    # plot_population_psychometric(files, by_age=False, verbose=False, use_subject_baseline=False)
+
+    # analyze_fixed_orientation(files, show_plot=True, by_coherence=True, add_weibull_fit=True)
+
     # analyze_lowest_success_by_direction(files, bin_width_deg=30, top_k=6, condition_filter=None, show_plot=True)
     # analyze_lowest_success_by_direction(files, bin_width_deg=15, top_k=8, condition_filter=None, show_plot=True)
     # analyze_lowest_success_by_direction(files, bin_width_deg=5, top_k=3, condition_filter="fixed")
-    # analyze_lowest_success_by_direction(files, bin_width_deg=5, top_k=3, condition_filter="roving")
+    # analyze_lowest_success_by_direction(files, bin_width_deg=22.5, top_k=3, condition_filter="roving")
+    perform_anova(files, bin_width_deg=20, condition_filter="roving")
+    # perform_anova(files, condition_filter="roving", min_trials_per_bin=15)
+    # perform_anova(files, condition_filter="roving", min_trials_per_bin=20)
+
+
     #
     # run_prev_trial_effect(files)
     #

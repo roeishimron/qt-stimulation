@@ -2,4 +2,4 @@
 *.jpg
 *.jpeg
 logs/*
-output/*
+output/*.idea/

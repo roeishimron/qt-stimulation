@@ -1,5 +1,6 @@
 from collections import defaultdict
 from re import search, findall
+import pandas as pd
 from typing import Tuple
 from numpy import fromstring, array2string, array, float64, argsort, linspace, log, median, inf, exp, sqrt, square
 from scipy.optimize import curve_fit
@@ -198,14 +199,9 @@ def parse_data(files: list[str], *, strict: bool = True):
             text = open(fp, "r", encoding="utf-8", errors="ignore").read()
             x, y = text_into_coherences_and_successes(text)
 
-            # 👇 NEW: show parsed data for debugging
-            import pandas as pd
             df = pd.DataFrame({"coherence": x, "success": y})
-            # print(f"\n=== Parsed data preview for {os.path.basename(fp)} ===")
-            # print(df.head(15).to_string(index=False))
 
             (alpha, _beta), _ = fit_weibull(x, y)
-            print(f"alpha={alpha:.4f}")
             return float(alpha)
 
         except Exception as e:
@@ -351,19 +347,16 @@ def analyze_two_trials(fixed_first, roving_first):
     ratios_f2_f1 = [r_then_f[1] / f_then_r[0] for f_then_r, r_then_f in zip(fixed_first, roving_first)]
 
     betaF = gmean(ratios_r2_r1)
-    print ("betaF =", betaF)
     betaR = gmean(ratios_f2_f1)
-    print ("betaR =", betaR)
     alpha =gmean(ratios_f1_r1)
-    print ("alpha =", alpha)
 
     f2_r1 = gmean(1/array(ratios_r1_f2))
-    print(f"f2/r1 ={f2_r1} and alpha*betaR= {alpha*betaR}")
+    print(f"f2 / r1 = {f2_r1} and alpha * betaR = {alpha*betaR}")
 
     r2_f1 = gmean(1/array(ratios_f1_r2))
-    print(f"r2/f1 = {r2_f1} and betaF/alpha = {betaF/alpha}")
+    print(f"r2 / f1 = {r2_f1} and betaF / alpha = {betaF/alpha}")
 
-    print("[2-trials] alpha =", alpha, "betaF =", betaF, "betaR =", betaR)
+    print("Result over all data: alpha =", alpha, "betaF =", betaF, "betaR =", betaR)
     return alpha, betaR, betaF
 
 def analyze_three_trials(frf_triples, rfr_triples): # *NOT UPDATED*
@@ -417,10 +410,6 @@ def analyze_single_subject(subject_name: str):
         xs = linspace(coherences[0], coherences[-1], 100)
         fitted = 1 - 0.75 * exp(-(xs / threasholds[kind]) ** slope)
 
-        # ax.semilogx(xs, fitted,f"{color}- -", label=f"{kind}-fit (distance = {distance:.2f})")
-        # ax.semilogx(coherences, successes, f"{color}-", label=f"{kind}")
-        # ax.vlines(threasholds[kind], 0.25, 1, colors=["red", "purple"][kind=="fixed"])
-
         if (kind == "fixed"):
             # ax.semilogx(xs, fitted, "g--", label=f"{kind}-fit (distance = {distance:.2f})")
             ax.semilogx(xs, fitted, "g--", label=f"{kind}-fit (R²={r2:.2f})")
@@ -461,19 +450,4 @@ def analyze_subjects(fixed_first, roving_first, frf_triples, rfr_triples):
         analyze_two_trials(fixed_first, roving_first)
     if frf_triples or rfr_triples:
         analyze_three_trials(frf_triples, rfr_triples)
-
-
-
-
-if __name__ == "__main__":
-    files = glob.glob(os.path.join(FOLDER_PATH, "*"))
-    debug_inventory(files)
-    fixed_first, roving_first, frf_triples, rfr_triples = parse_data(files, strict=True)
-    print("fixed_first: ", len(fixed_first))
-    print("roving_first:", len(roving_first))
-    print("frf_triples: ", len(frf_triples))
-    print("rfr_triples: ", len(rfr_triples))
-
-    print(analyze_subjects(fixed_first, roving_first, frf_triples, rfr_triples))
-
 
