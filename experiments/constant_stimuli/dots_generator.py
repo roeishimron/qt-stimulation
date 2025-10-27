@@ -41,7 +41,6 @@ def _get_lifetime_duration(mean_lifetime: int, cycle_time: int) -> int:
     num_cycles = np.random.exponential(scale=mean_lifetime_in_cycles)
     num_cycles = max(1, int(round(num_cycles)))
     return num_cycles * cycle_time
-
 def _find_valid_position(
     placement_radius: float,
     velocity: complex,
@@ -53,31 +52,31 @@ def _find_valid_position(
 ) -> complex:
     """
     Finds a valid, non-overlapping, and spatially unbiased position by
-    only searching in the upstream hemisphere of the placement area.
+    directly sampling angles centered around the upstream direction.
     """
     if placement_radius <= 0: return center
-        
+
+    placement_radius_sq = placement_radius**2
     step_back_duration = float(cycle_time) if cycle_time > 0 else 1.0
     c2 = -velocity * step_back_duration
 
-    upstream_direction = -velocity
+    # Angle pointing opposite to the velocity
+    upstream_angle = np.angle(-velocity)
 
     for _ in range(max_tries):
-        # 1. Generate a candidate point uniformly
+        # 1. Generate angle centered around upstream direction with range pi
+        angle_offset = np.random.uniform(-np.pi / 2, np.pi / 2)
+        theta = upstream_angle + angle_offset
+        # Generate radius ensuring uniform area distribution
         r = placement_radius * np.sqrt(np.random.rand())
-        theta = np.random.rand() * 2 * np.pi
         rel_pos = r * np.exp(1j * theta)
 
-        # 2. Check if it's in the valid "safe zone"
-        if not abs(rel_pos - c2) >= placement_radius:
+        # 2. Check if it's in the second, shifted circle.
+        if abs(rel_pos - c2)**2 >= placement_radius_sq:
             continue
 
-        #    The dot product will be positive if the point is generally aligned with the upstream vector.
-        dot_product = rel_pos.real * upstream_direction.real + rel_pos.imag * upstream_direction.imag
-        if dot_product < 0:
-            continue # Reject this downstream candidate and try again
 
-        # If accepted, check for overlaps
+        # 3. Check for overlaps
         candidate_pos = center + rel_pos
         is_overlapping = False
         for d in existing_dots:
@@ -86,7 +85,7 @@ def _find_valid_position(
                 break
         if not is_overlapping:
             return candidate_pos
-            
+
     # Fallback if a position isn't found
     return center
 
