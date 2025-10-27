@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import functools
 from numpy import cos, sin, pi, linspace, sqrt, stack, uint8, int16, float64, int64, tile, full, ones, square, mgrid, array, argwhere, logical_not, log, diff, exp, meshgrid, inf, arange, zeros, where, all, clip
 from numpy.random import choice, rand
 from numpy.typing import NDArray
@@ -9,7 +10,7 @@ from animator import AppliablePixmap
 from itertools import chain
 from typing import List, Generator, Any, Iterable, Tuple
 from random import shuffle, randint
-
+from cv2 import BORDER_ISOLATED, BORDER_REFLECT, GaussianBlur, BORDER_CONSTANT
 
 def gaussian(size: int, sigma):
 
@@ -83,11 +84,17 @@ def generate_sin(figure_size, frequency=1, offset=0, contrast=1, step=False, rai
 # assuming array of values between -1 and 1
 
 
-def array_into_pixmap(arr: NDArray) -> AppliablePixmap:
+def array_into_pixels(arr: NDArray) -> NDArray:
     mormalized_to_pixels = (((arr * 255) + 256)/2)
-    mormalized_to_pixels = array(mormalized_to_pixels, dtype=uint8)
+    return array(mormalized_to_pixels, dtype=uint8) 
 
-    return AppliablePixmap(QPixmap.fromImage(QImage(mormalized_to_pixels, arr.shape[1], arr.shape[0], arr.shape[1], QImage.Format.Format_Grayscale8)))
+def pixels_into_pixmap(pixels: NDArray) -> AppliablePixmap:
+    return AppliablePixmap(QPixmap.fromImage(QImage(pixels, pixels.shape[1], pixels.shape[0], pixels.shape[1], QImage.Format.Format_Grayscale8)))
+
+
+def array_into_pixmap(arr: NDArray) -> AppliablePixmap:
+    mormalized_to_pixels = array_into_pixels(arr)
+    return pixels_into_pixmap(mormalized_to_pixels)
 
 
 def generate_grey(figure_size: int) -> AppliablePixmap:
@@ -272,6 +279,53 @@ def place_dots_in_frame(figure_size: int, dots: List[Dot], minimum_distance_fact
 
     return dots
 
+# --- 1. The Cached Helper Function ---
+@functools.lru_cache(maxsize=16)  # Cache up to 16 recent (cpd, ppd) pairs
+def _get_sigma(max_cpd: float, pixels_per_degree: int) -> float:
+    """
+    Calculates the spatial sigma in pixels from vision parameters.
+    Results are cached for speed.
+    """
+    print(f"--- (Cache MISS) Calculating sigma for cpd={max_cpd}, ppd={pixels_per_degree} ---")
+    
+    # --- 1. Validate Inputs ---
+    # Assertions are checked *before* caching
+    assert max_cpd > 0, f"max_cpd must be positive, but got {max_cpd}"
+    assert pixels_per_degree > 0, f"pixels_per_degree must be positive, but got {pixels_per_degree}"
+
+    # --- 2. Calculate Sigma in Pixels ---
+    sigma_freq_cpp = max_cpd / pixels_per_degree
+    sigma_pixels = 1.0 / (2.0 * pi * sigma_freq_cpp)
+    
+    return sigma_pixels
+
+
+# --- 2. The Main Function (Now Simplified) ---
+def apply_spatial_filter(image: NDArray, max_cpd: float, pixels_per_degree: int) -> NDArray:
+    """
+    Applies a low-pass spatial filter using OpenCV's GaussianBlur.
+    
+    Sigma calculations are cached for efficiency when called
+    repeatedly with the same parameters.
+    """
+
+    if max_cpd == inf:
+        return image
+
+    # Get the sigma. This is now a super-fast lookup
+    # after the first call.
+    sigma_pixels = _get_sigma(max_cpd, pixels_per_degree)
+    
+    # --- 3. Apply OpenCV Gaussian Blur ---
+    filtered_image = GaussianBlur(
+        src=image,
+        ksize=(0, 0),
+        sigmaX=sigma_pixels,
+        sigmaY=sigma_pixels,
+        borderType=BORDER_REFLECT,
+    )
+    
+    return filtered_image
 
 def _radius_into_mask(r: int):
     filler_xs, filler_ys = mgrid[:r*2, :r*2]
