@@ -11,8 +11,7 @@ from typing import List, Tuple, Iterable
 def circular_center_generator(length: int, frame_size: int) -> Iterable[Tuple[List[Tuple[int,int]], int, int]]:
     motion_radius = int(frame_size/5)
     center = (int(frame_size/2), int(frame_size/2))
-    return (([circle_at(center, motion_radius, angle)[1],
-              circle_at(center, motion_radius, angle+pi)[1]], int((frame_size/2 - DOT_SIZE*2)/2), 1)
+    return (([circle_at(center, motion_radius, angle)[1]], int((frame_size/2 - DOT_SIZE*2)/2), 1)
             for angle in linspace(0, 2*pi, length, False))
 
 
