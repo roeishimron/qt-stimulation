@@ -10,6 +10,7 @@ from typing import Callable, Tuple, Iterable, List
 from realtime_experiment import RealtimeViewingExperiment
 
 DOT_SIZE = 70
+STIMULI_DISPLAY_FREQUENCY = 20
 
 def flatten(lst):
     return [x for xs in lst for x in xs]
@@ -26,16 +27,16 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[List[Tuple[int, int
 
     height = int(screen_height*5/6)
 
-    AMOUNT_OF_BASE = 100
-    COHERENCES = arange(5) + 10
+    AMOUNT_OF_BASE = 20
+    COHERENCES = 15
 
     FRAME_RATE = 60
-    STIMULI_DISPLAY_FREQUENCY = 60
+    STIMULI_DISPLAY_FREQUENCY = 20
     assert FRAME_RATE % STIMULI_DISPLAY_FREQUENCY == 0
 
     ODDBALL_MODULATION = 3
-    TRIAL_DURATION = 15
-    AMOUNT_OF_EXAMPLES = 60
+    TRIAL_DURATION = 12
+    AMOUNT_OF_EXAMPLES = STIMULI_DISPLAY_FREQUENCY
 
     RADIAL_EASING = 1000
     SPACIAL_FREQUENCY = 2
@@ -57,15 +58,19 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[List[Tuple[int, int
                                            raidal_easing=RADIAL_EASING)
                        for r in linspace(0, 2*pi, 360)]
 
-    oddballs = [[array_into_pixmap(
-        fill_with_dots(int(height), sample(oriented_gabors,
-                                           AMOUNT_OF_BASE - int(coherence*len(centers)*relative_increase)),
-                priority_dots=list(chain(*(gabors_around_circle(center, radius,
-                                                                int(coherence *
-                                                                    relative_increase),
+    oddballs = [
+                    [array_into_pixmap(
+                        fill_with_dots(int(height), sample(oriented_gabors,
+                                        AMOUNT_OF_BASE - int(coherence*len(centers)*relative_increase)),
+                                        priority_dots=list(chain(*(gabors_around_circle(center, radius,
+                                                                int(coherence *relative_increase),
                                                                 DOT_SIZE, SPACIAL_FREQUENCY,
-                                                                RADIAL_EASING, offset=random()*pi*2) for center in centers)))))
-                for centers, radius, relative_increase in center_generaor(AMOUNT_OF_EXAMPLES, height)]*TRIAL_INFLATION
+                                                                RADIAL_EASING, offset=random()*pi*2)
+                                                                  for center in centers)))
+                                        )
+                                    )
+                    for centers, radius, relative_increase 
+                        in center_generaor(AMOUNT_OF_EXAMPLES, height)]*TRIAL_INFLATION
                 for coherence in COHERENCES]
 
     base = inflate_randomley([array_into_pixmap(
