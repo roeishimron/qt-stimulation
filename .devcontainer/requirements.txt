@@ -6,3 +6,4 @@ pyserial
 more-itertools
 scipy
 pytest
+opencv-python
