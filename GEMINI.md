@@ -13,4 +13,4 @@ docker build . -t experiment-runner && docker run -it --mount type=bind,source=/
 
 ## Usage
 
-While the default entrypoint is `env_main.py`, it is also possible to run `main.py`.
+While the default entrypoint is `env_main.py`, it is also possible to run `main.py` by overriding the default at `docker run...`.
