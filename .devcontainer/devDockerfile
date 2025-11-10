@@ -6,3 +6,45 @@ RUN echo "alias ll='ls -alF'"  >> ~/.bashrc
 
 RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
 RUN pip install -r /tmp/requirements.txt
+
+
+RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
+RUN pip install -r /tmp/requirements.txt
+
+# gemini support:
+
+RUN apt-get update && apt-get install -y npm
+RUN npm install -g @google/gemini-cli pyright
+
+# languge server support:
+
+# Go version you want as a build argument.
+ARG GO_VERSION=1.24.9
+ARG GO_ARCH=amd64
+
+# 3. Install dependencies, download Go, extract it, and clean up.
+# This runs as one layer to keep the image smaller.
+RUN apt-get update && apt-get install -y \
+    curl \
+    && curl -L "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o go.tar.gz \
+    && tar -C /usr/local -xzf go.tar.gz \
+    && rm go.tar.gz \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. Set system-wide environment variables for Go
+# This makes the 'go' command available to all users.
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOROOT="/usr/local/go"
+ENV GOPATH="/go"
+
+# 5. Create the GOPATH directory and give ownership
+# to the default 'vscode' user.
+RUN mkdir -p /go/src /go/bin /go/pkg \
+    && chown -R vscode:vscode /go
+
+#6. update path
+ENV PATH="${PATH}:${GOPATH}/bin"
+
+# install the MCP languge server (requires go)
+RUN go install github.com/isaacphi/mcp-language-server@latest    
