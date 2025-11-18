@@ -84,9 +84,9 @@ def analyze_latest():
 # returns
 def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
     coherences = search(r"^INFO:experiments.constant_stimuli.base:starting with coherences.*\[(.*)\] and direction", text)
-    success = findall(r"\nINFO:constant_stimuli_experiment:Trial \#\d+ got answer after \d\.\d+ s and its (True|False)", text)
-    clicked_directions = findall(r"\nINFO:root:DirectionValidator: clicked (\-?\d\.\d+), was (\-?\d\.\d+)", text)
-    if clicked_directions is not None:
+    success = findall(r"INFO:constant_stimuli_experiment:Trial \#\d+ got answer after \d\.\d+ s and its (True|False)", text)
+    clicked_directions = findall(r"INFO:root:DirectionValidator: clicked (\-?\d\.\d+), was (\-?\d\.\d+)", text)
+    if clicked_directions:
         clicked_directions, actual_directions = zip(*clicked_directions)
 
     assert coherences is not None
@@ -124,75 +124,72 @@ def analyze_coherence_and_learning_coefficients(fixed_first, roving_first):
     print("alpha" , alpha , "betha" , betha)
 
 
-def analyze_subject(subject_name: str):
-    print(f"Analysing {subject_name}")
-    list_of_files = array(glob.glob(os.path.join(FOLDER_PATH, f'{subject_name}-*')))
-    print(list_of_files)
-    relevant_files = [filename for filename in list_of_files if search(r"(fixed|roving)", filename) is not None]
-    kinds = array([search(r"(fixed|roving)", filename).group(1) for filename in relevant_files])
-    times = array([int(search(r"(\d*)$", filename).group(1))
-             for filename in relevant_files])
-    
-    time_sorting_indices = argsort(times)
+def get_all_subjects_data(folder_path):
+    """
+    Parses all log files in a directory and returns a structured dictionary
+    with data for each subject and condition.
+    """
+    all_files = glob.glob(os.path.join(folder_path, '*.log'))
+    subjects_data = {}
 
-    relevant_files = array(relevant_files)[time_sorting_indices]
-    kinds = kinds[time_sorting_indices]
+    for file_path in all_files:
+        base = os.path.basename(file_path)
+        m_subj = search(r"^(.*?)-motion_coherence", base)
+        m_kind = search(r"(fixed|roving)", base)
+        m_time = search(r"(\d+)\.log$", base)
 
-    assert len(relevant_files) > 0
-    _, ax = subplots(label=f"analysis of {subject_name}")
+        if not (m_subj and m_kind and m_time):
+            continue
 
-    colors = ("g", "r", "b")
+        subject_id = m_subj.group(1)
+        condition = m_kind.group(1)
+        timestamp = int(m_time.group(1))
 
-    threasholds = {}
+        if subject_id not in subjects_data:
+            subjects_data[subject_id] = {"fixed": [], "roving": []}
 
-    for filename, kind, color in zip(relevant_files, kinds, colors):
-        coherences, successes = text_into_coherences_and_successes(
-            open(filename).read().replace("\n", ""))
-        # (threasholds[kind], slope), distance = fit_weibull(coherences, successes)
-        (threasholds[kind], slope), r2 = fit_weibull(coherences, successes)
+        with open(file_path, 'r') as f:
+            text = f.read()
+            coherences, successes = text_into_coherences_and_successes(text)
+            subjects_data[subject_id][condition].append({
+                "timestamp": timestamp,
+                "coherences": coherences,
+                "successes": successes
+            })
 
-        xs = linspace(coherences[0], coherences[-1], 100)
-        fitted = 1 - 0.75 * exp(-(xs / threasholds[kind]) ** slope)
+    # For each subject and condition, keep only the latest session
+    for subject_id, conditions in subjects_data.items():
+        for condition, sessions in conditions.items():
+            if sessions:
+                latest_session = max(sessions, key=lambda x: x['timestamp'])
+                subjects_data[subject_id][condition] = latest_session
+            else:
+                subjects_data[subject_id][condition] = None
 
-        # ax.semilogx(xs, fitted,f"{color}- -", label=f"{kind}-fit (distance = {distance:.2f})")
-        # ax.semilogx(coherences, successes, f"{color}-", label=f"{kind}")
-        # ax.vlines(threasholds[kind], 0.25, 1, colors=["red", "purple"][kind=="fixed"])
-        
-        if(kind == "fixed"):
-            # ax.semilogx(xs, fitted, "g--", label=f"{kind}-fit (distance = {distance:.2f})")
-            ax.semilogx(xs, fitted, "g--", label=f"{kind}-fit (R²={r2:.2f})")
+    return subjects_data
 
-            ax.semilogx(coherences, successes, "go", label=f"{kind}")
-            ax.vlines(threasholds[kind], 0.25, 1, colors="g")
-            
-            ax.text(threasholds[kind]* 0.93, 0.25, f"{threasholds[kind]*100:.0f}%",
-            ha="center", color='g', fontsize=7)
-        else:
-            # ax.semilogx(xs, fitted, "r--", label=f"{kind}-fit (distance = {distance:.2f})")
-            ax.semilogx(xs, fitted, "r--", label=f"{kind}-fit (R²={r2:.2f})")
-            ax.semilogx(coherences, successes, "ro", label=f"{kind}")
-            ax.vlines(threasholds[kind], 0.25, 1, colors="r")
-            
-            ax.text(threasholds[kind]* 1.07, 0.25, f"{threasholds[kind]*100:.0f}%",
-            ha="center", color='r', fontsize=7)
 
-    print(f"roving {threasholds["roving"]},fixed {threasholds["fixed"]}, fixed/roving {threasholds["fixed"]/threasholds["roving"]}")
+def analyze_subject(subject_name: str, folder_path: str = FOLDER_PATH):
+    """
+    Analyzes a single subject's data.
+    """
+    all_data = get_all_subjects_data(folder_path)
+    subject_data = {subject_name: all_data.get(subject_name)}
+    if not subject_data[subject_name]:
+        print(f"No data found for subject: {subject_name}")
+        return
+    plot_analysis_curves(subject_data, folder_path)
 
-    
-    #Axis labels
-    ax.set_xlabel("Coherence level")
-    ax.set_ylabel("Proportion correct")
 
-    ticks = [0.1, 0.2, 0.3, 0.4, 0.5,0.6,0.7,0.8,0.9]
-    ax.set_xticks(ticks)    
-    ax.tick_params(axis='x', labelsize=7)
-
-    # Then format as percentages
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}%"))
-
-    
-    legend()
-    show()
+def analyze_population(folder_path: str = FOLDER_PATH):
+    """
+    Analyzes the entire population in a folder.
+    """
+    all_data = get_all_subjects_data(folder_path)
+    if not all_data:
+        print("No data found in the specified folder.")
+        return
+    plot_analysis_curves(all_data, folder_path)
 
 def parse_data(files: list[str]):
     per_subject: dict[str, dict[str, tuple[int, str]]] = {}
@@ -245,9 +242,74 @@ def parse_data(files: list[str]):
     return fixed_first, roving_first, subjects_fixed_first, subjects_roving_first
 
 if __name__ == "__main__":
-    # analyze_subject("roeis")
+    import sys
+    if len(sys.argv) > 1:
+        analyze_population(sys.argv[1])
+    else:
+        analyze_latest()
 
-    text_into_coherences_and_successes(open("output/latest").read())
+
+def plot_analysis_curves(subjects_data, folder_path):
+    """
+    Plots the analysis curves for a single subject or a population on separate subplots.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
+    conditions = ["fixed", "roving"]
+    colors = {"fixed": "g", "roving": "r"}
+
+    num_subjects = len(subjects_data)
+    subject_names = ", ".join(subjects_data.keys())
+    if num_subjects <= 3:
+        plot_title_prefix = f"Analysis of {subject_names}"
+    else:
+        plot_title_prefix = f"Population Average for {num_subjects} subjects"
+
+    for i, condition in enumerate(conditions):
+        ax = axes[i]
+        all_coherences = []
+        all_successes = []
+
+        for subject_data in subjects_data.values():
+            if subject_data and subject_data[condition]:
+                all_coherences.append(subject_data[condition]['coherences'])
+                all_successes.append(subject_data[condition]['successes'])
+
+        if not all_coherences:
+            ax.set_title(f"{plot_title_prefix}\n({condition} - No data)")
+            continue
+
+        unique_coherences = np.unique(np.concatenate(all_coherences))
+        average_successes = np.zeros_like(unique_coherences, dtype=float)
+
+        for j, coh in enumerate(unique_coherences):
+            success_rates = []
+            for k in range(len(all_coherences)):
+                idx = np.where(all_coherences[k] == coh)
+                if idx[0].size > 0:
+                    success_rates.append(all_successes[k][idx][0])
+            if success_rates:
+                average_successes[j] = np.mean(success_rates)
+
+        ax.semilogx(unique_coherences, average_successes, "o-", color=colors[condition], label="Average Data")
+
+        (alpha, beta), r2 = fit_weibull(unique_coherences, average_successes)
+        xs = np.linspace(unique_coherences.min(), unique_coherences.max(), 100)
+        fitted = weibull(xs, alpha, beta)
+        ax.semilogx(xs, fitted, "--", color=colors[condition], label=f"Fit (R²={r2:.2f})")
+
+        ax.set_title(f"{plot_title_prefix} ({condition})")
+        ax.set_xlabel("Coherence level")
+        ax.set_ylabel("Proportion correct")
+        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}%"))
+        ax.legend()
+
+    plt.tight_layout()
+
+    if folder_path == FOLDER_PATH:
+        plt.show()
+    else:
+        plt.savefig(os.path.join(folder_path, "analysis_curves.png"))
+
 
 
 def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
