@@ -10,8 +10,8 @@ from random import shuffle
 from numpy.random import randint, choice
 from numpy import arange, array
 
-STIMULI_REFRESH_RATE = 30
-ODDBALL_MODULATION = 6
+STIMULI_REFRESH_RATE = 20
+ODDBALL_MODULATION = 5
 TRIAL_DURATION = 60
 AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
 assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
