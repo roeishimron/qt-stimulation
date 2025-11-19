@@ -102,7 +102,9 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDA
         r"INFO:experiments.constant_stimuli.base:starting with coherences \s*\[(.*?)\] and directions \s*\[(.*?)\]",
         text,
     )
-    assert match is not None
+    if match is None:
+        raise ValueError
+    
     coherences = fromstring(match.group(1), dtype=float64, sep=" ")
     directions = fromstring(match.group(2), dtype=float64, sep=" ")
 
@@ -112,7 +114,8 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDA
     )
     success = array([s == "True" for s in success])
 
-    assert len(coherences) == len(success) == len(directions)
+    if not len(coherences) == len(success) == len(directions):
+        raise ValueError
 
     return coherences, success, directions
 
@@ -134,14 +137,14 @@ def get_all_subjects_data(folder_path):
     Parses all log files in a directory and returns a structured dictionary
     with data for each subject and condition.
     """
-    all_files = glob.glob(os.path.join(folder_path, "*.log"))
+    all_files = glob.glob(os.path.join(folder_path, "*"))
     subjects_data = {}
 
     for file_path in all_files:
         base = os.path.basename(file_path)
-        m_subj = search(r"^(.*?)-motion_coherence", base)
+        m_subj = search(r"^(.*?)-(fixed|roving)", base)
         m_kind = search(r"(fixed|roving)", base)
-        m_time = search(r"(\d+)\.log$", base)
+        m_time = search(r"(\d+)$", base)
 
         if not (m_subj and m_kind and m_time):
             continue
@@ -155,7 +158,11 @@ def get_all_subjects_data(folder_path):
 
         with open(file_path, "r") as f:
             text = f.read()
-            coherences, successes, directions = text_into_coherences_and_successes(text)
+            try:
+                coherences, successes, directions = text_into_coherences_and_successes(text)
+            except ValueError:
+                continue
+
             subjects_data[subject_id][condition].append(
                 {
                     "timestamp": timestamp,
@@ -196,7 +203,7 @@ def analyze_population(folder_path: str = FOLDER_PATH):
     """
     all_data = get_all_subjects_data(folder_path)
     if not all_data:
-        print("No data found in the specified folder.")
+        print(f"No data found in the specified folder. {folder_path}")
         return
     plot_analysis_curves(all_data, folder_path)
     plot_psychometric_curves_by_prev_trial(all_data, folder_path)
@@ -263,15 +270,6 @@ def parse_data(files: list[str]):
             subjects_roving_first.append(subj)
 
     return fixed_first, roving_first, subjects_fixed_first, subjects_roving_first
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) > 1:
-        analyze_population(sys.argv[1])
-    else:
-        analyze_latest()
 
 
 def plot_analysis_curves(subjects_data, folder_path):
@@ -503,3 +501,12 @@ def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
 
     plt.tight_layout()
     plt.show()
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) > 1:
+        analyze_population(f"{FOLDER_PATH}/{sys.argv[1]}")
+    else:
+        analyze_latest()

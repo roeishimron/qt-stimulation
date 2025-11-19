@@ -9,7 +9,7 @@ from unittest.mock import patch
 class TestMotionCoherence(unittest.TestCase):
     def test_weibull_parameter_recovery(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            log_filepath = os.path.join(tmpdir, "test-motion_coherence_fixed-12345.log")
+            log_filepath = os.path.join(tmpdir, "test-motion_coherence_fixed-12345")
 
             alpha_gt = 0.5
             beta_gt = 1.5
@@ -34,7 +34,7 @@ class TestMotionCoherence(unittest.TestCase):
     @patch('matplotlib.pyplot.show')
     def test_new_analysis(self, mock_show):
         with tempfile.TemporaryDirectory() as tmpdir:
-            log_filepath = os.path.join(tmpdir, "test-motion_coherence_fixed-12345.log")
+            log_filepath = os.path.join(tmpdir, "test-motion_coherence_fixed-12345")
 
             coherences = [0.9, 0.2, 0.9, 0.3, 0.9, 0.4]
             successes =  [True, True, True, True, True, True]
@@ -61,8 +61,8 @@ class TestMotionCoherence(unittest.TestCase):
     @patch('matplotlib.pyplot.show')
     def test_single_subject_analysis(self, mock_show):
         with tempfile.TemporaryDirectory() as tmpdir:
-            log_filepath_fixed = os.path.join(tmpdir, "test-motion_coherence_fixed-12345.log")
-            log_filepath_roving = os.path.join(tmpdir, "test-motion_coherence_roving-12346.log")
+            log_filepath_fixed = os.path.join(tmpdir, "test-motion_coherence_fixed-12345")
+            log_filepath_roving = os.path.join(tmpdir, "test-motion_coherence_roving-12346")
 
             coherences = np.repeat(np.linspace(0.1, 0.9, 10), 20)
             directions = [(0.1, 0.2)] * len(coherences)
@@ -83,14 +83,14 @@ class TestMotionCoherence(unittest.TestCase):
             directions = [(0.1, 0.2)] * len(coherences)
 
             # Subject 1
-            log_filepath1_fixed = os.path.join(tmpdir, "subject1-motion_coherence_fixed-12345.log")
-            log_filepath1_roving = os.path.join(tmpdir, "subject1-motion_coherence_roving-12346.log")
+            log_filepath1_fixed = os.path.join(tmpdir, "subject1-motion_coherence_fixed-12345")
+            log_filepath1_roving = os.path.join(tmpdir, "subject1-motion_coherence_roving-12346")
             generate_log_file_with_weibull(log_filepath1_fixed, coherences, directions, 0.5, 1.5)
             generate_log_file_with_weibull(log_filepath1_roving, coherences, directions, 0.5, 1.5)
 
             # Subject 2
-            log_filepath2_fixed = os.path.join(tmpdir, "subject2-motion_coherence_fixed-12347.log")
-            log_filepath2_roving = os.path.join(tmpdir, "subject2-motion_coherence_roving-12348.log")
+            log_filepath2_fixed = os.path.join(tmpdir, "subject2-motion_coherence_fixed-12347")
+            log_filepath2_roving = os.path.join(tmpdir, "subject2-motion_coherence_roving-12348")
             generate_log_file_with_weibull(log_filepath2_fixed, coherences, directions, 0.5, 1.5)
             generate_log_file_with_weibull(log_filepath2_roving, coherences, directions, 0.5, 1.5)
 
