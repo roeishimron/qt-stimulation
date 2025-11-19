@@ -1,11 +1,24 @@
 from ast import arg
 from re import search, findall
 from typing import Tuple
-from numpy import fromstring, array2string, array, float64, argsort, linspace, log, median, inf, exp, sqrt, square
+from numpy import (
+    fromstring,
+    array2string,
+    array,
+    float64,
+    argsort,
+    linspace,
+    log,
+    median,
+    inf,
+    exp,
+    sqrt,
+    square,
+)
 from scipy.optimize import curve_fit
 from scipy.stats import gmean
 from numpy.typing import NDArray
-from matplotlib.pyplot import legend, subplots, show 
+from matplotlib.pyplot import legend, subplots, show
 import matplotlib.ticker as mticker
 import glob
 import os
@@ -21,19 +34,20 @@ FOLDER_PATH = os.path.join(SCRIPT_DIR, "..", "..", "output")  # adjust levels as
 # FOLDER_PATH = 'output'
 LOGFILE = f"{FOLDER_PATH}/roei17-motion_coherence_roving-1756148886"
 
+
 def weibull(C, alpha, beta):
     """Weibull psychometric function with 0.75 asymptote."""
-    return 1 - 0.75 * exp(-(C / alpha) ** beta)
+    return 1 - 0.75 * exp(-((C / alpha) ** beta))
 
 
 def fit_weibull(x, y):
     """
     Fit Weibull function to data x and y.
-    
+
     Parameters:
         x : array-like, stimulus intensities
         y : array-like, proportion correct (0–1)
-    
+
     Returns:
         popt : array, [alpha, beta]
     """
@@ -43,37 +57,37 @@ def fit_weibull(x, y):
     # Boundaries to keep parameters positive
     bounds = ([0, 0], [inf, inf])
 
-    popt, _ = curve_fit(weibull, x, y, p0=p0, bounds=bounds)
+    popt, _ = curve_fit(weibull, x, y, p0=p0, bounds=bounds, maxfev=5000)
 
-    # Old calculation 
-        # evalutaed = 1 - 0.75 * exp(-(x / popt[0]) ** popt[1])
-        # distance = sqrt(sum(square(evalutaed - y)))
-        # return popt, distance
-    
+    # Old calculation
+    # evalutaed = 1 - 0.75 * exp(-(x / popt[0]) ** popt[1])
+    # distance = sqrt(sum(square(evalutaed - y)))
+    # return popt, distance
+
     # Weibull values
     y_hat = weibull(x, *popt)
 
     # distance from samples to mean
-    ss_tot = sum((y - y.mean())**2)
+    ss_tot = sum((y - y.mean()) ** 2)
 
     # distance from samples to their weibull values
-    ss_res = sum((y - y_hat)**2)
+    ss_res = sum((y - y_hat) ** 2)
 
     # the Explained variance
     ss_reg = ss_tot - ss_res
 
-    #R²
-    r_squared = 1 - ss_res/ss_tot
+    # R²
+    r_squared = 1 - ss_res / ss_tot
 
     return popt, r_squared
 
 
 def analyze_latest():
-    list_of_files = glob.glob(os.path.join(FOLDER_PATH, '*'))
+    list_of_files = glob.glob(os.path.join(FOLDER_PATH, "*"))
     latest_file = max(list_of_files, key=os.path.getctime)
 
     subject_search = search(rf"^{FOLDER_PATH}/(.*)-motion_coherence", latest_file)
-    
+
     if subject_search is None:
         print(f"No subject info found at {FOLDER_PATH}")
         return
@@ -82,46 +96,37 @@ def analyze_latest():
 
 
 # returns
-def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray]:
-    coherences = search(r"^INFO:experiments.constant_stimuli.base:starting with coherences.*\[(.*)\] and direction", text)
-    success = findall(r"INFO:constant_stimuli_experiment:Trial \#\d+ got answer after \d\.\d+ s and its (True|False)", text)
-    clicked_directions = findall(r"INFO:root:DirectionValidator: clicked (\-?\d\.\d+), was (\-?\d\.\d+)", text)
-    if clicked_directions:
-        clicked_directions, actual_directions = zip(*clicked_directions)
+def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDArray]:
+    text = text.replace("\n", " ")
+    match = search(
+        r"INFO:experiments.constant_stimuli.base:starting with coherences \s*\[(.*?)\] and directions \s*\[(.*?)\]",
+        text,
+    )
+    assert match is not None
+    coherences = fromstring(match.group(1), dtype=float64, sep=" ")
+    directions = fromstring(match.group(2), dtype=float64, sep=" ")
 
-    assert coherences is not None
-
-    coherences = fromstring(coherences.group(1), dtype=float64, sep=" ")
+    success = findall(
+        r"INFO:constant_stimuli_experiment:Trial \#\d+ got answer after \d\.\d+ s and its (True|False)",
+        text,
+    )
     success = array([s == "True" for s in success])
 
-    assert len(coherences) == len(success)
+    assert len(coherences) == len(success) == len(directions)
 
-    averages = {c: 0.0 for c in coherences}
-
-    assert len(coherences) % len(averages) == 0
-    amount_of_repetitions = len(coherences) / len(averages)
-
-    for c, s in zip(coherences, success):
-        averages[c] += int(s) / amount_of_repetitions
-
-    coherences, successes = zip(*averages.items())
-    coherences, successes = array(coherences), array(successes)
-    sort_indices = argsort(coherences)
-    coherences, successes = coherences[sort_indices], successes[sort_indices]
-
-    return coherences, successes
+    return coherences, success, directions
 
 
 def analyze_coherence_and_learning_coefficients(fixed_first, roving_first):
     ratios_f1_r2 = [f1 / r2 for f1, r2 in fixed_first]
     ratios_r1_f2 = [f2 / r1 for r1, f2 in roving_first]
-    #geometric average of fi1/ri2
+    # geometric average of fi1/ri2
     a_times_b = gmean(ratios_f1_r2)
     a_divided_b = gmean(ratios_r1_f2)
-    alpha_squred = a_times_b*a_divided_b
+    alpha_squred = a_times_b * a_divided_b
     alpha = sqrt(alpha_squred)
     betha = a_times_b / alpha
-    print("alpha" , alpha , "betha" , betha)
+    print("alpha", alpha, "betha", betha)
 
 
 def get_all_subjects_data(folder_path):
@@ -129,7 +134,7 @@ def get_all_subjects_data(folder_path):
     Parses all log files in a directory and returns a structured dictionary
     with data for each subject and condition.
     """
-    all_files = glob.glob(os.path.join(folder_path, '*.log'))
+    all_files = glob.glob(os.path.join(folder_path, "*.log"))
     subjects_data = {}
 
     for file_path in all_files:
@@ -148,20 +153,23 @@ def get_all_subjects_data(folder_path):
         if subject_id not in subjects_data:
             subjects_data[subject_id] = {"fixed": [], "roving": []}
 
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             text = f.read()
-            coherences, successes = text_into_coherences_and_successes(text)
-            subjects_data[subject_id][condition].append({
-                "timestamp": timestamp,
-                "coherences": coherences,
-                "successes": successes
-            })
+            coherences, successes, directions = text_into_coherences_and_successes(text)
+            subjects_data[subject_id][condition].append(
+                {
+                    "timestamp": timestamp,
+                    "coherences": coherences,
+                    "successes": successes,
+                    "directions": directions,
+                }
+            )
 
     # For each subject and condition, keep only the latest session
     for subject_id, conditions in subjects_data.items():
         for condition, sessions in conditions.items():
             if sessions:
-                latest_session = max(sessions, key=lambda x: x['timestamp'])
+                latest_session = max(sessions, key=lambda x: x["timestamp"])
                 subjects_data[subject_id][condition] = latest_session
             else:
                 subjects_data[subject_id][condition] = None
@@ -179,6 +187,7 @@ def analyze_subject(subject_name: str, folder_path: str = FOLDER_PATH):
         print(f"No data found for subject: {subject_name}")
         return
     plot_analysis_curves(subject_data, folder_path)
+    plot_psychometric_curves_by_prev_trial(subject_data, folder_path)
 
 
 def analyze_population(folder_path: str = FOLDER_PATH):
@@ -190,6 +199,8 @@ def analyze_population(folder_path: str = FOLDER_PATH):
         print("No data found in the specified folder.")
         return
     plot_analysis_curves(all_data, folder_path)
+    plot_psychometric_curves_by_prev_trial(all_data, folder_path)
+
 
 def parse_data(files: list[str]):
     per_subject: dict[str, dict[str, tuple[int, str]]] = {}
@@ -203,8 +214,8 @@ def parse_data(files: list[str]):
             continue
 
         subj = m_subj.group(1)
-        kind = m_kind.group(1)    # fixed or roving
-        tstamp = int(m_time.group(1))   # time stamp
+        kind = m_kind.group(1)  # fixed or roving
+        tstamp = int(m_time.group(1))  # time stamp
 
         per_subject.setdefault(subj, {})
         per_subject[subj][kind] = (tstamp, path)
@@ -216,8 +227,16 @@ def parse_data(files: list[str]):
 
     def _alpha_from_file(fp: str) -> float:  # get alpha for a single file
         text = open(fp, "r", encoding="utf-8", errors="ignore").read().replace("\n", "")
-        x, y = text_into_coherences_and_successes(text)
-        (alpha, beta), _dist = fit_weibull(x, y)
+        coherences, successes, _ = text_into_coherences_and_successes(text)
+
+        unique_coherences, inverse_indices = np.unique(
+            coherences, return_inverse=True
+        )
+        avg_successes = np.bincount(inverse_indices, weights=successes) / np.bincount(
+            inverse_indices
+        )
+
+        (alpha, beta), _ = fit_weibull(unique_coherences, avg_successes)
         return float(alpha)
 
     for subj, pair in per_subject.items():
@@ -233,16 +252,22 @@ def parse_data(files: list[str]):
         alpha_roving = _alpha_from_file(file_roving)
 
         if fixed_is_first:
-            fixed_first.append((alpha_fixed, alpha_roving))   # (first=fixed, second=roving)
+            fixed_first.append(
+                (alpha_fixed, alpha_roving)
+            )  # (first=fixed, second=roving)
             subjects_fixed_first.append(subj)
         else:
-            roving_first.append((alpha_roving, alpha_fixed))  # (first=roving, second=fixed)
+            roving_first.append(
+                (alpha_roving, alpha_fixed)
+            )  # (first=roving, second=fixed)
             subjects_roving_first.append(subj)
 
     return fixed_first, roving_first, subjects_fixed_first, subjects_roving_first
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1:
         analyze_population(sys.argv[1])
     else:
@@ -266,41 +291,53 @@ def plot_analysis_curves(subjects_data, folder_path):
 
     for i, condition in enumerate(conditions):
         ax = axes[i]
-        all_coherences = []
-        all_successes = []
+        all_coherences = np.concatenate(
+            [
+                s[condition]["coherences"]
+                for s in subjects_data.values()
+                if s and s[condition]
+            ]
+        )
+        all_successes = np.concatenate(
+            [
+                s[condition]["successes"]
+                for s in subjects_data.values()
+                if s and s[condition]
+            ]
+        )
 
-        for subject_data in subjects_data.values():
-            if subject_data and subject_data[condition]:
-                all_coherences.append(subject_data[condition]['coherences'])
-                all_successes.append(subject_data[condition]['successes'])
-
-        if not all_coherences:
+        if all_coherences.size == 0:
             ax.set_title(f"{plot_title_prefix}\n({condition} - No data)")
             continue
 
-        unique_coherences = np.unique(np.concatenate(all_coherences))
-        average_successes = np.zeros_like(unique_coherences, dtype=float)
+        unique_coherences, inverse_indices = np.unique(
+            all_coherences, return_inverse=True
+        )
+        average_successes = np.bincount(inverse_indices, weights=all_successes) / np.bincount(
+            inverse_indices
+        )
 
-        for j, coh in enumerate(unique_coherences):
-            success_rates = []
-            for k in range(len(all_coherences)):
-                idx = np.where(all_coherences[k] == coh)
-                if idx[0].size > 0:
-                    success_rates.append(all_successes[k][idx][0])
-            if success_rates:
-                average_successes[j] = np.mean(success_rates)
+        ax.semilogx(
+            unique_coherences,
+            average_successes,
+            "o-",
+            color=colors[condition],
+            label="Average Data",
+        )
 
-        ax.semilogx(unique_coherences, average_successes, "o-", color=colors[condition], label="Average Data")
-
-        (alpha, beta), r2 = fit_weibull(unique_coherences, average_successes)
+        (alpha, beta), r2 = fit_weibull(unique_coherences, np.array(average_successes))
         xs = np.linspace(unique_coherences.min(), unique_coherences.max(), 100)
         fitted = weibull(xs, alpha, beta)
-        ax.semilogx(xs, fitted, "--", color=colors[condition], label=f"Fit (R²={r2:.2f})")
+        ax.semilogx(
+            xs, fitted, "--", color=colors[condition], label=f"Fit (R²={r2:.2f})"
+        )
 
         ax.set_title(f"{plot_title_prefix} ({condition})")
         ax.set_xlabel("Coherence level")
         ax.set_ylabel("Proportion correct")
-        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}%"))
+        ax.xaxis.set_major_formatter(
+            mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}%")
+        )
         ax.legend()
 
     plt.tight_layout()
@@ -310,6 +347,99 @@ def plot_analysis_curves(subjects_data, folder_path):
     else:
         plt.savefig(os.path.join(folder_path, "analysis_curves.png"))
 
+
+def group_trials_by_prev_trial(subjects_data):
+    all_coherences = np.array([])
+    all_successes = np.array([])
+    all_directions = np.array([])
+
+    for subject_data in subjects_data.values():
+        if subject_data and subject_data.get("fixed"):
+            data = subject_data["fixed"]
+            all_coherences = np.concatenate((all_coherences, data["coherences"]))
+            all_successes = np.concatenate((all_successes, data["successes"]))
+            all_directions = np.concatenate((all_directions, data["directions"]))
+
+    if all_coherences.size < 2:
+        return {
+            "same": {"coherences": [], "successes": []},
+            "opposite": {"coherences": [], "successes": []},
+            "90deg": {"coherences": [], "successes": []},
+        }
+
+    max_coherence = np.max(all_coherences)
+    prev_is_max_coh = all_coherences[:-1] == max_coherence
+
+    current_coherences = all_coherences[1:]
+    current_successes = all_successes[1:]
+    current_directions = all_directions[1:]
+    prev_directions = all_directions[:-1]
+
+    angle_diffs = np.abs(current_directions - prev_directions)
+
+    same_mask = prev_is_max_coh & (
+        np.isclose(angle_diffs, 0) | np.isclose(angle_diffs, 2 * np.pi)
+    )
+    opposite_mask = prev_is_max_coh & np.isclose(angle_diffs, np.pi)
+    deg90_mask = prev_is_max_coh & (
+        np.isclose(angle_diffs, np.pi / 2) | np.isclose(angle_diffs, 3 * np.pi / 2)
+    )
+
+    return {
+        "same": {
+            "coherences": current_coherences[same_mask],
+            "successes": current_successes[same_mask],
+        },
+        "opposite": {
+            "coherences": current_coherences[opposite_mask],
+            "successes": current_successes[opposite_mask],
+        },
+        "90deg": {
+            "coherences": current_coherences[deg90_mask],
+            "successes": current_successes[deg90_mask],
+        },
+    }
+
+
+def plot_psychometric_curves_by_prev_trial(subjects_data, folder_path=FOLDER_PATH):
+    groups = group_trials_by_prev_trial(subjects_data)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors = {"same": "b", "opposite": "r", "90deg": "g"}
+    for name, group_data in groups.items():
+        if not group_data["coherences"].size > 0:
+            continue
+
+        unique_coherences, inverse_indices = np.unique(
+            group_data["coherences"], return_inverse=True
+        )
+        avg_successes = np.bincount(
+            inverse_indices, weights=group_data["successes"]
+        ) / np.bincount(inverse_indices)
+
+        ax.semilogx(
+            unique_coherences, avg_successes, "o-", label=name, color=colors[name]
+        )
+
+        (alpha, beta), r2 = fit_weibull(unique_coherences, np.array(avg_successes))
+        xs = np.linspace(min(unique_coherences), max(unique_coherences), 100)
+        ax.semilogx(
+            xs,
+            weibull(xs, alpha, beta),
+            "--",
+            color=colors[name],
+            label=f"{name} fit (R²={r2:.2f})",
+        )
+
+    ax.set_xlabel("Coherence")
+    ax.set_ylabel("Proportion Correct")
+    ax.set_title("Psychometric Curves by Previous Trial Condition")
+    ax.legend()
+
+    if folder_path == FOLDER_PATH:
+        plt.show()
+    else:
+        plt.savefig(os.path.join(folder_path, "psychometric_curves_by_prev_trial.png"))
 
 
 def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
@@ -341,25 +471,31 @@ def plot_alpha_beta_distributions(fixed_first, roving_first, subset_size=4):
     betas = np.array(betas)
 
     # Scatter plot
-    plt.figure(figsize=(8,6))
-    plt.scatter(np.arange(len(alphas)), alphas, color='skyblue', label='Alpha', s=80)
-    plt.scatter(np.arange(len(betas)), betas, color='salmon', label='Beta', s=80)
+    plt.figure(figsize=(8, 6))
+    plt.scatter(np.arange(len(alphas)), alphas, color="skyblue", label="Alpha", s=80)
+    plt.scatter(np.arange(len(betas)), betas, color="salmon", label="Beta", s=80)
     plt.title(f"All Combinations ({subset_size} of {len(fixed_first)}) Alpha and Beta")
     plt.xlabel("Iteration")
     plt.ylabel("Value")
-    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.grid(True, linestyle="--", alpha=0.5)
     plt.legend()
     plt.show()
 
     # Histograms with normal fit
-    plt.figure(figsize=(10,4))
+    plt.figure(figsize=(10, 4))
 
-    for i, (data, color, name) in enumerate(zip([alphas, betas], ['skyblue', 'salmon'], ['Alpha', 'Beta']), 1):
+    for i, (data, color, name) in enumerate(
+        zip([alphas, betas], ["skyblue", "salmon"], ["Alpha", "Beta"]), 1
+    ):
         plt.subplot(1, 2, i)
-        plt.hist(data, bins='auto', density=True, color=color, edgecolor='black', alpha=0.6)
+        plt.hist(
+            data, bins="auto", density=True, color=color, edgecolor="black", alpha=0.6
+        )
         mu, std = norm.fit(data)
         x = np.linspace(min(data), max(data), 100)
-        plt.plot(x, norm.pdf(x, mu, std), 'r--', label=f'Normal fit: μ={mu:.2f}, σ={std:.2f}')
+        plt.plot(
+            x, norm.pdf(x, mu, std), "r--", label=f"Normal fit: μ={mu:.2f}, σ={std:.2f}"
+        )
         plt.title(f"{name} Distribution with Normal Fit")
         plt.xlabel(name)
         plt.ylabel("Probability")
