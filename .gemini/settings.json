@@ -1,6 +1,10 @@
 {
   "mcpServers": {
-     "language-server": {
+
+    "drawio-mcp": {
+      "command": "drawio-mcp"
+    },
+    "python-analyst": {
       "command": "mcp-language-server",
       "args": [
         "--workspace",
@@ -10,6 +14,18 @@
         "--",
         "--stdio"
       ]
-     }
+    },
+    "python-debugger": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "mcp-pdb",
+        "mcp-pdb"
+      ]
+    }
+  },
+  "general": {
+    "previewFeatures": true
   }
 }

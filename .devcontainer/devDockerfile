@@ -1,12 +1,8 @@
 FROM mcr.microsoft.com/vscode/devcontainers/python:3.13-trixie
-COPY requirements.txt /tmp/requirements.txt
 COPY apt-requirements.txt /tmp/apt-requirements.txt
+COPY requirements.txt /tmp/requirements.txt
 
 RUN echo "alias ll='ls -alF'"  >> ~/.bashrc
-
-RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
-RUN pip install -r /tmp/requirements.txt
-
 
 RUN apt-get update && apt-get install -y `cat /tmp/apt-requirements.txt`
 RUN pip install -r /tmp/requirements.txt
@@ -14,7 +10,10 @@ RUN pip install -r /tmp/requirements.txt
 # gemini support:
 
 RUN apt-get update && apt-get install -y npm
-RUN npm install -g @google/gemini-cli pyright
+RUN npm install -g @google/gemini-cli pyright drawio-mcp
+
+# uv support
+RUN pip install uv
 
 # languge server support:
 
@@ -47,4 +46,4 @@ RUN mkdir -p /go/src /go/bin /go/pkg \
 ENV PATH="${PATH}:${GOPATH}/bin"
 
 # install the MCP languge server (requires go)
-RUN go install github.com/isaacphi/mcp-language-server@latest    
+RUN go install github.com/isaacphi/mcp-language-server@latest
