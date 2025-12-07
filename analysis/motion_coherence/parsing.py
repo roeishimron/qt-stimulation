@@ -1,32 +1,14 @@
-from ast import arg
 from re import search, findall
-from typing import Tuple
+from typing import Tuple, Dict, List
 from numpy import (
     fromstring,
-    array2string,
     array,
     float64,
-    argsort,
-    linspace,
-    log,
-    median,
-    inf,
-    exp,
-    sqrt,
-    square,
 )
-from scipy.optimize import curve_fit
-from scipy.stats import gmean
 from numpy.typing import NDArray
-from matplotlib.pyplot import legend, subplots, show
-import matplotlib.ticker as mticker
 import glob
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import gmean, norm
-from itertools import combinations
-from numpy import sqrt
+from analysis.motion_coherence.data_structures import SessionData, Fixed, Roving, Experiment
 
 # returns
 def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDArray]:
@@ -53,13 +35,13 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDA
     return coherences, success, directions
 
 
-def get_all_subjects_data(folder_path):
+def get_all_subjects_data(folder_path) -> Dict[str, List[Experiment]]:
     """
     Parses all log files in a directory and returns a structured dictionary
     with data for each subject and condition.
     """
     all_files = glob.glob(os.path.join(folder_path, "*"))
-    subjects_data = {}
+    temp_data: Dict[str, Dict[str, list]] = {}
 
     for file_path in all_files:
         base = os.path.basename(file_path)
@@ -74,8 +56,8 @@ def get_all_subjects_data(folder_path):
         condition = m_kind.group(1)
         timestamp = int(m_time.group(1))
 
-        if subject_id not in subjects_data:
-            subjects_data[subject_id] = {"fixed": [], "roving": []}
+        if subject_id not in temp_data:
+            temp_data[subject_id] = {"fixed": [], "roving": []}
 
         with open(file_path, "r") as f:
             text = f.read()
@@ -84,22 +66,25 @@ def get_all_subjects_data(folder_path):
             except ValueError:
                 continue
 
-            subjects_data[subject_id][condition].append(
-                {
-                    "timestamp": timestamp,
-                    "coherences": coherences,
-                    "successes": successes,
-                    "directions": directions,
-                }
+            session = SessionData(
+                timestamp=timestamp,
+                coherences=coherences,
+                successes=successes,
+                directions=directions,
             )
+            temp_data[subject_id][condition].append(session)
 
+    subjects_data: Dict[str, List[Experiment]] = {}
     # For each subject and condition, keep only the latest session
-    for subject_id, conditions in subjects_data.items():
-        for condition, sessions in conditions.items():
-            if sessions:
-                latest_session = max(sessions, key=lambda x: x["timestamp"])
-                subjects_data[subject_id][condition] = latest_session
-            else:
-                subjects_data[subject_id][condition] = None
+    for subject_id, conditions in temp_data.items():
+        subject_experiments: List[Experiment] = []
+        if conditions["fixed"]:
+            latest_fixed = max(conditions["fixed"], key=lambda x: x.timestamp)
+            subject_experiments.append(Fixed(session=latest_fixed))
+        if conditions["roving"]:
+            latest_roving = max(conditions["roving"], key=lambda x: x.timestamp)
+            subject_experiments.append(Roving(session=latest_roving))
+        
+        subjects_data[subject_id] = subject_experiments
 
     return subjects_data

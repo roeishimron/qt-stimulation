@@ -1,32 +1,5 @@
-from ast import arg
-from re import search, findall
-from typing import Tuple
-from numpy import (
-    fromstring,
-    array2string,
-    array,
-    float64,
-    argsort,
-    linspace,
-    log,
-    median,
-    inf,
-    exp,
-    sqrt,
-    square,
-)
-from scipy.optimize import curve_fit
-from scipy.stats import gmean
-from numpy.typing import NDArray
-from matplotlib.pyplot import legend, subplots, show
-import matplotlib.ticker as mticker
-import glob
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import gmean, norm
-from itertools import combinations
-from numpy import sqrt
+
 from analysis.motion_coherence.parsing import get_all_subjects_data
 from analysis.motion_coherence.plotting import plot_analysis_curves, plot_psychometric_curves_by_prev_trial
 
@@ -40,7 +13,7 @@ def run_population_analysis(folder_path: str):
         print(f"No data found in the specified folder. {folder_path}")
         return
     plot_analysis_curves(all_data, folder_path)
-    plot_psychometric_curves_by_prev_trial(all_data)
+    plot_psychometric_curves_by_prev_trial(all_data, folder_path)
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

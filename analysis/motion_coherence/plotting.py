@@ -1,51 +1,33 @@
-from ast import arg
-from re import search, findall
 from typing import Tuple
 from numpy import (
-    fromstring,
-    array2string,
-    array,
-    float64,
-    argsort,
-    linspace,
-    log,
+    exp,
     median,
     inf,
-    exp,
-    sqrt,
-    square,
+    concatenate,
+    unique,
+    bincount,
+    linspace,
+    array,
 )
-from scipy.optimize import curve_fit
-from scipy.stats import gmean
 from numpy.typing import NDArray
-from matplotlib.pyplot import legend, subplots, show
+from scipy.optimize import curve_fit
 import matplotlib.ticker as mticker
-import glob
-import os
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import gmean, norm
-from itertools import combinations
-from numpy import sqrt
+import os
+from dataclasses import asdict
 
 from analysis.motion_coherence.analysis import group_trials_by_prev_trial
+from analysis.motion_coherence.data_structures import Fixed, Roving
 
 
-def weibull(C, alpha, beta):
-    """Weibull psychometric function with 0.75 asymptote."""
-    return 1 - 0.75 * exp(-((C / alpha) ** beta))
+def weibull(C: NDArray, alpha: float, beta: float, chance_level: float = 0.25) -> NDArray:
+    """Weibull psychometric function with configurable chance level."""
+    return 1 - (1 - chance_level) * exp(-((C / alpha) ** beta))
 
 
-def fit_weibull(x, y):
+def fit_weibull(x: NDArray, y: NDArray, chance_level: float = 0.25) -> Tuple[NDArray, float]:
     """
     Fit Weibull function to data x and y.
-
-    Parameters:
-        x : array-like, stimulus intensities
-        y : array-like, proportion correct (0–1)
-
-    Returns:
-        popt : array, [alpha, beta]
     """
     # Initial guess: alpha = median of x, beta = 2
     p0 = [median(x), 2.0]
@@ -53,15 +35,10 @@ def fit_weibull(x, y):
     # Boundaries to keep parameters positive
     bounds = ([0, 0], [inf, inf])
 
-    popt, _ = curve_fit(weibull, x, y, p0=p0, bounds=bounds, maxfev=5000)
-
-    # Old calculation
-    # evalutaed = 1 - 0.75 * exp(-(x / popt[0]) ** popt[1])
-    # distance = sqrt(sum(square(evalutaed - y)))
-    # return popt, distance
+    popt, _ = curve_fit(lambda C, alpha, beta: weibull(C, alpha, beta, chance_level), x, y, p0=p0, bounds=bounds, maxfev=5000)
 
     # Weibull values
-    y_hat = weibull(x, *popt)
+    y_hat = weibull(x, *popt, chance_level=chance_level)
 
     # distance from samples to mean
     ss_tot = sum((y - y.mean()) ** 2)
@@ -96,29 +73,31 @@ def plot_analysis_curves(subjects_data, folder_path):
 
     for i, condition in enumerate(conditions):
         ax = axes[i]
-        all_coherences = np.concatenate(
-            [
-                s[condition]["coherences"]
-                for s in subjects_data.values()
-                if s and s[condition]
-            ]
-        )
-        all_successes = np.concatenate(
-            [
-                s[condition]["successes"]
-                for s in subjects_data.values()
-                if s and s[condition]
-            ]
-        )
+        
+        subject_sessions = []
+        for experiments in subjects_data.values():
+            for exp in experiments:
+                if condition == "fixed" and isinstance(exp, Fixed):
+                    subject_sessions.append(exp.session)
+                elif condition == "roving" and isinstance(exp, Roving):
+                    subject_sessions.append(exp.session)
+
+        all_coherences = concatenate(
+            [s.coherences for s in subject_sessions]
+        ) if subject_sessions else array([])
+
+        all_successes = concatenate(
+            [s.successes for s in subject_sessions]
+        ) if subject_sessions else array([])
 
         if all_coherences.size == 0:
             ax.set_title(f"{plot_title_prefix}\n({condition} - No data)")
             continue
 
-        unique_coherences, inverse_indices = np.unique(
+        unique_coherences, inverse_indices = unique(
             all_coherences, return_inverse=True
         )
-        average_successes = np.bincount(inverse_indices, weights=all_successes) / np.bincount(
+        average_successes = bincount(inverse_indices, weights=all_successes) / bincount(
             inverse_indices
         )
 
@@ -130,9 +109,9 @@ def plot_analysis_curves(subjects_data, folder_path):
             label="Average Data",
         )
 
-        (alpha, beta), r2 = fit_weibull(unique_coherences, np.array(average_successes))
-        xs = np.linspace(unique_coherences.min(), unique_coherences.max(), 100)
-        fitted = weibull(xs, alpha, beta)
+        (alpha, beta), r2 = fit_weibull(unique_coherences, array(average_successes), chance_level=0.25)
+        xs = linspace(unique_coherences.min(), unique_coherences.max(), 100)
+        fitted = weibull(xs, alpha, beta, chance_level=0.25)
         ax.semilogx(
             xs, fitted, "--", color=colors[condition], label=f"Fit (R²={r2:.2f})"
         )
@@ -141,40 +120,41 @@ def plot_analysis_curves(subjects_data, folder_path):
         ax.set_xlabel("Coherence level")
         ax.set_ylabel("Proportion correct")
         ax.xaxis.set_major_formatter(
-            mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}%")
+            mticker.FuncFormatter(lambda x, _: f"{x*100:.0f}% у")
         )
         ax.legend()
 
     plt.tight_layout()
-
+    plt.savefig(os.path.join(folder_path, "analysis_curves.png"))
     plt.show()
 
 
-def plot_psychometric_curves_by_prev_trial(subjects_data):
+def plot_psychometric_curves_by_prev_trial(subjects_data, folder_path):
     groups = group_trials_by_prev_trial(subjects_data)
+    groups_dict = asdict(groups)
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    colors = {"same": "b", "opposite": "r", "90deg": "g"}
-    for name, group_data in groups.items():
+    colors = {"same": "b", "opposite": "r", "deg90": "g"}
+    for name, group_data in groups_dict.items():
         if not group_data["coherences"].size > 0:
             continue
 
-        unique_coherences, inverse_indices = np.unique(
+        unique_coherences, inverse_indices = unique(
             group_data["coherences"], return_inverse=True
         )
-        avg_successes = np.bincount(
+        avg_successes = bincount(
             inverse_indices, weights=group_data["successes"]
-        ) / np.bincount(inverse_indices)
+        ) / bincount(inverse_indices)
 
         ax.semilogx(
             unique_coherences, avg_successes, "o-", label=name, color=colors[name]
         )
 
-        (alpha, beta), r2 = fit_weibull(unique_coherences, np.array(avg_successes))
-        xs = np.linspace(min(unique_coherences), max(unique_coherences), 100)
+        (alpha, beta), r2 = fit_weibull(unique_coherences, array(avg_successes), chance_level=0.25)
+        xs = linspace(min(unique_coherences), max(unique_coherences), 100)
         ax.semilogx(
             xs,
-            weibull(xs, alpha, beta),
+            weibull(xs, alpha, beta, chance_level=0.25),
             "--",
             color=colors[name],
             label=f"{name} fit (R²={r2:.2f})",
@@ -183,6 +163,5 @@ def plot_psychometric_curves_by_prev_trial(subjects_data):
     ax.set_xlabel("Coherence")
     ax.set_ylabel("Proportion Correct")
     ax.set_title("Psychometric Curves by Previous Trial Condition")
-    ax.legend()
-
+    plt.savefig(os.path.join(folder_path, "psychometric_curves_by_prev_trial.png"))
     plt.show()

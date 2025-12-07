@@ -1,13 +1,12 @@
 from typing import List, Tuple
-import os
 from numpy import array2string, array
-from experiments.analysis.motion_coherence import weibull
+from analysis.motion_coherence.plotting import weibull
 from numpy.random import random
-
+from numpy.typing import NDArray
 
 def generate_log_file(
     filepath: str,
-    coherences: List[float],
+    coherences: NDArray,
     successes: List[bool],
     directions: List[Tuple[float, float]],
 ):
@@ -28,7 +27,7 @@ def generate_log_file(
 
 def generate_log_file_with_weibull(
     filepath: str,
-    coherences: List[float],
+    coherences: NDArray,
     directions: List[Tuple[float, float]],
     alpha: float,
     beta: float,
