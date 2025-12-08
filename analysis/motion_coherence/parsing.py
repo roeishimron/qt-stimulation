@@ -8,7 +8,7 @@ from numpy import (
 from numpy.typing import NDArray
 import glob
 import os
-from analysis.motion_coherence.data_structures import SessionData, Fixed, Roving, Experiment
+from analysis.motion_coherence.data_structures import SessionData, Fixed, Roving, Experiment, Subject
 
 # returns
 def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDArray]:
@@ -35,7 +35,7 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDA
     return coherences, success, directions
 
 
-def get_all_subjects_data(folder_path) -> Dict[str, List[Experiment]]:
+def get_all_subjects_data(folder_path) -> Dict[str, Subject]:
     """
     Parses all log files in a directory and returns a structured dictionary
     with data for each subject and condition.
@@ -74,7 +74,7 @@ def get_all_subjects_data(folder_path) -> Dict[str, List[Experiment]]:
             )
             temp_data[subject_id][condition].append(session)
 
-    subjects_data: Dict[str, List[Experiment]] = {}
+    subjects_data: Dict[str, Subject] = {}
     # For each subject and condition, keep only the latest session
     for subject_id, conditions in temp_data.items():
         subject_experiments: List[Experiment] = []
@@ -85,6 +85,6 @@ def get_all_subjects_data(folder_path) -> Dict[str, List[Experiment]]:
             latest_roving = max(conditions["roving"], key=lambda x: x.timestamp)
             subject_experiments.append(Roving(session=latest_roving))
         
-        subjects_data[subject_id] = subject_experiments
+        subjects_data[subject_id] = Subject(sessions=subject_experiments)
 
     return subjects_data

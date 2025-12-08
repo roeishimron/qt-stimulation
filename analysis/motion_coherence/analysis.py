@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 # from scipy.ndimage import uniform_filter1d # Removed this import
-from analysis.motion_coherence.data_structures import TrialGroups, GroupedData, Experiment, Fixed
+from analysis.motion_coherence.data_structures import TrialGroups, GroupedData, Experiment, Fixed, Subject
 
 def weibull(C: NDArray, alpha: float, beta: float, chance_level: float = 0.25) -> NDArray:
     """Weibull psychometric function with configurable chance level."""
@@ -46,13 +46,13 @@ def fit_weibull(x: NDArray, y: NDArray, chance_level: float = 0.25) -> Tuple[NDA
     return popt, r_squared
 
 
-def group_trials_by_prev_trial(subjects_data: Dict[str, List[Experiment]]) -> TrialGroups:
+def group_trials_by_prev_trial(subjects_data: Dict[str, Subject]) -> TrialGroups:
     all_coherences = np.array([])
     all_successes = np.array([])
     all_directions = np.array([])
 
-    for experiments in subjects_data.values():
-        for exp in experiments:
+    for subject in subjects_data.values():
+        for exp in subject.sessions:
             if isinstance(exp, Fixed):
                 data = exp.session
                 all_coherences = np.concatenate((all_coherences, data.coherences))
@@ -99,7 +99,7 @@ def group_trials_by_prev_trial(subjects_data: Dict[str, List[Experiment]]) -> Tr
         ),
     )
 
-def into_valid_trial(experiments: Iterable[Fixed]) -> NDArray:
+def into_valid_trial(experiments: Iterable[Experiment]) -> NDArray:
 
     """
     Extracts and flattens (coherence, success, trial_index_within_session) triplets
@@ -121,7 +121,37 @@ def into_valid_trial(experiments: Iterable[Fixed]) -> NDArray:
 
     return np.array(all_trial_data, dtype=float)
 
-def calculate_temporal_success(experiments: Iterable[Fixed]) -> Tuple[NDArray, NDArray]:
+def compute_success_matrix(valid_trials_data: NDArray) -> Tuple[NDArray, NDArray]:
+    """
+    Core logic for calculating temporal success.
+    Args:
+        valid_trials_data: 3D array (n_subjects/experiments, n_trials, 2[coh, succ])
+    """
+    # Flatten to find all unique coherences present in the data
+    # Note: valid_trials_data[:, :, 0] gets all coherences
+    coherences = np.sort(np.unique(valid_trials_data[:, :, 0].flat))
+    
+    # Initialize accumulator: (n_coherences, n_trials, 2)
+    # 3rd dimension: index 0 = sum of successes, index 1 = count of trials
+    amounts_of_trials_and_successes = np.zeros(
+        (coherences.shape[0], valid_trials_data.shape[1], 2), 
+        dtype=float
+    )
+
+    for trial_seq in valid_trials_data:
+        for t, (coherence, success) in enumerate(trial_seq):
+            # Add to the correct coherence bin at time t
+            amounts_of_trials_and_successes[coherence == coherences, t, 0] += success
+            amounts_of_trials_and_successes[coherence == coherences, t, 1] += 1
+    
+    # Calculate average success rate. Avoid division by zero warnings by using np.divide or handling elsewhere.
+    # Current implementation relies on caller or plotting to handle NaNs (which result from 0/0).
+    with np.errstate(divide='ignore', invalid='ignore'):
+        success_rates = amounts_of_trials_and_successes[:,:,0] / amounts_of_trials_and_successes[:,:,1]
+    
+    return success_rates, coherences
+
+def calculate_temporal_success(experiments: Iterable[Experiment]) -> Tuple[NDArray, NDArray]:
     """
     Calculates success rate at each trial index for each coherence.
     Returns:
@@ -129,18 +159,51 @@ def calculate_temporal_success(experiments: Iterable[Fixed]) -> Tuple[NDArray, N
         unique_coherences: (n_coherences,) array of coherence labels.
     """
     valid_trials_data = into_valid_trial(experiments)
+    return compute_success_matrix(valid_trials_data)
 
-    coherences = np.sort(np.unique(valid_trials_data[:, :, 0].flat))
 
-    amounts_of_trials_and_successes = np.zeros((coherences.shape[0], valid_trials_data.shape[1], 2), dtype=float) # 2 is for saving both successes and occourences
+def split_subjects_by_order(subjects: Dict[str, Subject]) -> Tuple[List[Subject], List[Subject]]:
+    fixed_first = []
+    roving_first = []
+    for subject in subjects.values():
+        if len(subject.sessions) == 2: # Only consider subjects with exactly two sessions
+            if subject.is_fixed_first():
+                fixed_first.append(subject)
+            else:
+                roving_first.append(subject)
+    return fixed_first, roving_first
 
-    for trial in valid_trials_data:
-        for t, (coherence, success) in enumerate(trial):
-            amounts_of_trials_and_successes[coherence == coherences, t, 0] += success
-            amounts_of_trials_and_successes[coherence == coherences, t, 1] += 1
-    
-    return amounts_of_trials_and_successes[:,:,0]/amounts_of_trials_and_successes[:,:,1], coherences
+def into_long_trials(subjects: List[Subject]) -> NDArray:
+    """
+    Concatenates both sessions of a subject into one long sequence.
+    Returns a 3D array: (n_subjects, total_trials, 2)
+    """
+    all_subject_data = []
+    for subject in subjects:
+        # Assuming strictly 2 sessions per subject as per requirements
+        if len(subject.sessions) != 2:
+            continue
+            
+        s1 = subject.sessions[0].session
+        s2 = subject.sessions[1].session
+        
+        # Concatenate arrays
+        coherences = np.concatenate((s1.coherences, s2.coherences))
+        successes = np.concatenate((s1.successes, s2.successes))
+        
+        this_subject_trials = []
+        for coh, succ in zip(coherences, successes):
+            this_subject_trials.append([coh, succ])
+        
+        all_subject_data.append(this_subject_trials)
+        
+    return np.array(all_subject_data, dtype=float)
 
+def calculate_long_temporal_success(subjects: List[Subject]) -> Tuple[NDArray, NDArray]:
+    valid_trials_data = into_long_trials(subjects)
+    if valid_trials_data.size == 0:
+         return np.array([]), np.array([])
+    return compute_success_matrix(valid_trials_data)
 
 def smooth_array_with_nans(a: NDArray, kernel: NDArray) -> NDArray:
     not_nan_mask = ~np.isnan(a)

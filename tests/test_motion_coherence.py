@@ -17,6 +17,10 @@ class TestMotionCoherence(unittest.TestCase):
             directions = [(0.1, 0.2)] * len(coherences)
 
             generate_log_file_with_weibull(log_filepath, coherences, directions, alpha_gt, beta_gt)
+            
+            # Create a second session log file for the same subject
+            log_filepath_roving = os.path.join(tmpdir, "test-motion_coherence_roving-12346")
+            generate_log_file_with_weibull(log_filepath_roving, coherences, directions, alpha_gt, beta_gt)
 
             from analysis.motion_coherence.parsing import get_all_subjects_data
             from analysis.motion_coherence.plotting import fit_weibull
@@ -25,7 +29,7 @@ class TestMotionCoherence(unittest.TestCase):
             subjects_data = get_all_subjects_data(tmpdir)
             
             # Find the Fixed experiment
-            fixed_data = next(exp.session for exp in subjects_data['test'] if isinstance(exp, Fixed))
+            fixed_data = next(exp.session for exp in subjects_data['test'].sessions if isinstance(exp, Fixed))
 
             unique_coherences = unique(fixed_data.coherences)
             avg_successes = [mean(fixed_data.successes[fixed_data.coherences == c]) for c in unique_coherences]
@@ -50,6 +54,10 @@ class TestMotionCoherence(unittest.TestCase):
                 (0.1, pi/2+0.1)
             ]
             generate_log_file(log_filepath, coherences, successes, directions)
+            
+            # Create a second session log file for the same subject
+            log_filepath_roving = os.path.join(tmpdir, "test-motion_coherence_roving-12346")
+            generate_log_file(log_filepath_roving, coherences, successes, directions)
 
             from analysis.motion_coherence.parsing import get_all_subjects_data
             from analysis.motion_coherence.analysis import group_trials_by_prev_trial

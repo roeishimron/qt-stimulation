@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Union, Dict
 from numpy import (
     concatenate,
     unique,
@@ -35,8 +35,8 @@ def plot_analysis_curves(subjects_data, folder_path):
         ax = axes[i]
         
         subject_sessions = []
-        for experiments in subjects_data.values():
-            for exp in experiments:
+        for subject in subjects_data.values():
+            for exp in subject.sessions:
                 if condition == "fixed" and isinstance(exp, Fixed):
                     subject_sessions.append(exp.session)
                 elif condition == "roving" and isinstance(exp, Roving):
@@ -126,7 +126,7 @@ def plot_psychometric_curves_by_prev_trial(subjects_data, folder_path):
     plt.savefig(os.path.join(folder_path, "psychometric_curves_by_prev_trial.png"))
     plt.show()
 
-def plot_temporal_success(matrix: NDArray, unique_coherences: NDArray, folder_path: str, window_size: int = 20):
+def plot_temporal_success(matrix: NDArray, unique_coherences: NDArray, folder_path: str, window_size: int = 20, prefix: str = ""):
     """
     Plots the success rate as a dependency of trial number for each coherence.
     matrix: (n_coherences, n_trials)
@@ -152,41 +152,112 @@ def plot_temporal_success(matrix: NDArray, unique_coherences: NDArray, folder_pa
         
     ax.set_xlabel("Trial Number (Session Index)")
     ax.set_ylabel("Success Rate")
-    ax.set_title("Success Rate vs. Trial Number by Coherence")
+    title = "Success Rate vs. Trial Number by Coherence"
+    if prefix:
+        title = f"{prefix.capitalize()}: {title}"
+    ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
     ax.set_ylim(0, 1.05)
     
+    filename = "temporal_success.png"
+    if prefix:
+        filename = f"{prefix}_{filename}"
+    
     plt.tight_layout()
-    plt.savefig(os.path.join(folder_path, "temporal_success.png"))
+    plt.savefig(os.path.join(folder_path, filename))
     plt.show()
 
-def plot_threshold_trajectory(thresholds: NDArray, folder_path: str, window_size: int = 20):
+def plot_threshold_trajectory(trajectories: Dict[str, NDArray], folder_path: str, window_size: int = 20, filename: str = "threshold_trajectory.png"):
     """
     Plots the psychometric threshold as a function of trial number.
-    thresholds: (n_trials,)
+    Accepts a dictionary of named trajectories (e.g., {"Fixed": NDArray, "Roving": NDArray}).
     """
     fig, ax = plt.subplots(figsize=(12, 6))
     
-    n_smoothed_trials = len(thresholds)
-    # Adjust trial_indices to represent the center of the convolution window
-    trial_indices_for_plot = np.arange(n_smoothed_trials) + (window_size - 1) / 2
+    has_valid_data = False
     
-    # Filter valid points for plotting
-    valid_mask = ~np.isnan(thresholds)
-    if not valid_mask.any():
+    # Define some default colors/styles if needed, or rely on auto-cycling
+    colors = ['g', 'r', 'b', 'c', 'm', 'y', 'k'] # Example colors
+    color_idx = 0
+
+    for label, thresholds in trajectories.items():
+        n_smoothed_trials = len(thresholds)
+        # Adjust trial_indices to represent the center of the convolution window
+        trial_indices_for_plot = np.arange(n_smoothed_trials) + (window_size - 1) / 2
+        
+        # Filter valid points for plotting
+        valid_mask = ~np.isnan(thresholds)
+        if valid_mask.any():
+            has_valid_data = True
+            ax.plot(
+                trial_indices_for_plot[valid_mask], 
+                thresholds[valid_mask], 
+                'o-', 
+                label=label, 
+                color=colors[color_idx % len(colors)], # Cycle through colors
+                linewidth=2
+            )
+            color_idx += 1
+    
+    if not has_valid_data:
         print("No valid threshold data to plot.")
         plt.close()
         return
 
-    ax.plot(trial_indices_for_plot[valid_mask], thresholds[valid_mask], 'o-', label="Threshold (Weibull alpha)", linewidth=2)
-    
     ax.set_xlabel("Trial Number")
     ax.set_ylabel("Coherence Threshold")
-    ax.set_title("Psychometric Threshold vs. Trial Number")
+    
+    title = "Psychometric Threshold Trajectories"
+    if len(trajectories) == 1:
+        # If only one trajectory, use its label for a more specific title
+        title = f"{list(trajectories.keys())[0]}: Psychometric Threshold Trajectory"
+        
+    ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(os.path.join(folder_path, "threshold_trajectory.png"))
+    plt.savefig(os.path.join(folder_path, filename))
+    plt.show()
+
+def plot_order_comparison(fixed_first_traj: NDArray, roving_first_traj: NDArray, folder_path: str, window_size: int = 20):
+    """
+    Plots the comparison of threshold trajectories between Fixed-First and Roving-First groups.
+    """
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    # Generate x-axis indices
+    # Both trajectories should hopefully be on the same timeline (2 * session_length)
+    # We plot them on their own indices
+    
+    def get_indices(traj):
+        return np.arange(len(traj)) + (window_size - 1) / 2
+    
+    # Plot Fixed First
+    valid_ff = ~np.isnan(fixed_first_traj)
+    if valid_ff.any():
+        ax.plot(get_indices(fixed_first_traj)[valid_ff], fixed_first_traj[valid_ff], 'g-', label="Fixed First Group", linewidth=2)
+        
+    # Plot Roving First
+    valid_rf = ~np.isnan(roving_first_traj)
+    if valid_rf.any():
+        ax.plot(get_indices(roving_first_traj)[valid_rf], roving_first_traj[valid_rf], 'r-', label="Roving First Group", linewidth=2)
+        
+    # Add a vertical line to indicate the session boundary (approximate)
+    # Assuming standard session length is half of total length
+    # If lengths vary this is an approximation
+    middle = (fixed_first_traj.shape[0] + window_size-1)/2
+    ax.axvline(x=middle, color='k', linestyle='--', alpha=0.5, label="Session Boundary")
+    ax.axvline(x=middle+window_size/2, color='r', linestyle=':', alpha=0.5, label="window effects border")
+    ax.axvline(x=middle-+window_size/2, color='r', linestyle=':', alpha=0.5, label="window effects border")
+
+    ax.set_xlabel("Trial Number (Combined Sessions)")
+    ax.set_ylabel("Coherence Threshold")
+    ax.set_title("Threshold Trajectory Comparison: Order Effect")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_path, "order_comparison_trajectory.png"))
     plt.show()
