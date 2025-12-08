@@ -247,10 +247,10 @@ def plot_order_comparison(fixed_first_traj: NDArray, roving_first_traj: NDArray,
     # Add a vertical line to indicate the session boundary (approximate)
     # Assuming standard session length is half of total length
     # If lengths vary this is an approximation
-    middle = (fixed_first_traj.shape[0] + window_size-1)/2
+    middle = (fixed_first_traj.shape[0] + window_size)/2
     ax.axvline(x=middle, color='k', linestyle='--', alpha=0.5, label="Session Boundary")
-    ax.axvline(x=middle+window_size/2, color='r', linestyle=':', alpha=0.5, label="window effects border")
-    ax.axvline(x=middle-+window_size/2, color='r', linestyle=':', alpha=0.5, label="window effects border")
+    ax.axvline(x=middle+(window_size-1)/2, color='r', linestyle=':', alpha=0.5, label="window effects border")
+    ax.axvline(x=middle-(window_size-1)/2, color='r', linestyle=':', alpha=0.5, label="window effects border")
 
     ax.set_xlabel("Trial Number (Combined Sessions)")
     ax.set_ylabel("Coherence Threshold")

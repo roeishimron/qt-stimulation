@@ -153,7 +153,7 @@ def run_population_analysis(folder_path: str):
             elif isinstance(exp, Roving):
                 roving_experiments.append(exp)
     
-    window_size = 20
+    window_size = 41
     
     # 1. Temporal Success Plots
     run_temporal_analysis_by_type(fixed_experiments, folder_path, window_size, "fixed")
