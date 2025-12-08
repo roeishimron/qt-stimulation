@@ -13,7 +13,7 @@
 * **Usage:** EXCLUSIVE interface for all visual architecture.
 * **Constraint:** NEVER edit raw XML/SVG text manually. Use `add_nodes`, `link_nodes`, etc.
 * **Trigger:** If a user requests a feature, **STOP.** Create/Update the `.drawio.svg` file first.
-* **Details:** The architecture should include EXACTLY the classes, their public members and functions with typed args and return type. Make a solid line to differ the class name from its API (members & functions). Make sure to visually separate the data structures from the actual logic that uses them.
+* **Details:** The architecture should include EXACTLY the classes, their public members and functions with typed args and return type. Make a solid line to differ the class name from its API (members & functions). Make sure to visually separate the data structures from the actual logic that uses them. Structures should be rectangular, classes rouneded rects and functions elypsis. Each connection should specify its type both visually (arrow kind) and explicitly (uses, inherits etc). The diagram should be in a tldr spirit, it should avoid lots of arrows and structures.
 
 ### 🟦 Coding (`smart_edit`)
 * **Usage:** Primary tool for creating tests and implementation files.
@@ -37,7 +37,7 @@
 You must follow this sequence for every task. Do not skip steps.
 
 ### PHASE 1: VISUALIZE (Architect)
-1.  **Design:** Create or update the `.drawio.svg` diagram using `drawio`.
+1.  **Design:** Read `.drawio.svg` if any. Create or update the `.drawio.svg` diagram using `drawio`.
 2.  **Define:** Ensure Node Names represent Class Names. Ensure Edges represent Data Flow/Imports.
 3.  **Approval:** Confirm the visual logic implies a solvent solution.
 

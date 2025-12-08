@@ -1,8 +1,5 @@
-from typing import Tuple
+from typing import Tuple, List
 from numpy import (
-    exp,
-    median,
-    inf,
     concatenate,
     unique,
     bincount,
@@ -10,51 +7,14 @@ from numpy import (
     array,
 )
 from numpy.typing import NDArray
-from scipy.optimize import curve_fit
 import matplotlib.ticker as mticker
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 from dataclasses import asdict
 
-from analysis.motion_coherence.analysis import group_trials_by_prev_trial
+from analysis.motion_coherence.analysis import group_trials_by_prev_trial, weibull, fit_weibull
 from analysis.motion_coherence.data_structures import Fixed, Roving
-
-
-def weibull(C: NDArray, alpha: float, beta: float, chance_level: float = 0.25) -> NDArray:
-    """Weibull psychometric function with configurable chance level."""
-    return 1 - (1 - chance_level) * exp(-((C / alpha) ** beta))
-
-
-def fit_weibull(x: NDArray, y: NDArray, chance_level: float = 0.25) -> Tuple[NDArray, float]:
-    """
-    Fit Weibull function to data x and y.
-    """
-    # Initial guess: alpha = median of x, beta = 2
-    p0 = [median(x), 2.0]
-
-    # Boundaries to keep parameters positive
-    bounds = ([0, 0], [inf, inf])
-
-    popt, _ = curve_fit(lambda C, alpha, beta: weibull(C, alpha, beta, chance_level), x, y, p0=p0, bounds=bounds, maxfev=5000)
-
-    # Weibull values
-    y_hat = weibull(x, *popt, chance_level=chance_level)
-
-    # distance from samples to mean
-    ss_tot = sum((y - y.mean()) ** 2)
-
-    # distance from samples to their weibull values
-    ss_res = sum((y - y_hat) ** 2)
-
-    # the Explained variance
-    ss_reg = ss_tot - ss_res
-
-    # R²
-    r_squared = 1 - ss_res / ss_tot
-
-    return popt, r_squared
-
-
 
 def plot_analysis_curves(subjects_data, folder_path):
     """
@@ -164,4 +124,69 @@ def plot_psychometric_curves_by_prev_trial(subjects_data, folder_path):
     ax.set_ylabel("Proportion Correct")
     ax.set_title("Psychometric Curves by Previous Trial Condition")
     plt.savefig(os.path.join(folder_path, "psychometric_curves_by_prev_trial.png"))
+    plt.show()
+
+def plot_temporal_success(matrix: NDArray, unique_coherences: NDArray, folder_path: str, window_size: int = 20):
+    """
+    Plots the success rate as a dependency of trial number for each coherence.
+    matrix: (n_coherences, n_trials)
+    """
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    n_cohs, n_smoothed_trials = matrix.shape
+    # Adjust trial_indices to represent the center of the convolution window
+    trial_indices_for_plot = np.arange(n_smoothed_trials) + (window_size - 1) / 2
+    
+    for r in range(n_cohs):
+        coh = unique_coherences[r]
+        row = matrix[r]
+        
+        # Filter out NaNs for plotting lines (matplotlib breaks lines on NaN usually, which is good)
+        # But we want to label correctly
+        
+        # Check if row has any data
+        if np.isnan(row).all():
+            continue
+            
+        ax.plot(trial_indices_for_plot, row, label=f"Coh {coh:.2f}", linewidth=2)
+        
+    ax.set_xlabel("Trial Number (Session Index)")
+    ax.set_ylabel("Success Rate")
+    ax.set_title("Success Rate vs. Trial Number by Coherence")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(0, 1.05)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_path, "temporal_success.png"))
+    plt.show()
+
+def plot_threshold_trajectory(thresholds: NDArray, folder_path: str, window_size: int = 20):
+    """
+    Plots the psychometric threshold as a function of trial number.
+    thresholds: (n_trials,)
+    """
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    n_smoothed_trials = len(thresholds)
+    # Adjust trial_indices to represent the center of the convolution window
+    trial_indices_for_plot = np.arange(n_smoothed_trials) + (window_size - 1) / 2
+    
+    # Filter valid points for plotting
+    valid_mask = ~np.isnan(thresholds)
+    if not valid_mask.any():
+        print("No valid threshold data to plot.")
+        plt.close()
+        return
+
+    ax.plot(trial_indices_for_plot[valid_mask], thresholds[valid_mask], 'o-', label="Threshold (Weibull alpha)", linewidth=2)
+    
+    ax.set_xlabel("Trial Number")
+    ax.set_ylabel("Coherence Threshold")
+    ax.set_title("Psychometric Threshold vs. Trial Number")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder_path, "threshold_trajectory.png"))
     plt.show()
