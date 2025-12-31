@@ -166,7 +166,7 @@ def split_subjects_by_order(subjects: Dict[str, Subject]) -> Tuple[List[Subject]
     fixed_first = []
     roving_first = []
     for subject in subjects.values():
-        if len(subject.sessions) == 2: # Only consider subjects with exactly two sessions
+        if len(subject.sessions) >= 2: # Only consider subjects with at least two sessions (Throw away the rest of the data)
             if subject.is_fixed_first():
                 fixed_first.append(subject)
             else:
@@ -180,8 +180,8 @@ def into_long_trials(subjects: List[Subject]) -> NDArray:
     """
     all_subject_data = []
     for subject in subjects:
-        # Assuming strictly 2 sessions per subject as per requirements
-        if len(subject.sessions) != 2:
+        # Assuming at least 2 sessions per subject as per requirements
+        if len(subject.sessions) < 2:
             continue
             
         s1 = subject.sessions[0].session

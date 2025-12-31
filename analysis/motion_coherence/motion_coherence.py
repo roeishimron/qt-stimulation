@@ -45,6 +45,13 @@ def run_temporal_analysis_by_type(experiments: list, folder_path: str, window_si
         plot_temporal_success(smoothed_matrix, unique_cohs, folder_path, window_size=window_size, prefix=prefix)
 
 
+def _insret_sessions_into(s1, s2, fixed_first, fixed_second, roving_first, roving_second):
+    if isinstance(s1, Fixed): fixed_first.append(s1)
+    elif isinstance(s1, Roving): roving_first.append(s1)
+    
+    if isinstance(s2, Fixed): fixed_second.append(s2)
+    elif isinstance(s2, Roving): roving_second.append(s2)
+
 def group_experiments_by_condition_and_order(all_data: dict) -> ExperimentalGroups:
     fixed_first = []
     fixed_second = []
@@ -52,16 +59,12 @@ def group_experiments_by_condition_and_order(all_data: dict) -> ExperimentalGrou
     roving_second = []
     
     for subject in all_data.values():
-        if len(subject.sessions) < 2: continue
-        
-        s1 = subject.sessions[0]
-        s2 = subject.sessions[1]
-        
-        if isinstance(s1, Fixed): fixed_first.append(s1)
-        elif isinstance(s1, Roving): roving_first.append(s1)
-        
-        if isinstance(s2, Fixed): fixed_second.append(s2)
-        elif isinstance(s2, Roving): roving_second.append(s2)
+        if len(subject.sessions)==2:
+            _insret_sessions_into(subject.sessions[0], subject.sessions[1], fixed_first, fixed_second, roving_first, roving_second)
+        if len(subject.sessions) == 3:
+            _insret_sessions_into(subject.sessions[0], subject.sessions[1], fixed_first, fixed_second, roving_first, roving_second)
+            _insret_sessions_into(subject.sessions[1], subject.sessions[2], fixed_first, fixed_second, roving_first, roving_second)
+
         
     return ExperimentalGroups(
         fixed_first=fixed_first,
@@ -168,12 +171,6 @@ def run_population_analysis(folder_path: str):
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FOLDER_PATH = os.path.join(SCRIPT_DIR, "..", "..", "output")
-# FOLDER_PATH = 'output'
 
 def run():
-    import sys
-
-    if len(sys.argv) > 1:
-        run_population_analysis(f"{FOLDER_PATH}/{sys.argv[1]}")
-    else:
-        print("Please provide the output/<population>")
+    run_population_analysis(f"{FOLDER_PATH}/control_data")

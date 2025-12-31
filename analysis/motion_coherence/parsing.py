@@ -1,3 +1,4 @@
+from itertools import chain
 from re import search, findall
 from typing import Tuple, Dict, List
 from numpy import (
@@ -24,7 +25,7 @@ def text_into_coherences_and_successes(text: str) -> Tuple[NDArray, NDArray, NDA
     directions = fromstring(match.group(2), dtype=float64, sep=" ")
 
     success = findall(
-        r"INFO:constant_stimuli_experiment:Trial \#\d+ got answer after \d\.\d+ s and its (True|False)",
+        r"INFO:constant_stimuli_experiment:Trial.*?(True|False)",
         text,
     )
     success = array([s == "True" for s in success])
@@ -77,14 +78,9 @@ def get_all_subjects_data(folder_path) -> Dict[str, Subject]:
     subjects_data: Dict[str, Subject] = {}
     # For each subject and condition, keep only the latest session
     for subject_id, conditions in temp_data.items():
-        subject_experiments: List[Experiment] = []
-        if conditions["fixed"]:
-            latest_fixed = max(conditions["fixed"], key=lambda x: x.timestamp)
-            subject_experiments.append(Fixed(session=latest_fixed))
-        if conditions["roving"]:
-            latest_roving = max(conditions["roving"], key=lambda x: x.timestamp)
-            subject_experiments.append(Roving(session=latest_roving))
-        
-        subjects_data[subject_id] = Subject(sessions=subject_experiments)
+        subjects_data[subject_id] = Subject(sessions=list(chain(
+            (Fixed(session=s) for s in conditions["fixed"] if conditions["fixed"]),
+            (Roving(session=s) for s in conditions["roving"] if conditions["roving"])
+        )))
 
     return subjects_data
