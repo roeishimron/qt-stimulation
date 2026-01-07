@@ -15,20 +15,6 @@ from random import choices, choice
 from experiments.words import COMMON_HEBREW_WORDS, into_arabic
 from copy import deepcopy
 
-
-def create_on_show_caller(t: AppliableText) -> OnShowCaller:
-    return OnShowCaller(t, lambda: None)
-
-
-def create_random_duplications(words: List[OnShowCaller], recorder: ResponseRecorder) -> List[OnShowCaller]:
-    n = len(words)
-    indices = choices(range(1, n), k=int((n-1)/20))
-    for i in indices:
-        words[i] = deepcopy(words[i-1])
-        words[i].on_show = recorder.record_stimuli_show
-    return words
-
-
 SCREEN_REFRESH_RATE = 60  # Hz
 STIMULI_REFRESH_RATE = 30  # Hz
 TRIAL_DURATION = 15  # s
@@ -36,14 +22,17 @@ ODDBALL_MODULATION = 4
 AMOUNT_OF_TRIALS = 4
 
 
-def run(oddballs: List[List[Appliable] | Appliable], base: Iterable[Appliable],
+def into_list_of_lists[A: Appliable](odds:  List[A]) -> List[List[A]]:
+    return [list(odds)] * AMOUNT_OF_TRIALS
+
+def run[A: Appliable](oddballs: List[List[A]]|List[A], base: Iterable[A],
         screen_refresh_rate=SCREEN_REFRESH_RATE,
         stimuli_refresh_rate=STIMULI_REFRESH_RATE,
         trial_duration=TRIAL_DURATION,
         oddball_modulation=ODDBALL_MODULATION,
         stimuli_on_keypress=lambda _: None):
     
-    all_odds = []
+    all_odds : List[List[A]]  = []
     if isinstance(oddballs, List) and isinstance(oddballs[0], List):
         assert AMOUNT_OF_TRIALS == len(oddballs)
         all_odds = oddballs
