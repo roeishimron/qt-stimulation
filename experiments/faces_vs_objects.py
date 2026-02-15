@@ -50,7 +50,7 @@ def run():
                              cycle(list(inflate_randomley(objects, 100))), ODDBALL_MODULATION)
     
 
-    main_window = RealtimeViewingExperiment(stimuli, SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI)
+    main_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli(stimuli, SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI)
     main_window.showFullScreen()
 
     # Run the main Qt loop

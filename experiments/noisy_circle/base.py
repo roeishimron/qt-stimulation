@@ -80,7 +80,7 @@ def run(center_generaor: Callable[[int, int], Iterable[Tuple[List[Tuple[int, int
 
     oddballs = flatten(oddballs)
 
-    realtime_window = RealtimeViewingExperiment(
+    realtime_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli(
         OddballStimuli(cycle(oddballs), cycle(base),
                        ODDBALL_MODULATION), SoftSerial(),
         int(FRAME_RATE / STIMULI_DISPLAY_FREQUENCY),

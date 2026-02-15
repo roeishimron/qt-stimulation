@@ -61,7 +61,7 @@ def run():
         # Create the Qt Application
     app = QApplication(sys.argv)
 
-    main_window = RealtimeViewingExperiment([OddballStimuli(iter(ob),
+    main_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli([OddballStimuli(iter(ob),
                                                             None, 
                                                             ODDBALL_MODULATION) 
                                                 for ob in all_odds],

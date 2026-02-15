@@ -16,10 +16,13 @@ from typing import Callable, Tuple, Iterable, List, Iterator
 
 from time import time_ns
 
+# stimulus and amount of frames
+type Stimuli = Iterator[Tuple[Appliable, uint]]
+
 
 class IFrameGenerator():
     def paint(self, painter: QPainter, screen: QRect) -> int:
-        pass
+        ...
 
     def write_at(self, painter: QPainter, screen: QRect, text: str, font_size=50):
         AppliableText(text, font_size, Qt.GlobalColor.gray).draw_at(
@@ -34,13 +37,12 @@ class IFrameGenerator():
 
 class StimuliFrameGenerator(IFrameGenerator):
 
-    amount_of_stims: int
-    stimuli: OddballStimuli
-    frames_per_stim: List[uint]
+    stimuli: Stimuli
 
-    current_interstim_index: int
+    current_instim_index: int
     # stimulation and time in frames
-    current_stimulation: Tuple[Appliable, uint] | None
+    current_stimulus: Appliable | None
+    current_amount_of_frames: uint
 
     on_keypress: Callable[[QKeyEvent], None]
     on_mousepress: Callable[[QMouseEvent], None]
@@ -50,18 +52,18 @@ class StimuliFrameGenerator(IFrameGenerator):
     use_step: bool
 
     # The smoothing function accepts relative time and returns the opacity at that time
-    def __init__(self, amount_of_stims: int, stimuli: OddballStimuli,
-                 frames_per_stim: List[uint], use_step=False, show_fixation=True,
+    def __init__(self, stimuli: Stimuli,
+                 use_step=False, show_fixation=True,
                  on_keypress=lambda _: None, on_mousepress=lambda _: None,
                  on_start=lambda: None):
 
-        self.amount_of_stims = amount_of_stims
         self.stimuli = stimuli
-        self.frames_per_stim = frames_per_stim
         self.use_step = use_step
 
-        self.current_interstim_index = 0
-        self.current_stimulation = None
+        self.current_instim_index = 0
+
+        self.current_stimulus = None
+        self.current_amount_of_frames = uint(0)
 
         self.show_fixation = show_fixation
         self.on_keypress = on_keypress
@@ -74,32 +76,34 @@ class StimuliFrameGenerator(IFrameGenerator):
         painter.fillRect(screen, QColor(Qt.GlobalColor.darkGray))
 
         # The current stim ended
-        if self.current_interstim_index == 0:
+        if self.current_instim_index == 0:
 
             # This is the first stimulus!
-            if self.current_stimulation is None:
+            if self.current_stimulus is None:
                 self.on_start()
 
+            self.current_stimulus, self.current_amount_of_frames = next(
+                self.stimuli, (None, uint(0)))
+            
             # All stims ended
-            if self.amount_of_stims == 0:
+            if self.current_stimulus is None:
                 return 0
+            
 
-            self.amount_of_stims -= 1
-            self.current_stimulation = (self.stimuli.next_stimulation()[
-                                        1], self.frames_per_stim.pop(0))
-
-        if self.current_stimulation is None:
+        if self.current_stimulus is None:
             print("Reached unreachable!")
             return 0
 
-        self.current_interstim_index = (
-            self.current_interstim_index+1) % self.current_stimulation[1]
+        self.current_instim_index = (
+            self.current_instim_index+1) % self.current_amount_of_frames
 
         if not self.use_step:
             painter.setOpacity(
-                sin(interp(self.current_interstim_index, [0, self.current_stimulation[1]], [0, pi])))
+                sin(interp(self.current_instim_index,
+                           array([0, self.current_amount_of_frames]),
+                           [0, pi])))
 
-        self.current_stimulation[0].draw_at(screen, painter)
+        self.current_stimulus.draw_at(screen, painter)
 
         painter.setOpacity(1)
 
@@ -119,20 +123,17 @@ class StimuliFrameGenerator(IFrameGenerator):
 class CountdownFrameGenerator(StimuliFrameGenerator):
 
     def __init__(self, countdown_duration: int):
-        stim_per_second = OddballStimuli((AppliableText(f"{countdown_duration-i}")
-                                          for i in range(countdown_duration)))
 
-        super().__init__(countdown_duration, stim_per_second, list(ones(countdown_duration, dtype=uint) * REFRESH_RATE
-                                                                   ), show_fixation=False)
+        stimuli = ((AppliableText(f"{countdown_duration-i}"), REFRESH_RATE)
+                   for i in range(countdown_duration))
+        super().__init__(stimuli, show_fixation=False)
 
 
 class ConstantFrameGenerator(StimuliFrameGenerator):
 
     def __init__(self, duration: int, stimulus: Appliable):
-        stim_per_second = OddballStimuli(repeat(stimulus, duration))
-
-        super().__init__(duration, stim_per_second, list(
-            ones(duration, dtype=uint) * REFRESH_RATE), show_fixation=False)
+        super().__init__(
+            iter([(stimulus, duration*REFRESH_RATE)]), show_fixation=False)
 
 
 class BreakFrameGenerator(IFrameGenerator):
@@ -191,7 +192,9 @@ class BreakFrameGenerator(IFrameGenerator):
 def _default_key_should_end_break(e: QKeyEvent) -> bool:
     return e.key() == Qt.Key.Key_Space
 
-REFRESH_RATE = 60
+
+REFRESH_RATE = uint(60)
+
 
 class RealtimeViewingExperiment(QOpenGLWidget):
     remaining_to_swap: int
@@ -205,12 +208,9 @@ class RealtimeViewingExperiment(QOpenGLWidget):
     frame_generators: Iterator[IFrameGenerator]
     frame_generator: IFrameGenerator
 
-    def __init__(self, stimuli: OddballStimuli | List[OddballStimuli],
+    def __init__(self, stimulis: Iterable[Stimuli],  # stimuli per trial
                  event_trigger: SoftSerial,
-                 frames_per_stim: ArrayLike,
-                 amount_of_stims_per_trial: int,
                  pretrial_duration=3,
-                 amount_of_trials=3,
                  use_step=False,
                  show_fixation_cross=True,
                  stimuli_on_keypress=lambda _: None,
@@ -227,19 +227,6 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         super().__init__()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
-        # Error here means that the `amount_of_stims_per_trial` is not compatible with the `frames_per_stim`'s shape
-        frames_per_stim = list(
-            ones((amount_of_trials, amount_of_stims_per_trial), dtype=uint) * frames_per_stim)
-
-        stimulis = []
-        if isinstance(stimuli, List):
-            assert len(stimuli) == amount_of_trials
-            stimulis = stimuli
-        else:
-            stimulis = [stimuli] * amount_of_trials
-        stimulis = iter(stimulis)
-
-
         if countdown_frame_generator is None:
             countdown_frame_generator = iter(
                 lambda: CountdownFrameGenerator(pretrial_duration), None)
@@ -251,18 +238,17 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         self.frame_generators = chain.from_iterable(
             (self._new_trial(countdown_frame_generator,
-                             amount_of_stims_per_trial,
-                             next(stimulis), list(current_frames_per_stim),
+                             stimuli,
                              use_step, show_fixation_cross, event_trigger,
                              stimuli_on_keypress, stimuli_on_mousepress,
                              break_on_keypress, break_on_mousepress,
                              on_trial_start, on_break_start, break_stimuli)
-             for current_frames_per_stim in frames_per_stim))
+             for stimuli in stimulis))
 
         self.frame_generator = next(self.frame_generators)
 
     def _new_trial(self, countdown_frame_generator: Iterator[IFrameGenerator],
-                   amount_of_stims: int, stimuli: OddballStimuli, frames_per_stim: List[uint],
+                   stimuli: Stimuli,
                    use_step: bool, show_fixation_cross: bool, event_trigger: SoftSerial,
                    stimuli_on_keypress: Callable[[QKeyEvent], None],
                    stimuli_on_mousepress: Callable[[QMouseEvent], None],
@@ -280,11 +266,52 @@ class RealtimeViewingExperiment(QOpenGLWidget):
 
         return (break_frame_generator,
                 next(countdown_frame_generator),
-                StimuliFrameGenerator(amount_of_stims, stimuli,
-                                      frames_per_stim, use_step,
+                StimuliFrameGenerator(stimuli,
+                                      use_step,
                                       show_fixation_cross, stimuli_on_keypress,
                                       stimuli_on_mousepress,
                                       on_trial_start))
+
+    @classmethod
+    def with_constant_amount_of_stimuli(cls, stimuli: OddballStimuli | List[OddballStimuli],
+                                        event_trigger: SoftSerial,
+                                        frames_per_stim: ArrayLike,
+                                        amount_of_stims_per_trial: int,
+                                        pretrial_duration=3,
+                                        amount_of_trials=3,
+                                        use_step=False,
+                                        show_fixation_cross=True,
+                                        stimuli_on_keypress=lambda _: None,
+                                        stimuli_on_mousepress=lambda _: None,
+                                        break_on_keypress=_default_key_should_end_break,  # True if should end break
+                                        break_on_mousepress=lambda _: False,  # True if should end break
+                                        on_trial_start=lambda: None,
+                                        on_break_start=lambda: True,  # True if should start break
+                                        break_stimuli: Iterator[Iterator[Appliable]] = iter(
+        lambda: iter(()), None),
+        countdown_frame_generator: Iterator[IFrameGenerator] | None = None
+    ):
+        # Error here means that the `amount_of_stims_per_trial` is not compatible with the `frames_per_stim`'s shape
+        frames_per_stim = list(
+            ones((amount_of_trials, amount_of_stims_per_trial), dtype=uint) * frames_per_stim)
+
+        stimulis = []
+        if isinstance(stimuli, List):
+            assert len(stimuli) == amount_of_trials
+            stimulis = stimuli
+        else:
+            stimulis = [stimuli] * amount_of_trials
+        stimulis = iter(stimulis)
+
+        iterator_of_stims = (((next(s.iter_stimuli()), f) for f in frames_per_trial)
+                             for s, frames_per_trial in zip(stimulis, frames_per_stim))
+
+        return RealtimeViewingExperiment(iterator_of_stims,
+                                         event_trigger, pretrial_duration,
+                                         use_step, show_fixation_cross, stimuli_on_keypress,
+                                         stimuli_on_mousepress, break_on_keypress, break_on_mousepress,
+                                         on_trial_start, on_break_start, 
+                                         break_stimuli, countdown_frame_generator)
 
     def _apply_format(self):
         format = QSurfaceFormat()

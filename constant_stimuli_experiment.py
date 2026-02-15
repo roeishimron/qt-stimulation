@@ -144,7 +144,7 @@ class ConstantStimuli:
         # Adding the empty `Stimulus`, empty `OddballStimuli` and extra trial for extra break
         self.stimuli = chain((Stimulus(s[1]) for s in stimuli), iter(
             [Stimulus(ClickableStimulus())]))
-        self.experiment = RealtimeViewingExperiment([s[0] for s in stimuli] + [OddballStimuli(cycle([generate_grey(1)]))],
+        self.experiment = RealtimeViewingExperiment.with_constant_amount_of_stimuli([s[0] for s in stimuli] + [OddballStimuli(cycle([generate_grey(1)]))],
                                                     event_trigger,
                                                     frames_per_stim,
                                                     amount_of_stims_per_trial,

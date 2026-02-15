@@ -101,7 +101,7 @@ def run():
         if e.key() == Qt.Key.Key_Space:
             recorder.record_response()
 
-    realtime_window = RealtimeViewingExperiment(
+    realtime_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli(
         trials, SoftSerial(),
         int(FRAME_RATE / STIMULI_DISPLAY_FREQUENCY), AMOUNT_OF_DURATIONS, use_step=True, stimuli_on_keypress=stimuli_keypress)
     realtime_window.showFullScreen()

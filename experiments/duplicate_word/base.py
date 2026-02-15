@@ -44,7 +44,7 @@ def run[A: Appliable](oddballs: List[List[A]]|List[A], base: Iterable[A],
 
     assert screen_refresh_rate % stimuli_refresh_rate == 0
 
-    main_window = RealtimeViewingExperiment([OddballStimuli(cycle(ob),
+    main_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli([OddballStimuli(cycle(ob),
                                                             cycle(base), 
                                                             oddball_modulation) 
                                                 for ob in all_odds],

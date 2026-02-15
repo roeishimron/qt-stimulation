@@ -60,7 +60,7 @@ def run(screen_refresh_rate = SCREEN_REFRESH_RATE,
 
     assert screen_refresh_rate % stimuli_refresh_rate == 0
 
-    main_window = RealtimeViewingExperiment(OddballStimuli(cycle(oddballs), 
+    main_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli(OddballStimuli(cycle(oddballs), 
                                                            cycle(base), oddball_modulation),
                                              SoftSerial(), 
                                              int(screen_refresh_rate/stimuli_refresh_rate), 
