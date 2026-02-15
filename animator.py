@@ -162,6 +162,9 @@ class OddballStimuli:
             self._next_oddball()
             return (True, next(self.oddball))
         return (False, next(self.base))
+    
+    def iter_stimuli(self):
+        yield self.next_stimulation()[1]
 
 # deprecated
 class Animator:
