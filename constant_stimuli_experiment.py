@@ -134,9 +134,14 @@ class ConstantStimuli:
         self.current_stimulus = next(self.stimuli)
         self.current_stimulus.on_display()
 
-    def __init__(self, stimuli: List[Tuple[OddballStimuli, ClickableStimulus | KeypressableStimulus]], event_trigger: SoftSerial,
-                 frames_per_stim: ArrayLike, amount_of_stims_per_trial: int, pretrial_duration=0,
-                 use_step=True, show_fixation_cross=False, break_stimuli: Iterator[Iterator[Appliable]] = iter(lambda: iter(()), None)) -> None:
+    def __init__(self, stimuli: List[Tuple[OddballStimuli, ClickableStimulus | KeypressableStimulus]], 
+                 event_trigger: SoftSerial,
+                 frames_per_stim: ArrayLike, 
+                 amount_of_stims_per_trial: int, 
+                 pretrial_duration=0,
+                 use_step=True, 
+                 show_fixation_cross=False, 
+                 break_stimuli: Iterator[Iterator[Appliable]] = iter(lambda: iter(()), None)) -> None:
         self.current_answer = None
         self.current_stimulus = None
         self.trial_number = 0
