@@ -1,5 +1,5 @@
 from itertools import cycle
-from experiments.constant_stimuli.dots_generator import generate_moving_dots
+from experiments.constant_stimuli.dots_generator import GroupProperties, generate_moving_dots
 import sys
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import QApplication
@@ -9,8 +9,7 @@ from animator import OddballStimuli
 from stims import fill_with_dots, array_into_pixmap, Dot
 from constant_stimuli_experiment import ConstantStimuli, DirectionValidator
 from numpy.random import random, uniform
-from numpy import pi, deg2rad, array2string, array, ones
-from experiments.analysis.motion_coherence import analyze_latest
+from numpy import pi, deg2rad, array2string, array, ones, uint
 from realtime_experiment import RealtimeViewingExperiment
 
 from logging import getLogger
@@ -42,8 +41,9 @@ def run():
     MEAN_LIFETIME = AMOUNT_OF_STIMULI // 2
 
     trial = generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
-                                 size, AMOUNT_OF_STIMULI,
-                                 array([[0, 0.33, 2], [pi/2, 0.33, 4]]), VELOCITY, MEAN_LIFETIME, 6)[0]
+                                 size, AMOUNT_OF_STIMULI, VELOCITY, MEAN_LIFETIME,
+                                 [GroupProperties(1/2, None, uint(2), -1), 
+                                  GroupProperties(1/2, None, uint(4), 1)])[0]
 
     frames = [array_into_pixmap(
         fill_with_dots(size, [],

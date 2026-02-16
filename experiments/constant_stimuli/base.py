@@ -1,6 +1,6 @@
 from itertools import cycle
 from typing import Any, Callable, Generator
-from experiments.constant_stimuli.dots_generator import generate_moving_dots
+from experiments.constant_stimuli.dots_generator import GroupProperties, generate_moving_dots
 import sys
 from PySide6.QtCore import QPointF, QCoreApplication
 from PySide6.QtWidgets import QApplication
@@ -9,8 +9,7 @@ from animator import OddballStimuli
 from stims import apply_spatial_filter, array_into_pixels, fill_with_dots, array_into_pixmap, Dot, pixels_into_pixmap
 from constant_stimuli_experiment import ConstantStimuli, DirectionValidator
 from numpy.random import random, uniform
-from numpy import inf, pi, deg2rad, array2string, array, ones
-from experiments.analysis.motion_coherence import analyze_latest
+from numpy import inf, pi, deg2rad, array2string, array, ones, uint
 from PySide6.QtCore import Slot
 
 from logging import getLogger
@@ -47,8 +46,9 @@ def run(coherences, directions, trial_duration=1, max_spacial_frequency=inf):
     mean_lifetime = amount_of_stimuli // 2
 
     trials_data = [generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
-                                   size, amount_of_stimuli,
-                                   array([[d, c, 0]]), VELOCITY, mean_lifetime)
+                                   size, amount_of_stimuli, VELOCITY, mean_lifetime,
+                                   [GroupProperties(c, d, uint(0), -1), 
+                                    GroupProperties(1-c, None, uint(0), -1)], True)
                 for c, d in zip(coherences, directions)]
 
     trials = [d[0] for d in trials_data]
@@ -91,4 +91,3 @@ def run(coherences, directions, trial_duration=1, max_spacial_frequency=inf):
     experiment.run()
     app.exec()
 
-    analyze_latest()
