@@ -7,7 +7,6 @@ from response_recorder import KeyRecorder
 from soft_serial import SoftSerial
 from animator import OddballStimuli
 from stims import fill_with_dots, array_into_pixmap, Dot
-from constant_stimuli_experiment import ConstantStimuli, DirectionValidator
 from numpy.random import random, uniform
 from numpy import pi, deg2rad, array2string, array, ones, uint
 from realtime_experiment import RealtimeViewingExperiment

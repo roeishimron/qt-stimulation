@@ -84,11 +84,10 @@ class StimuliFrameGenerator(IFrameGenerator):
 
             self.current_stimulus, self.current_amount_of_frames = next(
                 self.stimuli, (None, uint(0)))
-            
+
             # All stims ended
             if self.current_stimulus is None:
                 return 0
-            
 
         if self.current_stimulus is None:
             print("Reached unreachable!")
@@ -232,7 +231,6 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                 lambda: CountdownFrameGenerator(pretrial_duration), None)
 
         self._apply_format()
-
         self.frameSwapped.connect(self.update)
         self.remaining_to_swap = 0
 
@@ -244,7 +242,7 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                              break_on_keypress, break_on_mousepress,
                              on_trial_start, on_break_start, break_stimuli)
              for stimuli in stimulis))
-
+        
         self.frame_generator = next(self.frame_generators)
 
     def _new_trial(self, countdown_frame_generator: Iterator[IFrameGenerator],
@@ -273,9 +271,31 @@ class RealtimeViewingExperiment(QOpenGLWidget):
                                       on_trial_start))
 
     @classmethod
+    def convert_oddball_stimulis_into_iterators(
+        cls, stimuli: OddballStimuli | List[OddballStimuli],
+        frames_per_stim: NDArray | int,
+        amount_of_stims_per_trial: int,
+        amount_of_trials: int,
+
+    ) -> Iterable[Stimuli]:
+        _frames_per_stim = list(
+            ones((amount_of_trials, amount_of_stims_per_trial), dtype=uint) * frames_per_stim)
+
+        stimulis = []
+        if isinstance(stimuli, List):
+            assert len(stimuli) == amount_of_trials
+            stimulis = stimuli
+        else:
+            stimulis = [stimuli] * amount_of_trials
+
+        for oddball_stimuli, frames_per_trial in zip(stimulis, _frames_per_stim):
+            yield ((s, uint(f)) for s, f in zip(oddball_stimuli.iter_stimuli(), frames_per_trial))
+            
+
+    @classmethod
     def with_constant_amount_of_stimuli(cls, stimuli: OddballStimuli | List[OddballStimuli],
                                         event_trigger: SoftSerial,
-                                        frames_per_stim: ArrayLike,
+                                        frames_per_stim: NDArray | int,
                                         amount_of_stims_per_trial: int,
                                         pretrial_duration=3,
                                         amount_of_trials=3,
@@ -291,26 +311,15 @@ class RealtimeViewingExperiment(QOpenGLWidget):
         lambda: iter(()), None),
         countdown_frame_generator: Iterator[IFrameGenerator] | None = None
     ):
-        # Error here means that the `amount_of_stims_per_trial` is not compatible with the `frames_per_stim`'s shape
-        frames_per_stim = list(
-            ones((amount_of_trials, amount_of_stims_per_trial), dtype=uint) * frames_per_stim)
 
-        stimulis = []
-        if isinstance(stimuli, List):
-            assert len(stimuli) == amount_of_trials
-            stimulis = stimuli
-        else:
-            stimulis = [stimuli] * amount_of_trials
-        stimulis = iter(stimulis)
-
-        iterator_of_stims = (((next(s.iter_stimuli()), f) for f in frames_per_trial)
-                             for s, frames_per_trial in zip(stimulis, frames_per_stim))
+        iterator_of_stims = cls.convert_oddball_stimulis_into_iterators(
+            stimuli, frames_per_stim, amount_of_stims_per_trial, amount_of_trials)
 
         return RealtimeViewingExperiment(iterator_of_stims,
                                          event_trigger, pretrial_duration,
                                          use_step, show_fixation_cross, stimuli_on_keypress,
                                          stimuli_on_mousepress, break_on_keypress, break_on_mousepress,
-                                         on_trial_start, on_break_start, 
+                                         on_trial_start, on_break_start,
                                          break_stimuli, countdown_frame_generator)
 
     def _apply_format(self):

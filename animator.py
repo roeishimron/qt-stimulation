@@ -15,6 +15,7 @@ DEFAULT_COLOR = "white"
 class Appliable:
     def apply_to_label(self, _label: QLabel):
         pass
+
     def draw_at(self, screen: QRect, painter: QPainter):
         pass
 
@@ -29,7 +30,7 @@ class AppliablePixmap(Appliable):
         label.setPixmap(self.pixmap)
 
     def draw_at(self, screen: QRect, painter: QPainter):
-        target = screen.center() - QPoint(self.pixmap.width(), self.pixmap.height()) / 2 
+        target = screen.center() - QPoint(self.pixmap.width(), self.pixmap.height()) / 2
         painter.drawPixmap(target, self.pixmap)
 
 
@@ -43,7 +44,7 @@ class AppliableText(Appliable):
     horizontal_flip: bool
 
     def __init__(self, text: str, font_size: int = 50, color: str | Qt.GlobalColor = DEFAULT_COLOR,
-                 font_family: str = DEFAULT_FONT, 
+                 font_family: str = DEFAULT_FONT,
                  font_style: QFont.Style = QFont.Style.StyleNormal,
                  bold=False, horizontal_flip=False):
         self.text = text
@@ -74,9 +75,9 @@ class AppliableText(Appliable):
         painter.setFont(font)
 
         if self.horizontal_flip:
-            painter.setTransform(QTransform(-1,0,0,1,screen.width(),0))
+            painter.setTransform(QTransform(-1, 0, 0, 1, screen.width(), 0))
         painter.drawText(screen, self.text, Qt.AlignmentFlag.AlignCenter)
-        painter.setTransform(QTransform(1,0,0,1,0,0), False)
+        painter.setTransform(QTransform(1, 0, 0, 1, 0, 0), False)
 
 
 # Calls ONLY on the 1st time showing
@@ -96,7 +97,7 @@ class OnShowCaller(Appliable):
             self.called = True
             self.on_show()
 
-    def draw_at(self ,screen: QRect, painter: QPainter):
+    def draw_at(self, screen: QRect, painter: QPainter):
         self.appliable.draw_at(screen, painter)
         if not self.called:
             self.called = True
@@ -111,7 +112,7 @@ class AtRelativeOpacity(Appliable):
         self.appliable = appliable
         self.opacity = opacity
 
-    def draw_at(self ,screen: QRect, painter: QPainter):
+    def draw_at(self, screen: QRect, painter: QPainter):
         original_opacity = painter.opacity()
         painter.setOpacity(original_opacity*self.opacity)
         self.appliable.draw_at(screen, painter)
@@ -122,12 +123,12 @@ class DrawableConvolve(Appliable):
     weighted_appliables: List[Appliable]
 
     def __init__(self, appliables: Tuple[Appliable], weights: NDArray[float64]):
-        self.weighted_appliables  = [AtRelativeOpacity(a,o) for a,o in zip(appliables, weights)]
+        self.weighted_appliables = [AtRelativeOpacity(
+            a, o) for a, o in zip(appliables, weights)]
 
-    def draw_at(self ,screen: QRect, painter: QPainter):
+    def draw_at(self, screen: QRect, painter: QPainter):
         for a in self.weighted_appliables:
             a.draw_at(screen, painter)
-
 
 
 class OddballStimuli:
@@ -162,11 +163,14 @@ class OddballStimuli:
             self._next_oddball()
             return (True, next(self.oddball))
         return (False, next(self.base))
-    
-    def iter_stimuli(self):
-        yield self.next_stimulation()[1]
 
-# deprecated
+    def iter_stimuli(self):
+        while True:
+            try:
+                yield self.next_stimulation()[1]
+            except StopIteration:
+                break
+
 class Animator:
     display: QLabel
     stimuli: OddballStimuli

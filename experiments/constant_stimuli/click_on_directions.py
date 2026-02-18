@@ -36,7 +36,7 @@ def run():
 
     print(directions)
 
-    experiment = ConstantStimuli(
+    experiment = ConstantStimuli.with_constant_amount_of_stimuli(
         [(s,DirectionValidator(d, screen_center)) for s,d in zip(stimuli, directions) ],
         SoftSerial(),
         FRAMES_PER_STIM,

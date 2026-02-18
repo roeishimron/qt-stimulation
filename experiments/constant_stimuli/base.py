@@ -80,7 +80,7 @@ def run(coherences, directions, trial_duration=1, max_spacial_frequency=inf):
     logger.info(
         f"starting with coherences {array2string(array(coherences))} and directions {array2string(array(directions))}")
 
-    experiment = ConstantStimuli(
+    experiment = ConstantStimuli.with_constant_amount_of_stimuli(
         [(s, DirectionValidator(d, screen_center))
          for s, d in zip(stimuli, directions)],
         SoftSerial(),
