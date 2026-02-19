@@ -39,6 +39,9 @@
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
+				"ms-python.autopep8",
+				"Google.gemini-cli-vscode-ide-companion",
+				// "ozzafar.debugmcpextension" comment until server timeout fix
 			]
 		}
 	}, // Allowing graphics
