@@ -1,31 +1,33 @@
 {
   "mcpServers": {
-
-    "drawio-mcp": {
-      "command": "drawio-mcp"
-    },
-    "python-analyst": {
-      "command": "mcp-language-server",
-      "args": [
-        "--workspace",
-        "./",
-        "--lsp",
-        "pyright-langserver",
-        "--",
-        "--stdio"
-      ]
-    },
-    "python-debugger": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--with",
-        "mcp-pdb",
-        "mcp-pdb"
-      ]
+    "debugmcp": {
+      "url": "http://localhost:3001/sse",
+      "description": "DebugMCP - AI-powered debugging assistant"
     }
   },
   "general": {
-    "previewFeatures": true
+    "previewFeatures": true,
+    "disableAutoUpdate": true,
+    "enableAutoUpdate": false
+  },
+  "ui": {
+    "footer": {
+      "hideContextPercentage": false
+    },
+    "showModelInfoInChat": true
+  },
+  "tools": {
+    "shell": {
+      "showColor": true
+    },
+    "autoAccept": true
+  },
+  "hooksConfig": {},
+  "ide": {
+    "enabled": true
+  },
+  "experimental": {
+    "plan": true,
+    "enableAgents": true
   }
 }
