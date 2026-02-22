@@ -273,13 +273,12 @@ PARAMS = {
     "duration": 50,
     "motion_velocity": 2,
     "mean_lifetime": 60,
-    "noise_cycle_time": 0,
 }
 
 
 def test_dots_stay_in_bounds():
     """1. For every frame, all dots are inside the circle."""
-    direction_props = np.array([[0, 1.0, 10]])
+    direction_props = [GroupProperties(ratio=1.0, direction=0, cycle_time=np.uint(0), color=-1)]
     frames = generate_moving_dots(
         groups_properties=direction_props, **PARAMS)[0]
     stimulus_radius = PARAMS["stimulus_size_px"] / 2.0
@@ -300,7 +299,7 @@ def test_dots_are_always_moving():
     params["stimulus_size_px"] = 1_000_000
     params["mean_lifetime"] = 1_000_000
 
-    direction_props = np.array([[np.pi / 4, 1.0, 0]])
+    direction_props = [GroupProperties(ratio=1.0, direction=np.pi / 4, cycle_time=np.uint(0), color=-1)]
     frames = generate_moving_dots(
         groups_properties=direction_props, **params)[0]
     for i in range(params["duration"] - 1):
@@ -321,7 +320,7 @@ def test_jumps_only_on_cycle_end():
     params = PARAMS.copy()
     params["mean_lifetime"] = 30
     cycle_time = 12
-    direction_props = np.array([[0, 1.0, cycle_time]])
+    direction_props = [GroupProperties(ratio=1.0, direction=0, cycle_time=np.uint(cycle_time), color=-1)]
     frames = generate_moving_dots(
         groups_properties=direction_props, **params)[0]
     for i in range(params["duration"] - 1):
@@ -337,7 +336,10 @@ def test_jumps_only_on_cycle_end():
 def test_visibility_with_zero_cycle_time():
     """4. If the cycle_time is 0, all dots are always visible."""
     num_dots = PARAMS["num_dots"]
-    direction_props = np.array([[0, 0.5, 0], [np.pi, 0.5, 0]])
+    direction_props = [
+        GroupProperties(ratio=0.5, direction=0, cycle_time=np.uint(0), color=-1),
+        GroupProperties(ratio=0.5, direction=np.pi, cycle_time=np.uint(0), color=-1)
+    ]
     # This test implicitly uses noise_cycle_time=0 as well
     frames = generate_moving_dots(
         groups_properties=direction_props, **PARAMS)[0]
@@ -350,9 +352,15 @@ def test_visibility_with_zero_cycle_time():
 @pytest.mark.parametrize(
     "test_id, direction_props",
     [
-        ("100% Noise", np.zeros((0, 3))),
-        ("Signal + Noise", np.array([[0, 0.5, 10]])),
-        ("Two Opposing Signals", np.array([[0, 0.5, 10], [np.pi, 0.5, 12]])),
+        ("100% Noise", [GroupProperties(ratio=1.0, direction=None, cycle_time=np.uint(0), color=-1)]),
+        ("Signal + Noise", [
+            GroupProperties(ratio=0.5, direction=0, cycle_time=np.uint(10), color=-1),
+            GroupProperties(ratio=0.5, direction=None, cycle_time=np.uint(0), color=-1)
+        ]),
+        ("Two Opposing Signals", [
+            GroupProperties(ratio=0.5, direction=0, cycle_time=np.uint(10), color=-1),
+            GroupProperties(ratio=0.5, direction=np.pi, cycle_time=np.uint(12), color=-1)
+        ]),
     ]
 )
 def test_spatial_distribution_is_unbiased(test_id, direction_props):
@@ -379,3 +387,60 @@ def test_spatial_distribution_is_unbiased(test_id, direction_props):
     tolerance = params["dot_radius"]
     assert np.isclose(center_of_mass, true_center, atol=tolerance), \
         f"Center of mass {center_of_mass} is biased for case '{test_id}'"
+
+def test_ssvep_flicker():
+    """6. SSVEP Flicker: Verify 10-frame cycle produces 5 visible / 5 invisible frames."""
+    cycle_time = 10
+    duration = 30
+    params = PARAMS.copy()
+    params["duration"] = duration
+    direction_props = [GroupProperties(ratio=1.0, direction=0, cycle_time=np.uint(cycle_time), color=-1)]
+    
+    frames, _ = generate_moving_dots(
+        groups_properties=direction_props, **params)
+    
+    # Check visibility per frame
+    visibility = []
+    for frame in frames:
+        # If the frame has dots with color != 0 (assuming invisible dots might be filtered or have color 0)
+        # Based on implementation, 'visible_dots_this_frame' only contains dots if they are in the visible phase.
+        # So checking if list is empty or not is sufficient if we assume 100% coherence.
+        # But let's check if any dot is visible.
+        is_visible = len(frame) > 0
+        visibility.append(is_visible)
+        
+    expected_visibility = []
+    for i in range(duration):
+        # Frame 0: 0 % 10 = 0 < 5 -> True
+        # Frame 4: 4 % 10 = 4 < 5 -> True
+        # Frame 5: 5 % 10 = 5 !< 5 -> False
+        expected_visibility.append((i % cycle_time) < (cycle_time / 2))
+        
+    assert visibility == expected_visibility, f"Visibility pattern mismatch.\nExpected: {expected_visibility}\nActual:   {visibility}"
+
+
+def test_dots_stay_in_bounds_with_cycles():
+    """7. Checks if dots stay in bounds when cycle_time > 0."""
+    params = {
+        "num_dots": 50,
+        "dot_radius": 20,
+        "stimulus_size_px": 500,
+        "duration": 200,
+        "motion_velocity": 5, # Fast enough to exit
+        "mean_lifetime": 200, # Long life
+    }
+    
+    cycle_time = 20
+    direction_props = [GroupProperties(ratio=1.0, direction=0, cycle_time=np.uint(cycle_time), color=-1)]
+    
+    frames, _ = generate_moving_dots(
+        groups_properties=direction_props, **params)
+    
+    stimulus_radius = params["stimulus_size_px"] / 2.0
+    center = (params["stimulus_size_px"] / 2.0) * (1 + 1j)
+    
+    for i, frame in enumerate(frames):
+        for dot in frame:
+            # Check visible dots
+            distance_from_center = abs(dot.position - center)
+            assert distance_from_center <= stimulus_radius + 1e-9, f"Frame {i}: Dot at {dot.position} is out of bounds (dist={distance_from_center}, R={stimulus_radius})"
