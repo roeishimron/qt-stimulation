@@ -38,21 +38,27 @@ def run():
     DOT_RADIUS = 20
     AMOUNT_OF_DOTS = 50
     VELOCITY = 12
-    MEAN_LIFETIME = AMOUNT_OF_STIMULI // 2
+    MEAN_LIFETIME = size // VELOCITY // 2
+    GRID_COMPRESSION = DOT_RADIUS
 
     trial = generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
                                  size, AMOUNT_OF_STIMULI, VELOCITY, MEAN_LIFETIME,
                                  [GroupProperties(1/2, None, uint(2), -1), 
-                                  GroupProperties(1/2, None, uint(4), 1)])[0]
+                                  GroupProperties(1/2, None, uint(4), 1)],
+                                  grid_compression=GRID_COMPRESSION)[0]
 
-    frames = [array_into_pixmap(
+    print("generated moving dots")
+
+    frames = (array_into_pixmap(
         fill_with_dots(size, [],
                        [Dot(int(d.r),
                             array([d.x, d.y],
                                   dtype=int),
                             d.color * ones((2*d.r, 2*d.r))) for d in f],
                        0, 0))
-              for f in trial]
+              for f in trial)
+    
+    del(trial)
 
     recorder = KeyRecorder()
     experiment = RealtimeViewingExperiment(
