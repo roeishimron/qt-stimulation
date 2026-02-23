@@ -160,30 +160,92 @@ def _find_valid_position_grid(
     )
 
 
-def _place_dot_on_grid(
+def _find_valid_position_random(
+    velocity: complex,
+    cycle_time: int,
+    outer_boundary_radius: float,
+    center: complex,
+    group_dots: List[Dot],
+    dot_radius: int,
+    max_tries: int = 10
+) -> Tuple[complex, int] | None:
+    """Tries to find a valid position randomly within the intersection of circles."""
+    v_abs = abs(velocity)
+
+    # Determine max_cycles (same logic as in _find_valid_position_grid)
+    if cycle_time > 0 and v_abs > 1e-9:
+        max_cycles = int(2 * outer_boundary_radius / (v_abs * cycle_time))
+        if max_cycles < 1:
+            max_cycles = 1
+        start_cycles = np.random.randint(1, max_cycles + 1)
+        cycle_range = range(start_cycles, 0, -1)
+    else:
+        cycle_range = [1]
+
+    for amount_of_cycles in cycle_range:
+        total_time = amount_of_cycles * cycle_time
+        c2 = center - velocity * total_time
+        # Intersection of two circles: Circle(center, R) and Circle(c2, R)
+
+        for _ in range(max_tries):
+            # Pick a random point in Circle(center, R)
+            r = outer_boundary_radius * np.sqrt(np.random.random())
+            theta = np.random.random() * 2 * np.pi
+            pos = center + r * np.exp(1j * theta)
+
+            # Check if it's also in Circle(c2, R)
+            if abs(pos - c2) <= outer_boundary_radius:
+                # Check overlap with existing dots in this group
+                is_overlapping = False
+                for other in group_dots:
+                    if abs(pos - other.position) < 2 * dot_radius:
+                        is_overlapping = True
+                        break
+                if not is_overlapping:
+                    return pos, amount_of_cycles
+    return None
+
+
+def _place_dot(
     velocity: complex,
     cycle_time: int,
     mean_lifetime: int,
     outer_boundary_radius: float,
     center: complex,
-    occupied_mask: np.ndarray,
     coordinate_grid: Tuple[np.ndarray, np.ndarray],
     dot_radius: int,
     current_frame: int,
+    group_dots: List[Dot],
     dot: Dot | None = None,
     is_coherent: bool = False,
     visible_color: int = 0
 ) -> Dot:
-    """Helper to place a dot on the grid and update the mask."""
-    position, amount_of_cycles = _find_valid_position_grid(
-        occupied_mask, velocity, cycle_time,
-        outer_boundary_radius, center, coordinate_grid
+    """
+    Places a dot using dual strategy: random-first then grid-based fallback.
+    Adds to the group dot list if provided.
+    """
+    # 1. Try Random Placement
+    res = _find_valid_position_random(
+        velocity, cycle_time, outer_boundary_radius, center,
+        group_dots, dot_radius
     )
 
-    _update_occupied_mask(
-        occupied_mask, position, dot_radius,
-        coordinate_grid
-    )
+    if res is not None:
+        position, amount_of_cycles = res
+    else:
+        # 2. Fallback to Grid Placement
+        # Create mask only when required
+        occupied_mask = np.zeros_like(coordinate_grid[0], dtype=bool)
+        for d in group_dots:
+            _update_occupied_mask(
+                occupied_mask, d.position, dot_radius,
+                coordinate_grid
+            )
+
+        position, amount_of_cycles = _find_valid_position_grid(
+            occupied_mask, velocity, cycle_time,
+            outer_boundary_radius, center, coordinate_grid
+        )
 
     if cycle_time > 0:
         death_frame = current_frame + amount_of_cycles * cycle_time - 1
@@ -210,6 +272,7 @@ def _place_dot_on_grid(
         dot.position = position
         dot.death_frame = death_frame
         dot.needs_replacement = False
+        dot.velocity = velocity
         return dot
 
 
@@ -316,22 +379,31 @@ def _simulate_moving_dots(
 
     # 2. Initial Placement
     dots: List[Dot] = []
-    occupied_mask = np.zeros_like(coordinate_grid[0], dtype=bool)
+    # velocity_groups: Dict[complex, List[Dot]]
+    velocity_groups: dict[complex, List[Dot]] = {}
+
+    def get_group(v: complex) -> List[Dot]:
+        if v not in velocity_groups:
+            velocity_groups[v] = []
+        return velocity_groups[v]
 
     for velocity, is_coherent, cycle_time_int, color in dot_properties:
-        dots.append(_place_dot_on_grid(
+        group_dots = get_group(velocity)
+        dot = _place_dot(
             velocity=velocity,
             cycle_time=cycle_time_int,
             mean_lifetime=mean_lifetime,
             outer_boundary_radius=outer_boundary_radius,
             center=center,
-            occupied_mask=occupied_mask,
             coordinate_grid=coordinate_grid,
             dot_radius=dot_radius,
             current_frame=0,
+            group_dots=group_dots,
             is_coherent=is_coherent,
             visible_color=color
-        ))
+        )
+        dots.append(dot)
+        group_dots.append(dot)
 
     all_frames = []
     for frame_num in range(duration):
@@ -344,34 +416,38 @@ def _simulate_moving_dots(
         dots_to_replace = [d for d in dots if d.needs_replacement]
 
         if dots_to_replace:
-            # Rebuild occupied mask from stable dots
+            # Rebuild groups with stable dots
+            for g_dots in velocity_groups.values():
+                g_dots.clear()
+
+            # Fill groups with stable dots
             stable_dots = [d for d in dots if not d.needs_replacement]
-            occupied_mask.fill(False)
             for d in stable_dots:
-                _update_occupied_mask(
-                    occupied_mask, d.position, dot_radius,
-                    coordinate_grid
-                )
+                g_dots = get_group(d.velocity)
+                g_dots.append(d)
 
             # Place new dots
             for dot in dots_to_replace:
                 if not dot.is_coherent:
                     dot.velocity = motion_velocity * np.exp(
-                        1j * (np.random.rand() * 2 * np.pi)
+                        1j * (np.random.rand() * 
+                              2 * np.pi)
                     )
 
-                _place_dot_on_grid(
+                group_dots = get_group(dot.velocity)
+                _place_dot(
                     velocity=dot.velocity,
                     cycle_time=dot.cycle_time,
                     mean_lifetime=mean_lifetime,
                     outer_boundary_radius=outer_boundary_radius,
                     center=center,
-                    occupied_mask=occupied_mask,
                     coordinate_grid=coordinate_grid,
                     dot_radius=dot_radius,
                     current_frame=frame_num,
+                    group_dots=group_dots,
                     dot=dot
                 )
+                group_dots.append(dot)
 
         visible_dots_this_frame = [
             copy.deepcopy(d) for d in dots if (
@@ -829,3 +905,48 @@ def test_high_density_packing(grid_compression):
             f"Failed to pack {params['num_dots']} dots with "
             f"grid_compression={grid_compression}. Error: {e}"
         )
+
+
+def test_different_velocities_can_overlap():
+    """
+    10. Verify that dots with different velocities can overlap,
+    as they use different masks.
+    """
+    params = {
+        "num_dots": 2,
+        "dot_radius": 50,
+        "stimulus_size_px": 200,
+        "duration": 1,
+        "motion_velocity": 10,
+        "mean_lifetime": 100,
+    }
+
+    # Two groups with different directions (and thus different velocities)
+    # Both at the same center if we are "lucky" or if we force it.
+    # Actually we can't force it easily via the public API, but we can 
+    # check if they overlap in some cases.
+    
+    # We'll use very large dots in a small area. 
+    # With 2 dots of radius 50 in a circle of radius 100, 
+    # if they shared a mask, they would be far apart.
+    # If they don't share a mask, they MIGHT be placed on top of each other.
+    
+    # To increase chance of overlap, we can run it many times.
+    overlaps_found = False
+    for _ in range(100):
+        direction_props = [
+            GroupProperties(ratio=0.5, direction=0, cycle_time=np.uint(0), color=-1),
+            GroupProperties(ratio=0.5, direction=np.pi, cycle_time=np.uint(0), color=1)
+        ]
+        frames, _ = generate_moving_dots(groups_properties=direction_props, **params)
+        frame = frames[0]
+        if len(frame) == 2:
+            dist = abs(frame[0].position - frame[1].position)
+            if dist < 2 * params["dot_radius"]:
+                overlaps_found = True
+                break
+    
+    assert overlaps_found, (
+        "Expected dots with different velocities to eventually overlap."
+    )
+

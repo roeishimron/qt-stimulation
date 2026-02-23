@@ -26,7 +26,7 @@ def run():
     size = int(screen_height * 5 / 6)
 
     SCREEN_REFRESH_RATE = 60
-    TRIAL_DURATION = 10
+    TRIAL_DURATION = 60
     STIMULI_REFRESH_RATE = 60
     ODDBALL_MODULATION = 1
 
