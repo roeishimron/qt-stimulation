@@ -37,14 +37,14 @@ def run():
 
     DOT_RADIUS = 20
     AMOUNT_OF_DOTS = 50
-    VELOCITY = 12
-    MEAN_LIFETIME = size // VELOCITY // 2
+    VELOCITY = 8
+    MEAN_LIFETIME = size // VELOCITY // 4
     GRID_COMPRESSION = DOT_RADIUS
 
     trial = generate_moving_dots(AMOUNT_OF_DOTS, DOT_RADIUS,
-                                 size, AMOUNT_OF_STIMULI, VELOCITY, MEAN_LIFETIME,
-                                 [GroupProperties(1/2, None, uint(2), -1), 
-                                  GroupProperties(1/2, None, uint(4), 1)],
+                                 size, AMOUNT_OF_STIMULI, VELOCITY,
+                                 [GroupProperties(1/2, None, uint(2), -1, MEAN_LIFETIME // 2), 
+                                  GroupProperties(1/2, None, uint(4), 1, MEAN_LIFETIME // 4)],
                                   grid_compression=GRID_COMPRESSION)[0]
 
     print("generated moving dots")

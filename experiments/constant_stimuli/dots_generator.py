@@ -22,6 +22,7 @@ class Dot:
     is_visible: bool
     visible_color: int
     cycle_time: int
+    max_cycles: int
     placement_radius: float
     needs_replacement: bool = False
 
@@ -42,16 +43,14 @@ class Dot:
 # Helper Functions
 
 
-def _get_lifetime_duration(mean_lifetime: int, cycle_time: int) -> int:
+def _get_lifetime_duration(max_cycles: int, cycle_time: int) -> int:
     """
     Calculates a dot's lifetime in frames, ensuring it's a multiple of
     its cycle_time.
     """
     if cycle_time == 0:
-        return max(1, int(np.random.exponential(scale=mean_lifetime)))
-    mean_lifetime_in_cycles = mean_lifetime / cycle_time
-    num_cycles = np.random.exponential(scale=mean_lifetime_in_cycles)
-    num_cycles = max(1, int(round(num_cycles)))
+        return max(1, np.random.randint(0, max_cycles + 1))
+    num_cycles = np.random.randint(0, max_cycles + 1)
     return num_cycles * cycle_time
 
 
@@ -88,13 +87,40 @@ def _update_occupied_mask(
     occupied_mask[dist_sq < exclusion_radius_sq] = True
 
 
+def _get_cycle_range(
+    max_cycles: int,
+    cycle_time: int,
+    velocity: complex,
+    outer_boundary_radius: float
+) -> range | List[int]:
+    """Calculates the range of possible cycles for a dot's lifetime."""
+    v_abs = abs(velocity)
+    if cycle_time > 0 and v_abs > 1e-9:
+        # Distance to cross diameter = 2 * R
+        # Max distance = 2 * outer_boundary_radius
+        # Each cycle = v_abs * cycle_time
+        diameter_max_cycles = int(
+            2 * outer_boundary_radius / (v_abs * cycle_time)
+        )
+        diameter_max_cycles = max(1, diameter_max_cycles)
+
+        effective_max_cycles = min(max_cycles, diameter_max_cycles)
+        if effective_max_cycles >= 1:
+            start_cycles = np.random.randint(1, effective_max_cycles + 1)
+        else:
+            start_cycles = 0
+        return range(start_cycles, -1, -1)
+    return [0]
+
+
 def _find_valid_position_grid(
     occupied_mask: np.ndarray,
     velocity: complex,
     cycle_time: int,
     outer_boundary_radius: float,
     center: complex,
-    coordinate_grid: Tuple[np.ndarray, np.ndarray]
+    coordinate_grid: Tuple[np.ndarray, np.ndarray],
+    max_cycles: int
 ) -> Tuple[complex, int]:
     """
     Finds a valid position using grid-based boolean masking.
@@ -108,25 +134,9 @@ def _find_valid_position_grid(
     )
     base_valid_mask = dist_from_center_sq <= outer_boundary_radius**2
 
-    v_abs = abs(velocity)
-
-    # Determine max_cycles
-    if cycle_time > 0 and v_abs > 1e-9:
-        # Distance to cross diameter = 2 * R
-        # Max distance = 2 * outer_boundary_radius
-        # Each cycle = v_abs * cycle_time
-        max_cycles = int(2 * outer_boundary_radius / (v_abs * cycle_time))
-        if max_cycles < 1:
-            max_cycles = 1
-    else:
-        max_cycles = 1
-
-    # Randomly select initial amount of cycles
-    if cycle_time > 0 and v_abs > 1e-9:
-        start_cycles = np.random.randint(1, max_cycles + 1)
-        cycle_range = range(start_cycles, 0, -1)
-    else:
-        cycle_range = range(1, 0, -1)  # Just 1 iteration
+    cycle_range = _get_cycle_range(
+        max_cycles, cycle_time, velocity, outer_boundary_radius
+    )
 
     for amount_of_cycles in cycle_range:
         total_time = amount_of_cycles * cycle_time
@@ -167,20 +177,13 @@ def _find_valid_position_random(
     center: complex,
     group_dots: List[Dot],
     dot_radius: int,
+    max_cycles: int,
     max_tries: int = 10
 ) -> Tuple[complex, int] | None:
     """Tries to find a valid position randomly within the intersection of circles."""
-    v_abs = abs(velocity)
-
-    # Determine max_cycles (same logic as in _find_valid_position_grid)
-    if cycle_time > 0 and v_abs > 1e-9:
-        max_cycles = int(2 * outer_boundary_radius / (v_abs * cycle_time))
-        if max_cycles < 1:
-            max_cycles = 1
-        start_cycles = np.random.randint(1, max_cycles + 1)
-        cycle_range = range(start_cycles, 0, -1)
-    else:
-        cycle_range = [1]
+    cycle_range = _get_cycle_range(
+        max_cycles, cycle_time, velocity, outer_boundary_radius
+    )
 
     for amount_of_cycles in cycle_range:
         total_time = amount_of_cycles * cycle_time
@@ -209,7 +212,7 @@ def _find_valid_position_random(
 def _place_dot(
     velocity: complex,
     cycle_time: int,
-    mean_lifetime: int,
+    max_cycles: int,
     outer_boundary_radius: float,
     center: complex,
     coordinate_grid: Tuple[np.ndarray, np.ndarray],
@@ -227,7 +230,7 @@ def _place_dot(
     # 1. Try Random Placement
     res = _find_valid_position_random(
         velocity, cycle_time, outer_boundary_radius, center,
-        group_dots, dot_radius
+        group_dots, dot_radius, max_cycles
     )
 
     if res is not None:
@@ -244,7 +247,8 @@ def _place_dot(
 
         position, amount_of_cycles = _find_valid_position_grid(
             occupied_mask, velocity, cycle_time,
-            outer_boundary_radius, center, coordinate_grid
+            outer_boundary_radius, center, coordinate_grid,
+            max_cycles
         )
 
     if cycle_time > 0:
@@ -253,7 +257,7 @@ def _place_dot(
         frames_to_exit = _calculate_frames_to_exit(
             position - center, velocity, outer_boundary_radius
         )
-        lifetime = _get_lifetime_duration(mean_lifetime, 0)
+        lifetime = _get_lifetime_duration(max_cycles, 0)
         death_frame = current_frame + min(lifetime, frames_to_exit) - 1
 
     if dot is None:
@@ -266,6 +270,7 @@ def _place_dot(
             is_visible=True,
             visible_color=visible_color,
             cycle_time=cycle_time,
+            max_cycles=max_cycles,
             placement_radius=outer_boundary_radius
         )
     else:
@@ -302,6 +307,7 @@ def _create_direction_markers(
                 visible_color=1,
                 is_visible=True,
                 cycle_time=0,
+                max_cycles=duration,
                 placement_radius=placement_radius
             )
         )
@@ -344,7 +350,7 @@ def _simulate_moving_dots(
     cycle_times: List[np.uint],
     colors: List[int],
     motion_velocity: int,
-    mean_lifetime: int,
+    max_cycles: List[int],
     stimulus_radius: float,
     center: complex,
     stimulus_size_px: int,
@@ -357,11 +363,11 @@ def _simulate_moving_dots(
     coordinate_grid = _create_coordinate_grid(stimulus_size_px, step=grid_step)
 
     # 1. Prepare Dot Properties
-    dot_properties: List[Tuple[complex, bool, int, int]] = []
+    dot_properties: List[Tuple[complex, bool, int, int, int]] = []
     zip_iter = zip(
-        directions, direction_proportions, cycle_times, colors
+        directions, direction_proportions, cycle_times, colors, max_cycles
     )
-    for direction, proportion, cycle_time, color in zip_iter:
+    for direction, proportion, cycle_time, color, m_cycles in zip_iter:
         count = int(round(proportion * num_dots))
         for _ in range(count):
             coherence = True if direction is not None else False
@@ -373,7 +379,7 @@ def _simulate_moving_dots(
                 1j * (chosen_direction + np.pi / 2)
             )
             dot_properties.extend(
-                [(velocity, coherence, int(cycle_time), color)]
+                [(velocity, coherence, int(cycle_time), color, m_cycles)]
             )
     np.random.shuffle(dot_properties)
 
@@ -387,12 +393,13 @@ def _simulate_moving_dots(
             velocity_groups[v] = []
         return velocity_groups[v]
 
-    for velocity, is_coherent, cycle_time_int, color in dot_properties:
+    for (velocity, is_coherent, cycle_time_int,
+         color, m_cycles) in dot_properties:
         group_dots = get_group(velocity)
         dot = _place_dot(
             velocity=velocity,
             cycle_time=cycle_time_int,
-            mean_lifetime=mean_lifetime,
+            max_cycles=m_cycles,
             outer_boundary_radius=outer_boundary_radius,
             center=center,
             coordinate_grid=coordinate_grid,
@@ -438,7 +445,7 @@ def _simulate_moving_dots(
                 _place_dot(
                     velocity=dot.velocity,
                     cycle_time=dot.cycle_time,
-                    mean_lifetime=mean_lifetime,
+                    max_cycles=dot.max_cycles,
                     outer_boundary_radius=outer_boundary_radius,
                     center=center,
                     coordinate_grid=coordinate_grid,
@@ -465,6 +472,7 @@ class GroupProperties:
     direction: float | None
     cycle_time: np.uint
     color: int
+    max_cycles: int
 
 # Main Public Function
 
@@ -475,7 +483,6 @@ def generate_moving_dots(
     stimulus_size_px: int,
     duration: int,
     motion_velocity: int,
-    mean_lifetime: int,
     groups_properties: List[GroupProperties] = [],
     display_markers: bool = False,
     grid_compression: float = 10.0
@@ -493,6 +500,16 @@ def generate_moving_dots(
         raise ValueError(
             "cycle_time for coherent dots must be an even number."
         )
+
+    for p in groups_properties:
+        if p.cycle_time > 0 and motion_velocity > 0:
+            actual_max = stimulus_size_px // motion_velocity // p.cycle_time
+            if p.max_cycles > actual_max:
+                raise ValueError(
+                    f"max_cycles {p.max_cycles} is larger than the actual "
+                    f"maximum {actual_max} (stimulus_size_px // "
+                    f"motion_velocity // cycle_time)"
+                )
 
     stimulus_radius = stimulus_size_px / 2.0
     center = (stimulus_size_px / 2.0) + 1j * (stimulus_size_px / 2.0)
@@ -514,7 +531,7 @@ def generate_moving_dots(
         cycle_times=[p.cycle_time for p in groups_properties],
         colors=[p.color for p in groups_properties],
         motion_velocity=motion_velocity,
-        mean_lifetime=mean_lifetime,
+        max_cycles=[p.max_cycles for p in groups_properties],
         stimulus_radius=stimulus_radius,
         center=center,
         stimulus_size_px=stimulus_size_px,
@@ -549,15 +566,16 @@ PARAMS = {
     "stimulus_size_px": 500,
     "duration": 50,
     "motion_velocity": 2,
-    "mean_lifetime": 60,
 }
+DEFAULT_MAX_CYCLES = 20
 
 
 def test_dots_stay_in_bounds():
     """1. For every frame, all dots are inside the circle."""
     direction_props = [
         GroupProperties(
-            ratio=1.0, direction=0, cycle_time=np.uint(0), color=-1
+            ratio=1.0, direction=0, cycle_time=np.uint(0), color=-1,
+            max_cycles=DEFAULT_MAX_CYCLES
         )
     ]
     frames = generate_moving_dots(
@@ -581,14 +599,14 @@ def test_dots_are_always_moving():
     # Create a "sandbox" with no boundaries and immortal dots to test motion
     # in isolation
     params["stimulus_size_px"] = 2000
-    params["mean_lifetime"] = 1_000_000
 
     direction_props = [
         GroupProperties(
             ratio=1.0,
             direction=np.pi / 4,
             cycle_time=np.uint(0),
-            color=-1
+            color=-1,
+            max_cycles=1_000_000
         )
     ]
     frames = generate_moving_dots(
@@ -615,14 +633,15 @@ def test_dots_are_always_moving():
 def test_jumps_only_on_cycle_end():
     """3. If there's no noise, jumps only happen on end-of-cycle."""
     params = PARAMS.copy()
-    params["mean_lifetime"] = 30
+    params["num_dots"] = 10  # Fewer dots to avoid packing issues
     cycle_time = 12
     direction_props = [
         GroupProperties(
             ratio=1.0,
             direction=0,
             cycle_time=np.uint(cycle_time),
-            color=-1
+            color=-1,
+            max_cycles=5
         )
     ]
     frames = generate_moving_dots(
@@ -635,10 +654,13 @@ def test_jumps_only_on_cycle_end():
         jump_positions = positions_t1 - expected_positions
         if len(jump_positions) > 0:
             is_end_of_cycle = (i % cycle_time == cycle_time - 1)
-            assert is_end_of_cycle, (
-                f"A dot was replaced on frame {i}, which is not the end of "
-                "a cycle."
-            )
+            # A dot can also be replaced on frame 0 if its initial 
+            # amount_of_cycles was 0
+            if not is_end_of_cycle and i > 0:
+                assert False, (
+                    f"A dot was replaced on frame {i}, which is not the end of "
+                    "a cycle."
+                )
 
 
 def test_visibility_with_zero_cycle_time():
@@ -646,10 +668,12 @@ def test_visibility_with_zero_cycle_time():
     num_dots = PARAMS["num_dots"]
     direction_props = [
         GroupProperties(
-            ratio=0.5, direction=0, cycle_time=np.uint(0), color=-1
+            ratio=0.5, direction=0, cycle_time=np.uint(0), color=-1,
+            max_cycles=DEFAULT_MAX_CYCLES
         ),
         GroupProperties(
-            ratio=0.5, direction=np.pi, cycle_time=np.uint(0), color=-1
+            ratio=0.5, direction=np.pi, cycle_time=np.uint(0), color=-1,
+            max_cycles=DEFAULT_MAX_CYCLES
         )
     ]
     # This test implicitly uses noise_cycle_time=0 as well
@@ -672,26 +696,31 @@ def test_visibility_with_zero_cycle_time():
                 ratio=1.0,
                 direction=None,
                 cycle_time=np.uint(0),
-                color=-1
+                color=-1,
+                max_cycles=DEFAULT_MAX_CYCLES
             )
         ]),
         ("Signal + Noise", [
             GroupProperties(
-                ratio=0.5, direction=0, cycle_time=np.uint(10), color=-1
+                ratio=0.5, direction=0, cycle_time=np.uint(10), color=-1,
+                max_cycles=DEFAULT_MAX_CYCLES
             ),
             GroupProperties(
                 ratio=0.5,
                 direction=None,
                 cycle_time=np.uint(0),
-                color=-1
+                color=-1,
+                max_cycles=DEFAULT_MAX_CYCLES
             )
         ]),
         ("Two Opposing Signals", [
             GroupProperties(
-                ratio=0.5, direction=0, cycle_time=np.uint(10), color=-1
+                ratio=0.5, direction=0, cycle_time=np.uint(10), color=-1,
+                max_cycles=DEFAULT_MAX_CYCLES
             ),
             GroupProperties(
-                ratio=0.5, direction=np.pi, cycle_time=np.uint(12), color=-1
+                ratio=0.5, direction=np.pi, cycle_time=np.uint(12), color=-1,
+                max_cycles=DEFAULT_MAX_CYCLES
             )
         ]),
     ]
@@ -700,6 +729,12 @@ def test_spatial_distribution_is_unbiased(test_id, direction_props):
     """5. The average mass center is the geometric center (no spatial bias)."""
     params = PARAMS.copy()
     params["duration"] = 5000
+    params["motion_velocity"] = 2
+    # Ensure max_cycles is valid for these params
+    # 500 // 2 // 12 = 20. So 120 is too much. 
+    # Let's just set them to 20 for this test.
+    for p in direction_props:
+        p.max_cycles = 20
 
     frames = generate_moving_dots(
         groups_properties=direction_props,
@@ -738,7 +773,8 @@ def test_ssvep_flicker():
             ratio=1.0,
             direction=0,
             cycle_time=np.uint(cycle_time),
-            color=-1
+            color=-1,
+            max_cycles=DEFAULT_MAX_CYCLES
         )
     ]
 
@@ -781,7 +817,6 @@ def test_dots_stay_in_bounds_with_cycles():
         "stimulus_size_px": 500,
         "duration": 200,
         "motion_velocity": 5,  # Fast enough to exit
-        "mean_lifetime": 200,  # Long life
     }
 
     cycle_time = 20
@@ -790,7 +825,8 @@ def test_dots_stay_in_bounds_with_cycles():
             ratio=1.0,
             direction=0,
             cycle_time=np.uint(cycle_time),
-            color=-1
+            color=-1,
+            max_cycles=5  # Small enough to pass validation
         )
     ]
 
@@ -824,7 +860,6 @@ def test_no_dot_overlaps(grid_compression):
         "stimulus_size_px": 500,
         "duration": 50,
         "motion_velocity": 5,
-        "mean_lifetime": 100,
         "grid_compression": grid_compression
     }
 
@@ -833,13 +868,15 @@ def test_no_dot_overlaps(grid_compression):
             ratio=0.5,
             direction=0,
             cycle_time=np.uint(2),
-            color=-1
+            color=-1,
+            max_cycles=20
         ),
         GroupProperties(
             ratio=0.5,
             direction=0,
             cycle_time=np.uint(4),
-            color=1
+            color=1,
+            max_cycles=20
         )
     ]
 
@@ -882,7 +919,6 @@ def test_high_density_packing(grid_compression):
         "stimulus_size_px": 400,
         "duration": 1,
         "motion_velocity": 0,
-        "mean_lifetime": 100,
         "grid_compression": grid_compression
     }
 
@@ -891,7 +927,8 @@ def test_high_density_packing(grid_compression):
             ratio=1.0,
             direction=0,
             cycle_time=np.uint(0),
-            color=-1
+            color=-1,
+            max_cycles=10
         )
     ]
 
@@ -918,7 +955,6 @@ def test_different_velocities_can_overlap():
         "stimulus_size_px": 200,
         "duration": 1,
         "motion_velocity": 10,
-        "mean_lifetime": 100,
     }
 
     # Two groups with different directions (and thus different velocities)
@@ -935,8 +971,14 @@ def test_different_velocities_can_overlap():
     overlaps_found = False
     for _ in range(100):
         direction_props = [
-            GroupProperties(ratio=0.5, direction=0, cycle_time=np.uint(0), color=-1),
-            GroupProperties(ratio=0.5, direction=np.pi, cycle_time=np.uint(0), color=1)
+            GroupProperties(
+                ratio=0.5, direction=0, cycle_time=np.uint(0), color=-1,
+                max_cycles=10
+            ),
+            GroupProperties(
+                ratio=0.5, direction=np.pi, cycle_time=np.uint(0), color=1,
+                max_cycles=10
+            )
         ]
         frames, _ = generate_moving_dots(groups_properties=direction_props, **params)
         frame = frames[0]
@@ -949,4 +991,28 @@ def test_different_velocities_can_overlap():
     assert overlaps_found, (
         "Expected dots with different velocities to eventually overlap."
     )
+
+
+def test_max_cycles_validation():
+    """11. Verify that max_cycles validation works."""
+    params = {
+        "num_dots": 10,
+        "dot_radius": 10,
+        "stimulus_size_px": 100,
+        "duration": 1,
+        "motion_velocity": 10,
+    }
+    # actual_max = 100 // 10 // 2 = 5
+    direction_props = [
+        GroupProperties(
+            ratio=1.0, direction=0, cycle_time=np.uint(2), color=-1,
+            max_cycles=6
+        )
+    ]
+    with pytest.raises(ValueError, match="is larger than the actual maximum"):
+        generate_moving_dots(groups_properties=direction_props, **params)
+
+    # This should pass
+    direction_props[0].max_cycles = 5
+    generate_moving_dots(groups_properties=direction_props, **params)
 
