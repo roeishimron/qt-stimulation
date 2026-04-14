@@ -86,7 +86,7 @@ class StimuliFrameGenerator(IFrameGenerator):
                 self.stimuli, (None, uint(0)))
 
             # All stims ended
-            if self.current_stimulus is None:
+            if self.current_stimulus is None or self.current_amount_of_frames == 0:
                 return 0
 
         if self.current_stimulus is None:
