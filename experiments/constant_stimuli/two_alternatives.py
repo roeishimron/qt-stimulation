@@ -18,16 +18,21 @@ logger = getLogger(__name__)
 
 type SimuliWithAnswer = Iterator[Tuple[Stimuli, Qt.Key]]
 
-def run(stimulis: SimuliWithAnswer):
+def run(stimulis: SimuliWithAnswer, strict_keys=True):
     """
         Takes an iterator for the trials: correct answer, stimuli, display rate, display time.
         Requires all of them together to enforce their alignment.
     """
     app = QApplication()
 
+    stimulist = list(stimulis)
+
+    keys = None
+    if strict_keys:
+        keys = set((k for _,k in stimulist))
 
     experiment = ConstantStimuli(
-        [(s, BooleanKeyValidator(k)) for s,k in stimulis],
+        [(s, BooleanKeyValidator(k, keys)) for s,k in stimulist],
         SoftSerial())
 
     experiment.run()

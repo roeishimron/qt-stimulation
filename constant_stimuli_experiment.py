@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from itertools import chain, cycle
 from subprocess import DEVNULL, Popen
 from threading import Thread
-from typing import Iterator, List, Tuple, Iterable
+from typing import Iterator, List, Set, Tuple, Iterable
 from animator import Appliable, AppliableText, OddballStimuli
 from realtime_experiment import RealtimeViewingExperiment, ConstantFrameGenerator, Stimuli
 from PySide6.QtGui import QMouseEvent, QKeyEvent
@@ -35,12 +35,12 @@ class DisplayableStimulus:
 
 
 class ClickableStimulus:
-    def validate_mouse_answer(self, _e: QMouseEvent) -> bool:
+    def validate_mouse_answer(self, _e: QMouseEvent) -> bool | None:
         return False
 
 
 class KeypressableStimulus:
-    def validate_key_answer(self, _e: QKeyEvent) -> bool:
+    def validate_key_answer(self, _e: QKeyEvent) -> bool | None:
         return False
 
 
@@ -209,11 +209,17 @@ class DirectionValidator(ClickableStimulus):
 
 class BooleanKeyValidator(KeypressableStimulus):
     expected_key: Qt.Key
+    allowed_keys: Set[Qt.Key] | None
 
-    def __init__(self, expected_key: Qt.Key) -> None:
+    def __init__(self, expected_key: Qt.Key, allowed_keys: Set[Qt.Key] | None) -> None:
         self.expected_key = expected_key
+        self.allowed_keys = allowed_keys
 
-    def validate_key_answer(self, e: QKeyEvent) -> bool:
+    def validate_key_answer(self, e: QKeyEvent) -> bool | None:
+        key = Qt.Key(e.key())
+        if self.allowed_keys and key not in self.allowed_keys:
+            return None
+
         info(
             f"BooleanKeyValidator: pressed: {Qt.Key(e.key()).name}, was {self.expected_key.name}")
         return e.key() == self.expected_key
