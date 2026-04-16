@@ -16,19 +16,19 @@ from itertools import repeat, chain
 from logging import getLogger
 logger = getLogger(__name__)  
 
-def create_stimulus(amount_of_words: int, refresh_rate: int, has_mirror: bool) -> Stimuli:
+def create_stimulus(amount_of_words: int, refresh_rate: int, has_regular: bool) -> Stimuli:
     assert SCREEN_REFRESH_RATE % refresh_rate == 0
     assert amount_of_words % 2 == 1 # require middle to be defined
     for i in range(amount_of_words):
-        should_mirror = i == amount_of_words // 2 and has_mirror
-        yield (AppliableText(choice(COMMON_HEBREW_WORDS), randint(40, 60), horizontal_flip=should_mirror),
+        should_be_regular = i == amount_of_words // 2 and has_regular
+        yield (AppliableText(choice(COMMON_HEBREW_WORDS), randint(40, 60), horizontal_flip=not should_be_regular),
                 SCREEN_REFRESH_RATE // refresh_rate)
 
 def run():
-    DIFFICULTIES = 60 / arange(1,6) # 60 to 10 HZ
+    DIFFICULTIES = 60 / arange(1,7) # 60 to 10 HZ
     REPETITIONS = 15
     KEYS = {True: Qt.Key.Key_N, False: Qt.Key.Key_M}
-    AMOUNT_OF_WORDS = 9
+    AMOUNT_OF_WORDS = 3
     
     difficulties = list(chain.from_iterable((repeat(difficulty, REPETITIONS) for difficulty in DIFFICULTIES)))
     shuffle(difficulties)
