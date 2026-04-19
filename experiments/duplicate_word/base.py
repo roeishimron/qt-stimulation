@@ -19,7 +19,7 @@ SCREEN_REFRESH_RATE = 60  # Hz
 STIMULI_REFRESH_RATE = 30  # Hz
 TRIAL_DURATION = 15  # s
 ODDBALL_MODULATION = 4
-AMOUNT_OF_TRIALS = 4
+AMOUNT_OF_TRIALS = 3
 
 
 def into_list_of_lists[A: Appliable](odds:  List[A]) -> List[List[A]]:
