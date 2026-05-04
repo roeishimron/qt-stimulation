@@ -1,6 +1,6 @@
 import copy
-from dataclasses import dataclass
-from typing import List, Tuple
+from dataclasses import dataclass, field
+from typing import List, NamedTuple, Optional, Tuple, Union
 import numpy as np
 import pytest
 
@@ -254,11 +254,10 @@ def _place_dot(
     if cycle_time > 0:
         death_frame = current_frame + amount_of_cycles * cycle_time - 1
     else:
-        frames_to_exit = _calculate_frames_to_exit(
-            position - center, velocity, outer_boundary_radius
+        death_frame = _compute_death_frame_from_position(
+            position, velocity, cycle_time, max_cycles,
+            outer_boundary_radius, center, current_frame
         )
-        lifetime = _get_lifetime_duration(max_cycles, 0)
-        death_frame = current_frame + min(lifetime, frames_to_exit) - 1
 
     if dot is None:
         return Dot(
@@ -341,28 +340,53 @@ def _calculate_frames_to_exit(
     return int(t)
 
 
-def _simulate_moving_dots(
+def _compute_death_frame_from_position(
+    position: complex,
+    velocity: complex,
+    cycle_time: int,
+    max_cycles: int,
+    outer_boundary_radius: float,
+    center: complex,
+    current_frame: int,
+) -> int:
+    """
+    Computes a fresh death_frame for a dot at a known (position, velocity).
+    Returns current_frame - 1 when the dot can't survive even one step or one
+    cycle, so the simulation's existing replacement path picks it up.
+    """
+    if abs(position - center) > outer_boundary_radius:
+        return current_frame - 1
+
+    frames_to_exit = _calculate_frames_to_exit(
+        position - center, velocity, outer_boundary_radius
+    )
+    if cycle_time > 0:
+        max_possible_cycles = max(0, frames_to_exit // cycle_time)
+        effective_max = min(max_cycles, max_possible_cycles)
+        amount_of_cycles = np.random.randint(0, effective_max + 1)
+        return current_frame + amount_of_cycles * cycle_time - 1
+
+    lifetime = _get_lifetime_duration(max_cycles, 0)
+    return current_frame + min(lifetime, frames_to_exit) - 1
+
+
+def _initialize_dots(
     num_dots: int,
     dot_radius: int,
-    duration: int,
+    motion_velocity: int,
     direction_proportions: List[float],
     directions: List[float | None],
     cycle_times: List[np.uint],
     colors: List[int],
-    motion_velocity: int,
     max_cycles: List[int],
-    stimulus_radius: float,
+    outer_boundary_radius: float,
     center: complex,
-    stimulus_size_px: int,
-    grid_step: float = 1.0
-) -> List[List[Dot]]:
+) -> Tuple[List[Dot], dict[complex, List[Dot]]]:
     """
-    The core simulation engine for generating frames of moving dots.
+    Synthesize a starting list of "dead" dots (death_frame=-1, position=center).
+    The main-loop replacement path places them on frame 0. Returns (dots, empty
+    velocity_groups).
     """
-    outer_boundary_radius = stimulus_radius - dot_radius
-    coordinate_grid = _create_coordinate_grid(stimulus_size_px, step=grid_step)
-
-    # 1. Prepare Dot Properties
     dot_properties: List[Tuple[complex, bool, int, int, int]] = []
     zip_iter = zip(
         directions, direction_proportions, cycle_times, colors, max_cycles
@@ -378,92 +402,118 @@ def _simulate_moving_dots(
             velocity = motion_velocity * np.exp(
                 1j * (chosen_direction + np.pi / 2)
             )
-            dot_properties.extend(
-                [(velocity, coherence, int(cycle_time), color, m_cycles)]
+            dot_properties.append(
+                (velocity, coherence, int(cycle_time), color, m_cycles)
             )
     np.random.shuffle(dot_properties)
 
-    # 2. Initial Placement
     dots: List[Dot] = []
-    # velocity_groups: Dict[complex, List[Dot]]
+    for velocity, is_coherent, cycle_time_int, color, m_cycles in dot_properties:
+        dots.append(Dot(
+            position=center,
+            r=dot_radius,
+            velocity=velocity,
+            death_frame=-1,
+            is_coherent=is_coherent,
+            is_visible=True,
+            visible_color=color,
+            cycle_time=cycle_time_int,
+            max_cycles=m_cycles,
+            placement_radius=outer_boundary_radius,
+        ))
     velocity_groups: dict[complex, List[Dot]] = {}
+    return dots, velocity_groups
 
+
+def _advance_frame(
+    dots: List[Dot],
+    frame_num: int,
+    motion_velocity: int,
+    dot_radius: int,
+    outer_boundary_radius: float,
+    center: complex,
+    coordinate_grid: Tuple[np.ndarray, np.ndarray],
+    velocity_groups: dict[complex, List[Dot]],
+) -> List[Dot]:
+    """One frame step: advance positions, run replacement for dead dots,
+    return visible dots. Mutates `dots` and `velocity_groups`."""
     def get_group(v: complex) -> List[Dot]:
         if v not in velocity_groups:
             velocity_groups[v] = []
         return velocity_groups[v]
 
-    for (velocity, is_coherent, cycle_time_int,
-         color, m_cycles) in dot_properties:
-        group_dots = get_group(velocity)
-        dot = _place_dot(
-            velocity=velocity,
-            cycle_time=cycle_time_int,
-            max_cycles=m_cycles,
-            outer_boundary_radius=outer_boundary_radius,
-            center=center,
-            coordinate_grid=coordinate_grid,
-            dot_radius=dot_radius,
-            current_frame=0,
-            group_dots=group_dots,
-            is_coherent=is_coherent,
-            visible_color=color
-        )
-        dots.append(dot)
-        group_dots.append(dot)
+    for dot in dots:
+        dot.position += dot.velocity
+        if frame_num > dot.death_frame:
+            dot.needs_replacement = True
 
-    all_frames = []
-    for frame_num in range(duration):
-        for dot in dots:
-            dot.position += dot.velocity
-            if frame_num > dot.death_frame:
-                dot.needs_replacement = True
-
-        # Replacement Logic
-        dots_to_replace = [d for d in dots if d.needs_replacement]
-
-        if dots_to_replace:
-            # Rebuild groups with stable dots
-            for g_dots in velocity_groups.values():
-                g_dots.clear()
-
-            # Fill groups with stable dots
-            stable_dots = [d for d in dots if not d.needs_replacement]
-            for d in stable_dots:
-                g_dots = get_group(d.velocity)
-                g_dots.append(d)
-
-            # Place new dots
-            for dot in dots_to_replace:
-                if not dot.is_coherent:
-                    dot.velocity = motion_velocity * np.exp(
-                        1j * (np.random.rand() * 
-                              2 * np.pi)
-                    )
-
-                group_dots = get_group(dot.velocity)
-                _place_dot(
-                    velocity=dot.velocity,
-                    cycle_time=dot.cycle_time,
-                    max_cycles=dot.max_cycles,
-                    outer_boundary_radius=outer_boundary_radius,
-                    center=center,
-                    coordinate_grid=coordinate_grid,
-                    dot_radius=dot_radius,
-                    current_frame=frame_num,
-                    group_dots=group_dots,
-                    dot=dot
+    dots_to_replace = [d for d in dots if d.needs_replacement]
+    if dots_to_replace:
+        for g_dots in velocity_groups.values():
+            g_dots.clear()
+        for d in dots:
+            if not d.needs_replacement:
+                get_group(d.velocity).append(d)
+        for dot in dots_to_replace:
+            if not dot.is_coherent:
+                dot.velocity = motion_velocity * np.exp(
+                    1j * (np.random.rand() * 2 * np.pi)
                 )
-                group_dots.append(dot)
+            group_dots = get_group(dot.velocity)
+            _place_dot(
+                velocity=dot.velocity,
+                cycle_time=dot.cycle_time,
+                max_cycles=dot.max_cycles,
+                outer_boundary_radius=outer_boundary_radius,
+                center=center,
+                coordinate_grid=coordinate_grid,
+                dot_radius=dot_radius,
+                current_frame=frame_num,
+                group_dots=group_dots,
+                dot=dot,
+            )
+            group_dots.append(dot)
 
-        visible_dots_this_frame = [
-            copy.deepcopy(d) for d in dots if (
-                d.cycle_time == 0
-            ) or ((frame_num % d.cycle_time) < (d.cycle_time / 2))
-        ]
-        all_frames.append(visible_dots_this_frame)
+    return [
+        copy.deepcopy(d) for d in dots
+        if d.cycle_time == 0
+        or (frame_num % d.cycle_time) < (d.cycle_time / 2)
+    ]
 
-    return all_frames
+
+def _simulate_moving_dots(
+    num_dots: int,
+    dot_radius: int,
+    duration: int,
+    direction_proportions: List[float],
+    directions: List[float | None],
+    cycle_times: List[np.uint],
+    colors: List[int],
+    motion_velocity: int,
+    max_cycles: List[int],
+    stimulus_radius: float,
+    center: complex,
+    stimulus_size_px: int,
+    grid_step: float = 1.0,
+) -> Tuple[List[List[Dot]], List[Dot]]:
+    """The core simulation engine. Returns (visible_frames, final_dots).
+    `final_dots` is the full last-frame dot state including dots that were
+    invisible in the last cycle phase — required for chained simulations."""
+    outer_boundary_radius = stimulus_radius - dot_radius
+    coordinate_grid = _create_coordinate_grid(stimulus_size_px, step=grid_step)
+    dots, velocity_groups = _initialize_dots(
+        num_dots, dot_radius, motion_velocity,
+        direction_proportions, directions, cycle_times, colors, max_cycles,
+        outer_boundary_radius, center,
+    )
+    frames = [
+        _advance_frame(
+            dots, frame_num, motion_velocity, dot_radius,
+            outer_boundary_radius, center, coordinate_grid, velocity_groups,
+        )
+        for frame_num in range(duration)
+    ]
+    return frames, [copy.deepcopy(d) for d in dots]
 
 
 @dataclass
@@ -473,6 +523,66 @@ class GroupProperties:
     cycle_time: np.uint
     color: int
     max_cycles: int
+
+
+class Incoherent:
+    """Sentinel: random per-dot direction in this group."""
+    pass
+
+
+INCOHERENT = Incoherent()
+
+
+@dataclass
+class GroupModification:
+    """Specifies how a fraction of seed dots should be modified for a
+    chained simulation. Only direction and color may change.
+
+    direction:
+      - float       → fixed angle (radians); dot becomes coherent
+      - INCOHERENT  → randomize per-dot direction; dot becomes incoherent
+      - None        → preserve existing dot.velocity and dot.is_coherent
+    """
+    ratio: float
+    direction: Union[float, Incoherent, None]
+    color: int
+
+
+@dataclass(frozen=True)
+class ContinuationContext:
+    """Opaque continuation state. Pass it back into `continue_moving_dots`;
+    callers don't need to read its fields directly.
+
+    Construction enforces the chaining invariant: the simulation that
+    produced this context must end at a clean cycle boundary, i.e.
+    `duration` is a multiple of every non-zero `cycle_time`. This is the
+    only condition under which a chained simulation preserves both the
+    visibility flicker phase and masks any frame-0 spatial replacement
+    behind the natural invisible→visible transition. Construction raises
+    `ValueError` if the invariant is violated."""
+    last_dot_frame: List[Dot]
+    motion_velocity: int
+    dot_radius: int
+    stimulus_size_px: int
+    grid_compression: float
+    duration: int
+    cycle_times: Tuple[int, ...]
+
+    def __post_init__(self):
+        for c in self.cycle_times:
+            if c != 0 and self.duration % c != 0:
+                raise ValueError(
+                    f"duration ({self.duration}) must be a multiple of "
+                    f"every non-zero cycle_time so the visibility wave "
+                    f"aligns at the seam; cycle_time={c} violates this."
+                )
+
+
+class GenerationResult(NamedTuple):
+    frames: List[List[Dot]]                       # display-ready (dots + markers)
+    markers: List[Dot]
+    continuation: Optional[ContinuationContext]   # None when chaining invariant fails
+
 
 # Main Public Function
 
@@ -485,8 +595,8 @@ def generate_moving_dots(
     motion_velocity: int,
     groups_properties: List[GroupProperties] = [],
     display_markers: bool = False,
-    grid_compression: float = 10.0
-) -> Tuple[List[List[Dot]], List[Dot]]:
+    grid_compression: float = 10.0,
+) -> GenerationResult:
     """
     Generates frames of moving dots for a Random Dot Kinematogram (RDK).
     """
@@ -522,7 +632,7 @@ def generate_moving_dots(
 
     grid_step = dot_radius / grid_compression
 
-    moving_dot_frames = _simulate_moving_dots(
+    moving_dot_frames, final_dots = _simulate_moving_dots(
         num_dots=num_dots,
         dot_radius=dot_radius,
         duration=duration,
@@ -535,23 +645,136 @@ def generate_moving_dots(
         stimulus_radius=stimulus_radius,
         center=center,
         stimulus_size_px=stimulus_size_px,
-        grid_step=grid_step
+        grid_step=grid_step,
     )
 
-    if not display_markers:
-        return moving_dot_frames, []
+    markers: List[Dot] = []
+    if display_markers:
+        marker_direction = (
+            groups_properties[0].direction
+            if len(groups_properties) > 0 and groups_properties[0].direction
+            else 0
+        )
+        markers = _create_direction_markers(
+            marker_direction, dot_radius, center, stimulus_radius, duration
+        )
 
-    marker_direction = (
-        groups_properties[0].direction
-        if len(groups_properties) > 0 and groups_properties[0].direction
-        else 0
-    )
-    markers = _create_direction_markers(
-        marker_direction, dot_radius, center, stimulus_radius, duration
+    frames = [frame + markers for frame in moving_dot_frames]
+    try:
+        continuation: Optional[ContinuationContext] = ContinuationContext(
+            last_dot_frame=final_dots,
+            motion_velocity=motion_velocity,
+            dot_radius=dot_radius,
+            stimulus_size_px=stimulus_size_px,
+            grid_compression=grid_compression,
+            duration=duration,
+            cycle_times=tuple(int(p.cycle_time) for p in groups_properties),
+        )
+    except ValueError:
+        continuation = None
+    return GenerationResult(
+        frames=frames, markers=markers, continuation=continuation,
     )
 
-    final_frames = [frame + markers for frame in moving_dot_frames]
-    return final_frames, markers
+
+def _apply_modification_to_dot(
+    dot: Dot,
+    mod: GroupModification,
+    motion_velocity: int,
+    outer_boundary_radius: float,
+    center: complex,
+) -> None:
+    """Mutate a single dot in place per the modification spec."""
+    if isinstance(mod.direction, Incoherent):
+        dot.velocity = motion_velocity * np.exp(
+            1j * (np.random.rand() * 2 * np.pi + np.pi / 2)
+        )
+        dot.is_coherent = False
+    elif mod.direction is None:
+        pass  # preserve velocity + coherence
+    else:
+        dot.velocity = motion_velocity * np.exp(
+            1j * (float(mod.direction) + np.pi / 2)
+        )
+        dot.is_coherent = True
+    dot.visible_color = mod.color
+    dot.needs_replacement = False
+    dot.death_frame = _compute_death_frame_from_position(
+        dot.position, dot.velocity, dot.cycle_time, dot.max_cycles,
+        outer_boundary_radius, center, current_frame=0,
+    )
+
+
+def continue_moving_dots(
+    previous: GenerationResult,
+    duration: int,
+    modifications: List[GroupModification],
+) -> GenerationResult:
+    """Continue a previous simulation. Only direction and color may change
+    via `modifications`; cycle_time, max_cycles, motion_velocity, and the
+    stimulus geometry are inherited from `previous`."""
+    if previous.continuation is None:
+        raise ValueError(
+            "previous has no continuation context — its duration was not a "
+            "multiple of every non-zero cycle_time, so chaining would break "
+            "the visibility flicker phase."
+        )
+    ctx = previous.continuation
+    if not ctx.last_dot_frame:
+        raise ValueError("previous has no dots to continue from")
+    if not np.isclose(sum(m.ratio for m in modifications), 1.0):
+        raise ValueError("modifications ratios must sum to 1.0")
+
+    stimulus_radius = ctx.stimulus_size_px / 2.0
+    center = stimulus_radius * (1 + 1j)
+    outer_boundary_radius = stimulus_radius - ctx.dot_radius
+    grid_step = ctx.dot_radius / ctx.grid_compression
+    coordinate_grid = _create_coordinate_grid(
+        ctx.stimulus_size_px, step=grid_step
+    )
+
+    seed_dots = [copy.deepcopy(d) for d in ctx.last_dot_frame]
+    np.random.shuffle(seed_dots)
+
+    velocity_groups: dict[complex, List[Dot]] = {}
+    idx = 0
+    for mod in modifications:
+        count = int(round(mod.ratio * len(seed_dots)))
+        for dot in seed_dots[idx:idx + count]:
+            _apply_modification_to_dot(
+                dot, mod, ctx.motion_velocity,
+                outer_boundary_radius, center,
+            )
+            if dot.death_frame >= 0:
+                velocity_groups.setdefault(dot.velocity, []).append(dot)
+        idx += count
+
+    moving_dot_frames = [
+        _advance_frame(
+            seed_dots, frame_num, ctx.motion_velocity, ctx.dot_radius,
+            outer_boundary_radius, center, coordinate_grid, velocity_groups,
+        )
+        for frame_num in range(duration)
+    ]
+
+    markers = previous.markers
+    try:
+        new_ctx: Optional[ContinuationContext] = ContinuationContext(
+            last_dot_frame=[copy.deepcopy(d) for d in seed_dots],
+            motion_velocity=ctx.motion_velocity,
+            dot_radius=ctx.dot_radius,
+            stimulus_size_px=ctx.stimulus_size_px,
+            grid_compression=ctx.grid_compression,
+            duration=duration,
+            cycle_times=ctx.cycle_times,
+        )
+    except ValueError:
+        new_ctx = None
+    return GenerationResult(
+        frames=[f + markers for f in moving_dot_frames],
+        markers=markers,
+        continuation=new_ctx,
+    )
 
 
 # ==============================================================================
@@ -778,9 +1001,9 @@ def test_ssvep_flicker():
         )
     ]
 
-    frames, _ = generate_moving_dots(
+    frames = generate_moving_dots(
         groups_properties=direction_props, **params
-    )
+    ).frames
 
     # Check visibility per frame
     visibility = []
@@ -830,9 +1053,9 @@ def test_dots_stay_in_bounds_with_cycles():
         )
     ]
 
-    frames, _ = generate_moving_dots(
+    frames = generate_moving_dots(
         groups_properties=direction_props, **params
-    )
+    ).frames
 
     stimulus_radius = params["stimulus_size_px"] / 2.0
     center = (params["stimulus_size_px"] / 2.0) * (1 + 1j)
@@ -880,9 +1103,9 @@ def test_no_dot_overlaps(grid_compression):
         )
     ]
 
-    frames, _ = generate_moving_dots(
+    frames = generate_moving_dots(
         groups_properties=direction_props, **params
-    )
+    ).frames
 
     min_dist = 2 * dot_radius
 
@@ -980,7 +1203,7 @@ def test_different_velocities_can_overlap():
                 max_cycles=10
             )
         ]
-        frames, _ = generate_moving_dots(groups_properties=direction_props, **params)
+        frames = generate_moving_dots(groups_properties=direction_props, **params).frames
         frame = frames[0]
         if len(frame) == 2:
             dist = abs(frame[0].position - frame[1].position)
@@ -1015,4 +1238,322 @@ def test_max_cycles_validation():
     # This should pass
     direction_props[0].max_cycles = 5
     generate_moving_dots(groups_properties=direction_props, **params)
+
+
+# ==============================================================================
+# ## continue_moving_dots Tests (chained simulations)
+# ==============================================================================
+
+
+def _baseline_result(direction=0, cycle_time=0, **overrides):
+    """Helper: produce a GenerationResult using PARAMS plus overrides."""
+    params = {**PARAMS, **overrides}
+    props = [
+        GroupProperties(
+            ratio=1.0, direction=direction,
+            cycle_time=np.uint(cycle_time), color=-1,
+            max_cycles=DEFAULT_MAX_CYCLES if cycle_time == 0 else (
+                params["stimulus_size_px"] // params["motion_velocity"]
+                // cycle_time
+            ),
+        )
+    ]
+    return generate_moving_dots(groups_properties=props, **params)
+
+
+def test_continue_preserves_positions_when_direction_none():
+    """direction=None preserves velocity; frame 0 = seed_position + velocity
+    for the majority of dots (some may need replacement)."""
+    prev = _baseline_result(direction=0)
+    seed = list(prev.continuation.last_dot_frame)
+    expected = {d.position + d.velocity for d in seed}
+
+    result = continue_moving_dots(
+        prev, duration=2,
+        modifications=[GroupModification(1.0, None, -1)],
+    )
+    actual = {d.position for d in result.frames[0]}
+    assert len(expected & actual) >= 0.7 * len(seed)
+
+
+def test_continue_changes_direction_only():
+    """A new fixed direction is applied; cycle_time/max_cycles/r unchanged."""
+    prev = _baseline_result(direction=0)
+    new_direction = np.pi / 2
+    expected_velocity = PARAMS["motion_velocity"] * np.exp(
+        1j * (new_direction + np.pi / 2)
+    )
+    seed = list(prev.continuation.last_dot_frame)
+    seed_attrs = {
+        id(d): (d.cycle_time, d.max_cycles, d.r) for d in seed
+    }
+
+    result = continue_moving_dots(
+        prev, duration=2,
+        modifications=[GroupModification(1.0, new_direction, -1)],
+    )
+    for dot in result.frames[0]:
+        assert np.isclose(dot.velocity, expected_velocity)
+    # cycle_time/max_cycles/r unchanged on every dot
+    for dot in result.frames[0]:
+        # match by (cycle_time, max_cycles, r) since dots are deepcopied
+        assert (dot.cycle_time, dot.max_cycles, dot.r) in set(
+            seed_attrs.values()
+        )
+
+
+def test_continue_incoherent_randomizes_velocities():
+    """direction=INCOHERENT yields varied per-dot velocities at the same speed."""
+    prev = _baseline_result(direction=0)
+    motion_velocity = prev.continuation.motion_velocity
+
+    result = continue_moving_dots(
+        prev, duration=1,
+        modifications=[GroupModification(1.0, INCOHERENT, -1)],
+    )
+    velocities = [d.velocity for d in result.frames[0]]
+    # Speeds match motion_velocity
+    for v in velocities:
+        assert np.isclose(abs(v), motion_velocity)
+    # Directions are not all identical
+    unique = {round(np.angle(v), 4) for v in velocities}
+    assert len(unique) > 1
+
+
+def test_continue_changes_color():
+    """color in the modification is applied to every dot."""
+    prev = _baseline_result(direction=0)
+    new_color = 1
+    result = continue_moving_dots(
+        prev, duration=3,
+        modifications=[GroupModification(1.0, None, new_color)],
+    )
+    for frame in result.frames:
+        for dot in frame:
+            assert dot.visible_color == new_color
+
+
+def test_continue_phase_continuity():
+    """With cycle_time=4, prior_duration multiple of cycle_time, and
+    direction=None, the visibility wave is continuous across the seam."""
+    cycle_time = 4
+    prior_duration = 8  # multiple of cycle_time
+    prev = _baseline_result(direction=0, cycle_time=cycle_time,
+                            duration=prior_duration)
+    cont = continue_moving_dots(
+        prev, duration=8,
+        modifications=[GroupModification(1.0, None, -1)],
+    )
+    # Visibility per frame: count visible dots / total at each frame.
+    # If phase is continuous, the wave (visible/invisible halves of cycle)
+    # holds across the seam.
+    all_frames = list(prev.frames) + list(cont.frames)
+    expected_total = PARAMS["num_dots"]
+    # Frames in the visible half of cycle should have all dots; invisible
+    # half should have ~zero.
+    for k, frame in enumerate(all_frames):
+        if (k % cycle_time) < (cycle_time / 2):
+            assert len(frame) > 0.7 * expected_total, (
+                f"Frame {k}: visible-half had {len(frame)} dots"
+            )
+        else:
+            assert len(frame) < 0.3 * expected_total, (
+                f"Frame {k}: invisible-half had {len(frame)} dots"
+            )
+
+
+def test_continue_ratio_mismatch_raises():
+    """Modification ratios must sum to 1.0."""
+    prev = _baseline_result(direction=0)
+    with pytest.raises(ValueError, match="ratios must sum"):
+        continue_moving_dots(
+            prev, duration=1,
+            modifications=[
+                GroupModification(0.4, None, -1),
+                GroupModification(0.4, None, 1),
+            ],
+        )
+
+
+def test_continue_no_overlap_at_frame_0():
+    """No overlap within velocity groups at frame 0 of continuation."""
+    prev = _baseline_result(direction=0)
+    result = continue_moving_dots(
+        prev, duration=1,
+        modifications=[
+            GroupModification(0.5, 0, -1),
+            GroupModification(0.5, np.pi, 1),
+        ],
+    )
+    by_velocity: dict[complex, list] = {}
+    for d in result.frames[0]:
+        by_velocity.setdefault(d.velocity, []).append(d)
+    for group in by_velocity.values():
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                assert (
+                    abs(a.position - b.position)
+                    >= 2 * PARAMS["dot_radius"] - 1e-6
+                )
+
+
+def test_continue_noop_modification_matches_long_sim():
+    """Splitting a long sim into N + continue(M-N) with no-effective-change
+    modifications (same direction, same color) produces the same per-frame
+    set of dot positions as a single M-frame sim.
+
+    Setup picks huge max_cycles and a large stimulus so no replacement fires
+    within M frames; under that condition trajectories are fully determined
+    by the initial RNG-seeded placement, and the two runs must match
+    frame-by-frame (as multisets, since the continuation shuffles dot order)."""
+    direction = np.pi / 4
+    color = -1
+    motion_velocity = 2
+    duration_total = 10
+    split_at = 5
+    params = dict(
+        num_dots=5,
+        dot_radius=20,
+        stimulus_size_px=2000,
+        motion_velocity=motion_velocity,
+    )
+    huge = 1_000_000
+    props = [GroupProperties(
+        ratio=1.0, direction=direction, cycle_time=np.uint(0),
+        color=color, max_cycles=huge,
+    )]
+
+    np.random.seed(42)
+    long_result = generate_moving_dots(
+        duration=duration_total, groups_properties=props, **params
+    )
+
+    np.random.seed(42)
+    first_part = generate_moving_dots(
+        duration=split_at, groups_properties=props, **params
+    )
+    second_part = continue_moving_dots(
+        first_part,
+        duration=duration_total - split_at,
+        modifications=[GroupModification(1.0, direction, color)],
+    )
+
+    stitched = list(first_part.frames) + list(second_part.frames)
+    assert len(stitched) == len(long_result.frames) == duration_total
+
+    def positions(frame):
+        return sorted(
+            (round(d.position.real, 9), round(d.position.imag, 9))
+            for d in frame
+        )
+    for k, (long_frame, stitched_frame) in enumerate(
+        zip(long_result.frames, stitched)
+    ):
+        assert positions(long_frame) == positions(stitched_frame), (
+            f"Frame {k} positions differ between long and stitched sims"
+        )
+
+
+def test_continue_outward_velocity_triggers_replacement():
+    """A dot at the left edge with a new leftward direction gets replaced
+    via the standard replacement path rather than carried forward."""
+    stimulus_size_px = 500
+    dot_radius = 20
+    stimulus_radius = stimulus_size_px / 2.0
+    outer = stimulus_radius - dot_radius
+    center = stimulus_radius * (1 + 1j)
+    edge_pos = center + complex(-(outer - 1), 0)
+
+    seed_dot = Dot(
+        position=edge_pos, r=dot_radius,
+        velocity=complex(2, 0),  # was moving right
+        death_frame=10, is_coherent=True, is_visible=True,
+        visible_color=-1, cycle_time=0,
+        max_cycles=DEFAULT_MAX_CYCLES,
+        placement_radius=outer,
+    )
+    prev = GenerationResult(
+        frames=[[seed_dot]], markers=[],
+        continuation=ContinuationContext(
+            last_dot_frame=[seed_dot],
+            motion_velocity=2,
+            dot_radius=dot_radius,
+            stimulus_size_px=stimulus_size_px,
+            grid_compression=10.0,
+            duration=1,
+            cycle_times=(0,),
+        ),
+    )
+    # New direction points left (outward) → -π/2 angle gives velocity
+    # along -x axis (since velocity = motion_velocity * exp(1j * (dir + π/2))).
+    result = continue_moving_dots(
+        prev, duration=1,
+        modifications=[GroupModification(1.0, -np.pi / 2, -1)],
+    )
+    placed = result.frames[0][0].position
+    assert abs(placed - center) <= outer + 1e-6
+    # Should NOT be a simple outward step from edge_pos.
+    assert abs(placed - (edge_pos + complex(-2, 0))) > 1e-6
+
+
+def test_continuation_is_none_when_duration_breaks_phase():
+    """duration not a multiple of cycle_time → continuation is None."""
+    cycle_time = 4
+    actual_max = (
+        PARAMS["stimulus_size_px"] // PARAMS["motion_velocity"] // cycle_time
+    )
+    props = [GroupProperties(
+        ratio=1.0, direction=0,
+        cycle_time=np.uint(cycle_time), color=-1, max_cycles=actual_max,
+    )]
+    result = generate_moving_dots(
+        groups_properties=props, **{**PARAMS, "duration": 7},
+    )
+    assert result.continuation is None
+    # Frames and markers are still produced normally.
+    assert len(result.frames) == 7
+
+
+def test_continue_raises_when_continuation_is_none():
+    """continue_moving_dots must raise if previous.continuation is None."""
+    cycle_time = 4
+    actual_max = (
+        PARAMS["stimulus_size_px"] // PARAMS["motion_velocity"] // cycle_time
+    )
+    props = [GroupProperties(
+        ratio=1.0, direction=0,
+        cycle_time=np.uint(cycle_time), color=-1, max_cycles=actual_max,
+    )]
+    result = generate_moving_dots(
+        groups_properties=props, **{**PARAMS, "duration": 7},
+    )
+    with pytest.raises(ValueError, match="no continuation context"):
+        continue_moving_dots(
+            result, duration=4,
+            modifications=[GroupModification(1.0, None, -1)],
+        )
+
+
+def test_continuation_context_validates_at_construction():
+    """Constructing ContinuationContext with a misaligned duration raises."""
+    seed_dot = Dot(
+        position=0j, r=20, velocity=0j, death_frame=0,
+        is_coherent=True, is_visible=True, visible_color=-1,
+        cycle_time=4, max_cycles=1, placement_radius=230,
+    )
+    with pytest.raises(ValueError, match="multiple of"):
+        ContinuationContext(
+            last_dot_frame=[seed_dot],
+            motion_velocity=2, dot_radius=20,
+            stimulus_size_px=500, grid_compression=10.0,
+            duration=7, cycle_times=(4,),
+        )
+    # cycle_time=0 → no constraint, any duration ok.
+    ContinuationContext(
+        last_dot_frame=[seed_dot],
+        motion_velocity=2, dot_radius=20,
+        stimulus_size_px=500, grid_compression=10.0,
+        duration=7, cycle_times=(0,),
+    )
+
 
