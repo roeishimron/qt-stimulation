@@ -131,6 +131,17 @@ class DrawableConvolve(Appliable):
             a.draw_at(screen, painter)
 
 
+class AppliableMixture(Appliable):
+    appliables: Iterable[Appliable]
+
+    def __init__(self, appliables: Iterable[Appliable]):
+        self.appliables = appliables
+
+    def draw_at(self, screen: QRect, painter: QPainter):
+        for a in self.appliables:
+            a.draw_at(screen, painter)
+
+
 class OddballStimuli:
     base: Iterator[Appliable]
     oddball: Iterator[Appliable]

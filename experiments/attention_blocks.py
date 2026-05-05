@@ -1,14 +1,13 @@
 from dataclasses import dataclass
-from itertools import cycle
 from typing import List, Union
 import sys
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
-from numpy import array, ones, pi, uint, zeros
+from numpy import array, ones, pi, uint
 from numpy.random import choice, randint, uniform
-from numpy.typing import NDArray
 
-from animator import OddballStimuli
+from animator import AppliableMixture, AppliableText
 from experiments.constant_stimuli.dots_generator import (
     GenerationResult, GroupModification, GroupProperties, INCOHERENT,
     Incoherent, continue_moving_dots, generate_moving_dots,
@@ -25,6 +24,7 @@ logger = getLogger(__name__)
 SCREEN_REFRESH_RATE = 60
 QUANTA_SEC = 2
 TOTAL_SEC = 120
+AMOUNT_OF_TRIALS = 3
 
 # Derived
 QUANTA_FRAMES = QUANTA_SEC * SCREEN_REFRESH_RATE
@@ -48,7 +48,8 @@ CYCLE_A = uint(6)
 CYCLE_B = uint(4)
 
 # Fixation cross
-CROSS_R = 6
+CROSS_FONT_SIZE = 50
+CROSS_COLORS = {-1: Qt.GlobalColor.black, +1: Qt.GlobalColor.white}
 
 
 @dataclass(frozen=True)
@@ -145,27 +146,16 @@ def initial_props(first_seg: Segment, max_lifetime: int) -> List[GroupProperties
     return out
 
 
-def cross_fill(color: int) -> NDArray:
-    f = zeros((2 * CROSS_R, 2 * CROSS_R))
-    f[CROSS_R - 1:CROSS_R + 1, :] = color
-    f[:, CROSS_R - 1:CROSS_R + 1] = color
-    return f
-
-
-def render(simulator_frame, fixation_color: int, size: int):
-    cross = RenderDot(
-        CROSS_R,
-        array([size // 2, size // 2], dtype=int),
-        cross_fill(fixation_color),
-    )
+def render(simulator_frame, fixation_color: int, size: int) -> AppliableMixture:
     moving = [
         RenderDot(int(d.r), array([d.x, d.y], dtype=int),
                   d.color * ones((2 * d.r, 2 * d.r)))
         for d in simulator_frame
     ]
-    return array_into_pixmap(
-        fill_with_dots(size, [], moving + [cross], 0, 0)
-    )
+    return AppliableMixture([
+        array_into_pixmap(fill_with_dots(size, [], moving, 0, 0)),
+        AppliableText("+", CROSS_FONT_SIZE, CROSS_COLORS[fixation_color]),
+    ])
 
 
 def generate_stimulus(blocks: List[Block], size: int):
@@ -195,25 +185,25 @@ def run():
     screen_height = app.primaryScreen().geometry().height()
     size = int(screen_height * 5 / 6)
 
-    blocks = roll_blocks()
-    logger.info(f"rolled {len(blocks)} blocks covering "
-                f"{sum(1 + b.steady_state_quantas for b in blocks)} quantas")
+    def trial_stimuli():
+        blocks = roll_blocks()
+        logger.info(f"rolled {len(blocks)} blocks covering "
+                    f"{sum(1 + b.steady_state_quantas for b in blocks)} quantas")
+        all_frames, fixation_per_frame = generate_stimulus(blocks, size)
+        logger.info(f"generated {len(all_frames)} frames")
+        return (
+            (render(f, c, size), uint(1))
+            for f, c in zip(all_frames, fixation_per_frame)
+        )
 
-    all_frames, fixation_per_frame = generate_stimulus(blocks, size)
-    logger.info(f"generated {len(all_frames)} frames")
-
-    frames = (
-        render(f, c, size)
-        for f, c in zip(all_frames, fixation_per_frame)
-    )
+    trials = (trial_stimuli() for _ in range(AMOUNT_OF_TRIALS))
 
     recorder = KeyRecorder()
-    experiment = RealtimeViewingExperiment.with_constant_amount_of_stimuli(
-        OddballStimuli(cycle(frames)),
+    experiment = RealtimeViewingExperiment(
+        trials,
         SoftSerial(),
-        1,
-        TOTAL_FRAMES,
         use_step=True,
+        show_fixation_cross=False,
         on_trial_start=recorder.experiment_start,
         stimuli_on_keypress=recorder.record_key_response,
     )

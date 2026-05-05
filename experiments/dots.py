@@ -61,10 +61,12 @@ def run():
 
     recorder = KeyRecorder()
     experiment = RealtimeViewingExperiment.with_constant_amount_of_stimuli(
-        OddballStimuli((cycle(frames))), SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI, use_step=True,
+        OddballStimuli(frames), SoftSerial(), FRAMES_PER_STIM, AMOUNT_OF_STIMULI, use_step=True,
         on_trial_start=recorder.experiment_start, stimuli_on_keypress=recorder.record_key_response
     )
 
     experiment.showFullScreen()
+
+
     # Run the main Qt loop
     app.exec()
