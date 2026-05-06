@@ -1,4 +1,4 @@
-FROM python:3.13-trixie
+FROM python:3.14-trixie
 
 COPY .devcontainer/requirements.txt /etc/requirements.txt
 COPY .devcontainer/apt-requirements.txt /etc/apt-requirements.txt

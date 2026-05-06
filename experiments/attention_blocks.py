@@ -1,4 +1,7 @@
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from random import shuffle
+from time import time_ns
 from typing import List, Union
 import sys
 
@@ -17,24 +20,22 @@ from response_recorder import KeyRecorder
 from soft_serial import SoftSerial
 from stims import Dot as RenderDot, array_into_pixmap, fill_with_dots
 
-from logging import getLogger
-logger = getLogger(__name__)
-
 # Timing primitives
 SCREEN_REFRESH_RATE = 60
 QUANTA_SEC = 2
-TOTAL_SEC = 120
 AMOUNT_OF_TRIALS = 3
 
 # Derived
 QUANTA_FRAMES = QUANTA_SEC * SCREEN_REFRESH_RATE
 SUB_QUANTA_FRAMES = QUANTA_FRAMES // 2
-TOTAL_QUANTAS = TOTAL_SEC // QUANTA_SEC
-TOTAL_FRAMES = TOTAL_QUANTAS * QUANTA_FRAMES
 
-# Block-length distribution: steady_state_quantas ~ U{0..4}
-MIN_STEADY_STATE = 0
-MAX_STEADY_STATE = 4
+# Per-trial block layout: each attention color independently emits blocks until its
+# steady-state budget reaches STEADY_QUANTAS_PER_COLOR; per-block steady-state is drawn
+# ~ U{MIN_STEADY_STATE..MAX_STEADY_STATE} (last draw capped to the remaining budget).
+# Total block count (and therefore trial duration) varies between trials.
+STEADY_QUANTAS_PER_COLOR = 25
+MIN_STEADY_STATE = 1
+MAX_STEADY_STATE = 8
 
 # Visual / motion
 DOT_RADIUS = 20
@@ -67,20 +68,34 @@ class Segment:
     fixation_color: int
 
 
-def roll_blocks() -> List[Block]:
-    """Sample blocks until they sum to exactly TOTAL_QUANTAS quantas."""
-    blocks: List[Block] = []
-    remaining = TOTAL_QUANTAS
+def roll_steady_states_for_color() -> List[int]:
+    """Build a partition of STEADY_QUANTAS_PER_COLOR by drawing values
+    ~ U{MIN_STEADY_STATE..MAX_STEADY_STATE}; the last draw is capped to the remaining
+    budget so the partition sums exactly to STEADY_QUANTAS_PER_COLOR."""
+    states: List[int] = []
+    remaining = STEADY_QUANTAS_PER_COLOR
     while remaining > 0:
-        max_steady = min(MAX_STEADY_STATE, remaining - 1)
-        steady = int(randint(MIN_STEADY_STATE, max_steady + 1))
-        blocks.append(Block(
-            steady_state_quantas=steady,
-            attention_color=int(choice(COLORS)),
+        x = int(randint(MIN_STEADY_STATE, min(MAX_STEADY_STATE, remaining) + 1))
+        states.append(x)
+        remaining -= x
+    return states
+
+
+def roll_blocks() -> List[Block]:
+    """Per attention color, build a steady-state partition summing to
+    STEADY_QUANTAS_PER_COLOR; concatenate and shuffle. The total number of blocks
+    (and therefore the trial duration) varies."""
+    blocks = [
+        Block(
+            steady_state_quantas=s,
+            attention_color=int(c),
             coherent_color=int(choice(COLORS)),
             coherent_direction=float(uniform(0, 2 * pi)),
-        ))
-        remaining -= 1 + steady
+        )
+        for c in COLORS
+        for s in roll_steady_states_for_color()
+    ]
+    shuffle(blocks)
     return blocks
 
 
@@ -180,23 +195,28 @@ def generate_stimulus(blocks: List[Block], size: int):
     return all_frames, fixation_per_frame
 
 
-def run():
+def run(subject_name="latest"):
+
+    output_filename = f"./output/{subject_name}-attention_blocks-{time_ns()//10**9}.json"
+
     app = QApplication(sys.argv)
     screen_height = app.primaryScreen().geometry().height()
     size = int(screen_height * 5 / 6)
 
-    def trial_stimuli():
-        blocks = roll_blocks()
-        logger.info(f"rolled {len(blocks)} blocks covering "
-                    f"{sum(1 + b.steady_state_quantas for b in blocks)} quantas")
-        all_frames, fixation_per_frame = generate_stimulus(blocks, size)
-        logger.info(f"generated {len(all_frames)} frames")
-        return (
-            (render(f, c, size), uint(1))
-            for f, c in zip(all_frames, fixation_per_frame)
+    trials_blocks: List[List[Block]] = [roll_blocks() for _ in range(AMOUNT_OF_TRIALS)]
+    trials_stimuli = [generate_stimulus(blocks, size) for blocks in trials_blocks]
+
+    with open(output_filename, "w") as f:
+        json.dump(
+            [[asdict(b) for b in blocks] for blocks in trials_blocks],
+            f,
+            indent=2,
         )
 
-    trials = (trial_stimuli() for _ in range(AMOUNT_OF_TRIALS))
+    trials = (
+        ((render(f, c, size), uint(1)) for f, c in zip(all_frames, fixation_per_frame))
+        for all_frames, fixation_per_frame in trials_stimuli
+    )
 
     recorder = KeyRecorder()
     experiment = RealtimeViewingExperiment(
@@ -212,5 +232,3 @@ def run():
     app.exec()
 
 
-if __name__ == "__main__":
-    run()

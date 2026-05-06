@@ -14,6 +14,7 @@ import experiments.staircase.side.side
 import experiments.staircase.csf_frequencial
 import experiments.staircase.csf_spacial
 import experiments.constant_stimuli.dots_trials
+import experiments.attention_blocks
 from time import time_ns
 from logging import basicConfig, INFO
 
@@ -54,6 +55,9 @@ def main():
             output_folder)
     elif experiment == "motion_coherence":
         experiments.constant_stimuli.dots_trials.run(name)
+    elif experiment == "color_attention":
+        experiments.attention_blocks.run(name)
+
 
     else:
         print("No such experiment!")
