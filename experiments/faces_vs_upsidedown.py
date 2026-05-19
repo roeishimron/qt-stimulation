@@ -10,7 +10,7 @@ from random import shuffle
 from stims import gaussian, inflate_randomley
 from PySide6.QtGui import QMatrix2x2
 import os
-
+from numpy import array, uint8, max, abs
 
 def read_images_into_appliable_pixmaps(path: str, size: int, transformed: bool = False) -> Generator[AppliablePixmap, None, None]:
     filenames = [os.path.abspath(f"{path}/{p}") for p in os.listdir(path)]
@@ -24,8 +24,14 @@ def read_images_into_appliable_pixmaps(path: str, size: int, transformed: bool =
             pix = pix.transformed(transform)
         scaled = pix.scaledToHeight(
             (size)).convertedTo(QImage.Format.Format_Grayscale8)
-        # scaled *=  gaussian(size, size/10)
-        yield AppliablePixmap(QPixmap.fromImage(scaled))
+        
+        raw = array(scaled.constBits()).reshape((size,size)) / 255 * 2 - 1
+        raw *= gaussian(size, size/2)
+        raw /= max(abs(raw))
+        raw_sized  = (raw + 1) * 255 / 2
+        image = QImage(raw_sized.astype(uint8).tobytes(), 
+                       size, size, QImage.Format.Format_Grayscale8)
+        yield AppliablePixmap(QPixmap.fromImage(image))
 
 
 def run():
@@ -34,14 +40,17 @@ def run():
 
     screen_height = app.primaryScreen().geometry().height()
 
-    size = int(screen_height * 3 / 4)
+    size = 900
+    assert size <= screen_height
+
     faces = list(read_images_into_appliable_pixmaps(
-        "assets/faces/asian", size))
-    oddballs = list(read_images_into_appliable_pixmaps(
         "assets/faces/asian", size, True))
+    oddballs = list(read_images_into_appliable_pixmaps(
+        "assets/faces/asian", size))
 
     SCREEN_REFRESH_RATE = 60
     TRIAL_DURATION = 60
+    
     STIMULI_REFRESH_RATE = 10
     ODDBALL_MODULATION = 2
 
