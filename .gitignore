@@ -1,5 +1,6 @@
 *.pyc
 *.jpg
+*.bmp
 *.jpeg
 logs/*
 output/*

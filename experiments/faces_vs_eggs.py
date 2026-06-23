@@ -10,27 +10,20 @@ from random import shuffle
 from stims import gaussian, inflate_randomley
 from PySide6.QtGui import QMatrix2x2
 import os
-from numpy import array, ceil, uint8, max, abs
+from numpy import array, uint8, max, abs
 
-def read_images_into_appliable_pixmaps(path: str, size: int, transformed: bool = False) -> Generator[AppliablePixmap, None, None]:
+
+def read_images_into_appliable_pixmaps(path: str) -> Generator[AppliablePixmap, None, None]:
     filenames = [os.path.abspath(f"{path}/{p}") for p in os.listdir(path)]
 
     for name in filenames:
         pix = QImage()
         assert pix.load(name)
-        if transformed:
-            transform = QTransform()
-            transform.rotate(180)
-            pix = pix.transformed(transform)
-        scaled = pix.scaledToHeight(
-            (size)).convertedTo(QImage.Format.Format_Grayscale8)
-        
-        raw = array(scaled.constBits()).reshape((size,size)) / 255 * 2 - 1
-        raw *= gaussian(size, size*3.3)
-        raw /= max(abs(raw))
-        raw_sized  = ceil((raw + 1) * 255 / 2)
-        image = QImage(raw_sized.astype(uint8).tobytes(), 
-                       size, size, QImage.Format.Format_Grayscale8)
+        formatted = pix.convertedTo(QImage.Format.Format_Grayscale8)
+
+        image = QImage(formatted.constBits(),
+                       formatted.width(), formatted.height(),
+                       QImage.Format.Format_Grayscale8)
         yield AppliablePixmap(QPixmap.fromImage(image))
 
 
@@ -40,34 +33,34 @@ def run():
 
     screen_height = app.primaryScreen().geometry().height()
 
-    size = 300
+    size = 900
     assert size <= screen_height
 
     faces = list(read_images_into_appliable_pixmaps(
-        "assets/faces/asian", size, True))
-    oddballs = list(read_images_into_appliable_pixmaps(
-        "assets/faces/asian", size))
+        "assets/faces-vs-eggs/faces"))
+    eggs = list(read_images_into_appliable_pixmaps(
+        "assets/faces-vs-eggs/eggs"))
 
     SCREEN_REFRESH_RATE = 60
     TRIAL_DURATION = 60
-    
-    STIMULI_REFRESH_RATE = 20
-    ODDBALL_MODULATION = 4
+
+    STIMULI_REFRESH_RATE = 30
+    ODDBALL_MODULATION = 6
 
     AMOUNT_OF_STIMULI = TRIAL_DURATION * STIMULI_REFRESH_RATE
     FRAMES_PER_STIM = int(SCREEN_REFRESH_RATE / STIMULI_REFRESH_RATE)
     assert SCREEN_REFRESH_RATE % STIMULI_REFRESH_RATE == 0
     assert AMOUNT_OF_STIMULI % ODDBALL_MODULATION == 0
-    AMOUNT_OF_ODDBALL = int(AMOUNT_OF_STIMULI / ODDBALL_MODULATION)
 
-    stimuli = OddballStimuli(cycle(list(inflate_randomley(oddballs, 10))),
-                             cycle(list(inflate_randomley(faces, 10))),
+    stimuli = OddballStimuli(cycle(list(inflate_randomley(faces, 10))), cycle(list(inflate_randomley(eggs, 10))),
                              ODDBALL_MODULATION)
 
     main_window = RealtimeViewingExperiment.with_constant_amount_of_stimuli(stimuli,
                                                                             SoftSerial(),
                                                                             FRAMES_PER_STIM,
-                                                                            AMOUNT_OF_STIMULI, use_step=True)
+                                                                            AMOUNT_OF_STIMULI, 
+                                                                            use_step=True,
+                                                                            show_fixation_cross=False)
     main_window.showFullScreen()
 
     # Run the main Qt loop
